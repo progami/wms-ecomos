@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { Download, Calendar, TrendingUp, Package, DollarSign, FileText } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { AdminReportsClient } from './client-page'
+import { prisma } from '@/lib/prisma'
 
 export default async function AdminReportsPage() {
   const session = await getServerSession(authOptions)
@@ -10,6 +12,43 @@ export default async function AdminReportsPage() {
   if (!session || session.user.role !== 'system_admin') {
     redirect('/auth/login')
   }
+
+  // Fetch current stats
+  const currentMonth = new Date()
+  const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+  
+  const [storageCost, movements, invoices] = await Promise.all([
+    // Total storage cost this month
+    prisma.storageLedger.aggregate({
+      where: {
+        weekEndingDate: {
+          gte: startOfMonth,
+          lte: currentMonth
+        }
+      },
+      _sum: {
+        calculatedWeeklyCost: true
+      }
+    }),
+    // Total movements this month
+    prisma.inventoryTransaction.count({
+      where: {
+        transactionDate: {
+          gte: startOfMonth,
+          lte: currentMonth
+        }
+      }
+    }),
+    // Invoices this month
+    prisma.invoiceInput.count({
+      where: {
+        invoiceDate: {
+          gte: startOfMonth,
+          lte: currentMonth
+        }
+      }
+    })
+  ])
 
   return (
     <DashboardLayout>
@@ -26,7 +65,7 @@ export default async function AdminReportsPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard
             title="Total Storage Cost"
-            value="$45,678"
+            value={`$${(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`}
             period="This Month"
             change="+12%"
             icon={DollarSign}
@@ -40,122 +79,22 @@ export default async function AdminReportsPage() {
           />
           <StatCard
             title="Total Movements"
-            value="1,234"
+            value={movements.toString()}
             period="This Month"
             change="+8%"
             icon={Package}
           />
           <StatCard
             title="Invoices Processed"
-            value="23"
+            value={invoices.toString()}
             period="This Month"
             change="+15%"
             icon={FileText}
           />
         </div>
 
-        {/* Report Types */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Storage Reports */}
-          <div className="border rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Storage Reports</h2>
-            <div className="space-y-3">
-              <ReportItem
-                title="Weekly Storage Summary"
-                description="Storage costs by week for all warehouses"
-                icon={Calendar}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="Monthly Storage Trends"
-                description="Month-over-month storage analysis"
-                icon={TrendingUp}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="SKU Storage Analysis"
-                description="Storage costs breakdown by SKU"
-                icon={Package}
-                onClick={() => {}}
-              />
-            </div>
-          </div>
-
-          {/* Financial Reports */}
-          <div className="border rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Financial Reports</h2>
-            <div className="space-y-3">
-              <ReportItem
-                title="Invoice Reconciliation"
-                description="Compare expected vs actual costs"
-                icon={FileText}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="Cost Analysis"
-                description="Detailed breakdown of all costs"
-                icon={DollarSign}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="Billing Period Summary"
-                description="16th to 15th billing cycle reports"
-                icon={Calendar}
-                onClick={() => {}}
-              />
-            </div>
-          </div>
-
-          {/* Inventory Reports */}
-          <div className="border rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Inventory Reports</h2>
-            <div className="space-y-3">
-              <ReportItem
-                title="Current Stock Levels"
-                description="Real-time inventory by warehouse"
-                icon={Package}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="Movement History"
-                description="All transactions with details"
-                icon={TrendingUp}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="Low Stock Alert"
-                description="Items below minimum levels"
-                icon={Package}
-                onClick={() => {}}
-              />
-            </div>
-          </div>
-
-          {/* Custom Reports */}
-          <div className="border rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Custom Reports</h2>
-            <div className="space-y-3">
-              <ReportItem
-                title="Export All Data"
-                description="Download complete database backup"
-                icon={Download}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="Custom Date Range"
-                description="Generate report for specific period"
-                icon={Calendar}
-                onClick={() => {}}
-              />
-              <ReportItem
-                title="Scheduled Reports"
-                description="Set up automated report delivery"
-                icon={Calendar}
-                onClick={() => {}}
-              />
-            </div>
-          </div>
-        </div>
+        {/* Report Generation Section */}
+        <AdminReportsClient />
 
         {/* Recent Reports */}
         <div className="border rounded-lg p-6">

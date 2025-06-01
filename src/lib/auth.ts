@@ -79,7 +79,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.fullName,
           role: user.role,
-          warehouseId: user.warehouseId,
+          warehouseId: user.warehouseId || undefined,
         }
       },
     }),

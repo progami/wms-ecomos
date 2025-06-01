@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { prisma } from '@/lib/prisma'
+import { formatDate } from '@/lib/utils'
 
 export default async function WarehouseSettingsPage() {
   const session = await getServerSession(authOptions)
@@ -11,6 +13,51 @@ export default async function WarehouseSettingsPage() {
   if (!session || session.user.role !== 'system_admin') {
     redirect('/auth/login')
   }
+
+  // Fetch warehouses with counts
+  const warehouses = await prisma.warehouse.findMany({
+    where: { isActive: true },
+    include: {
+      _count: {
+        select: {
+          warehouseSkuConfigs: true,
+        }
+      }
+    },
+    orderBy: { name: 'asc' }
+  })
+
+  // Count unique SKUs per warehouse
+  const warehouseSkuCounts = await prisma.warehouseSkuConfig.groupBy({
+    by: ['warehouseId'],
+    _count: {
+      skuId: true
+    }
+  })
+
+  const skuCountMap = warehouseSkuCounts.reduce((acc, item) => {
+    acc[item.warehouseId] = item._count.skuId
+    return acc
+  }, {} as Record<string, number>)
+
+  // Fetch recent SKU configurations
+  const skuConfigs = await prisma.warehouseSkuConfig.findMany({
+    where: {
+      OR: [
+        { endDate: null },
+        { endDate: { gte: new Date() } }
+      ]
+    },
+    include: {
+      warehouse: true,
+      sku: true,
+    },
+    orderBy: [
+      { warehouse: { code: 'asc' } },
+      { sku: { skuCode: 'asc' } }
+    ],
+    take: 10
+  })
 
   return (
     <DashboardLayout>
@@ -36,39 +83,33 @@ export default async function WarehouseSettingsPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Active Warehouses</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <WarehouseCard
-              name="FMC Warehouse"
-              code="FMC"
-              address="123 Main St, City, State 12345"
-              email="fmc@warehouse.com"
-              phone="555-0100"
-              skuCount={8}
-              configCount={8}
-            />
-            <WarehouseCard
-              name="Vglobal Warehouse"
-              code="VGLOBAL"
-              address="456 Industrial Blvd, City, State 12345"
-              email="vglobal@warehouse.com"
-              phone="555-0200"
-              skuCount={6}
-              configCount={6}
-            />
-            <WarehouseCard
-              name="4AS Warehouse"
-              code="4AS"
-              address="789 Logistics Ave, City, State 12345"
-              email="4as@warehouse.com"
-              phone="555-0300"
-              skuCount={4}
-              configCount={4}
-            />
+            {warehouses.map((warehouse) => (
+              <WarehouseCard
+                key={warehouse.id}
+                id={warehouse.id}
+                name={warehouse.name}
+                code={warehouse.code}
+                address={warehouse.address || ''}
+                email={warehouse.contactEmail || ''}
+                phone={warehouse.contactPhone || ''}
+                skuCount={skuCountMap[warehouse.id] || 0}
+                configCount={warehouse._count.warehouseSkuConfigs}
+              />
+            ))}
           </div>
         </div>
 
         {/* SKU Configuration */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">SKU Configurations</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Recent SKU Configurations</h2>
+            <Link
+              href="/admin/settings/sku-configs"
+              className="text-sm text-primary hover:underline"
+            >
+              View all configurations →
+            </Link>
+          </div>
           <div className="border rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -97,75 +138,31 @@ export default async function WarehouseSettingsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    FMC
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    CS 007
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    14
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    16
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    160
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    Jan 1, 2024
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-primary hover:underline">Edit</button>
-                  </td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    FMC
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    CS 008
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    36
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    16
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    160
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    Jan 1, 2024
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-primary hover:underline">Edit</button>
-                  </td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    FMC
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    CS 009
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    14
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    16
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    160
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    Jan 1, 2024
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-primary hover:underline">Edit</button>
-                  </td>
-                </tr>
+                {skuConfigs.map((config) => (
+                  <tr key={config.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {config.warehouse.code}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {config.sku.skuCode}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                      {config.storageCartonsPerPallet}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                      {config.shippingCartonsPerPallet}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                      {config.maxHeightCm || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(config.effectiveDate)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button className="text-primary hover:underline">Edit</button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -182,6 +179,7 @@ export default async function WarehouseSettingsPage() {
 }
 
 interface WarehouseCardProps {
+  id: string
   name: string
   code: string
   address: string
@@ -192,6 +190,7 @@ interface WarehouseCardProps {
 }
 
 function WarehouseCard({ 
+  id,
   name, 
   code, 
   address, 

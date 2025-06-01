@@ -21,53 +21,54 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <DashboardCard
-          title="Total Inventory"
-          value="1,234"
-          description="Cartons across all warehouses"
-          icon={Package2}
-          trend="+12% from last month"
-          trendUp={true}
-        />
-        <DashboardCard
-          title="Storage Cost"
-          value="$5,432"
-          description="Current month estimate"
-          icon={DollarSign}
-          trend="+8% from last month"
-          trendUp={true}
-        />
-        <DashboardCard
-          title="Active SKUs"
-          value="45"
-          description="Products in stock"
-          icon={TrendingUp}
-          trend="No change"
-          trendUp={null}
-        />
-        <DashboardCard
-          title="Pending Invoices"
-          value="3"
-          description="Awaiting reconciliation"
-          icon={AlertCircle}
-          trend="2 overdue"
-          trendUp={false}
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="border rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Recent Transactions</h3>
-          <p className="text-muted-foreground">
-            Transaction history will appear here
-          </p>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <DashboardCard
+            title="Total Inventory"
+            value="1,234"
+            description="Cartons across all warehouses"
+            icon={Package2}
+            trend="+12% from last month"
+            trendUp={true}
+          />
+          <DashboardCard
+            title="Storage Cost"
+            value="$5,432"
+            description="Current month estimate"
+            icon={DollarSign}
+            trend="+8% from last month"
+            trendUp={true}
+          />
+          <DashboardCard
+            title="Active SKUs"
+            value="45"
+            description="Products in stock"
+            icon={TrendingUp}
+            trend="No change"
+            trendUp={null}
+          />
+          <DashboardCard
+            title="Pending Invoices"
+            value="3"
+            description="Awaiting reconciliation"
+            icon={AlertCircle}
+            trend="2 overdue"
+            trendUp={false}
+          />
         </div>
-        <div className="border rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Storage Utilization</h3>
-          <p className="text-muted-foreground">
-            Warehouse capacity chart will appear here
-          </p>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Recent Transactions</h3>
+            <p className="text-muted-foreground">
+              Transaction history will appear here
+            </p>
+          </div>
+          <div className="border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Storage Utilization</h3>
+            <p className="text-muted-foreground">
+              Warehouse capacity chart will appear here
+            </p>
+          </div>
         </div>
       </div>
     </DashboardLayout>

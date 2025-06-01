@@ -1,6 +1,8 @@
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   Building2, 
@@ -11,15 +13,92 @@ import {
   Database,
   Bell,
   Shield,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  Download,
+  Trash2
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { toast } from 'react-hot-toast'
 
-export default async function AdminSettingsPage() {
-  const session = await getServerSession(authOptions)
+export default function AdminSettingsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [loading, setLoading] = useState<string | null>(null)
+
+  if (status === 'loading') {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   if (!session || session.user.role !== 'system_admin') {
-    redirect('/auth/login')
+    router.push('/auth/login')
+    return null
+  }
+
+  const handleImportData = async () => {
+    setLoading('import')
+    try {
+      router.push('/admin/import')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleExportData = async () => {
+    setLoading('export')
+    try {
+      const response = await fetch('/api/export/all-data', {
+        method: 'GET',
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `warehouse-backup-${new Date().toISOString().split('T')[0]}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success('Data exported successfully!')
+      } else {
+        toast.error('Failed to export data')
+      }
+    } catch (error) {
+      toast.error('Export failed')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleClearDemoData = async () => {
+    if (!confirm('Are you sure you want to clear all demo data? This action cannot be undone.')) {
+      return
+    }
+
+    setLoading('clear')
+    try {
+      const response = await fetch('/api/admin/clear-demo-data', {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        toast.success('Demo data cleared successfully!')
+      } else {
+        toast.error('Failed to clear demo data')
+      }
+    } catch (error) {
+      toast.error('Operation failed')
+    } finally {
+      setLoading(null)
+    }
   }
 
   return (
@@ -105,17 +184,24 @@ export default async function AdminSettingsPage() {
             <QuickAction
               title="Import Data"
               description="Bulk import from Excel"
-              onClick={() => {}}
+              icon={Upload}
+              onClick={handleImportData}
+              loading={loading === 'import'}
             />
             <QuickAction
               title="Export All Data"
               description="Download complete backup"
-              onClick={() => {}}
+              icon={Download}
+              onClick={handleExportData}
+              loading={loading === 'export'}
             />
             <QuickAction
               title="Clear Demo Data"
               description="Remove all test data"
-              onClick={() => {}}
+              icon={Trash2}
+              onClick={handleClearDemoData}
+              loading={loading === 'clear'}
+              danger
             />
           </div>
         </div>
@@ -168,17 +254,43 @@ function SettingCard({ title, description, icon: Icon, href }: SettingCardProps)
 interface QuickActionProps {
   title: string
   description: string
+  icon: React.ElementType
   onClick: () => void
+  loading?: boolean
+  danger?: boolean
 }
 
-function QuickAction({ title, description, onClick }: QuickActionProps) {
+function QuickAction({ title, description, icon: Icon, onClick, loading, danger }: QuickActionProps) {
   return (
     <button
       onClick={onClick}
-      className="p-4 border rounded-lg hover:shadow-md transition-shadow text-left"
+      disabled={loading}
+      className={`p-4 border rounded-lg transition-all text-left relative overflow-hidden ${
+        danger 
+          ? 'hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' 
+          : 'hover:shadow-md'
+      } ${
+        loading ? 'opacity-50 cursor-not-allowed' : ''
+      }`}
     >
-      <h4 className="font-medium">{title}</h4>
-      <p className="text-sm text-muted-foreground mt-1">{description}</p>
+      <div className="flex items-start gap-3">
+        <div className={`p-2 rounded-lg ${
+          danger ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800'
+        }`}>
+          <Icon className={`h-5 w-5 ${
+            danger ? 'text-red-600' : 'text-gray-600'
+          }`} />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-medium">{title}</h4>
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+        </div>
+      </div>
+      {loading && (
+        <div className="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      )}
     </button>
   )
 }

@@ -103,7 +103,7 @@ interface UserCardProps {
 
 function UserCard({ name, email, role, warehouse, lastLogin, isActive }: UserCardProps) {
   const getRoleBadge = (role: string) => {
-    const roleStyles = {
+    const roleStyles: Record<string, string> = {
       system_admin: 'bg-purple-100 text-purple-800',
       finance_admin: 'bg-green-100 text-green-800',
       warehouse_staff: 'bg-blue-100 text-blue-800',
@@ -111,7 +111,7 @@ function UserCard({ name, email, role, warehouse, lastLogin, isActive }: UserCar
       viewer: 'bg-gray-100 text-gray-800',
     }
     
-    const roleLabels = {
+    const roleLabels: Record<string, string> = {
       system_admin: 'System Admin',
       finance_admin: 'Finance Admin',
       warehouse_staff: 'Warehouse Staff',

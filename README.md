@@ -1,185 +1,156 @@
 # Warehouse Management System
 
-A modern web application for multi-warehouse inventory management, automated cost calculations, and 3PL invoice reconciliation.
+A comprehensive warehouse management system designed to handle 3PL (Third-Party Logistics) operations, inventory tracking, cost management, and invoice reconciliation.
 
-## 🚀 Quick Start
+## 🚀 Features
 
+### Core Functionality
+- **Multi-Warehouse Support**: Manage inventory across multiple warehouse locations
+- **Real-time Inventory Tracking**: Track inventory movements, balances, and transactions
+- **3PL Cost Management**: Calculate storage costs based on configurable rates and billing periods
+- **Invoice Processing**: Record and reconcile 3PL invoices with calculated costs
+- **User Role Management**: Support for system admin, finance admin, and warehouse manager roles
+
+### Key Features
+- **Excel Import/Export**: Bulk import data from Excel files and export reports
+- **Automated Cost Calculations**: Weekly storage cost calculations based on pallet occupancy
+- **Billing Period Management**: Support for custom billing periods (16th to 15th of month)
+- **Comprehensive Reporting**: Generate various reports including storage charges, inventory balances, and reconciliation reports
+- **Real-time Dashboard**: Role-specific dashboards with key metrics and quick actions
+
+## 🛠️ Technology Stack
+
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL
+- **Authentication**: NextAuth.js
+- **Excel Processing**: XLSX library
+- **UI Components**: Custom components with Lucide React icons
+
+## 📋 Prerequisites
+
+- Node.js 18+ and npm/yarn
+- PostgreSQL database
+- Environment variables configured (see `.env.example`)
+
+## 🔧 Installation
+
+1. Clone the repository:
 ```bash
-# Install dependencies
+git clone <repository-url>
+cd warehouse_management
+```
+
+2. Install dependencies:
+```bash
 npm install
+```
 
-# Set up environment variables
+3. Set up environment variables:
+```bash
 cp .env.example .env
-# Edit .env with your database credentials
+```
 
-# Set up database
-npm run db:push
-npm run db:generate
-npm run db:seed
+Edit `.env` with your database credentials and other configuration:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/warehouse_db"
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-# Start development server
+4. Run database migrations:
+```bash
+npx prisma migrate dev
+```
+
+5. Seed the database (optional):
+```bash
+npx prisma db seed
+```
+
+6. Start the development server:
+```bash
 npm run dev
 ```
 
-Visit http://localhost:3000 and login with demo credentials below.
-
-## 📋 Features
-
-- **Multi-warehouse Support**: Manage inventory across multiple warehouse locations
-- **Real-time Inventory Tracking**: Track inventory movements with batch/lot support
-- **Automated Calculations**: Weekly storage costs and monthly billing periods
-- **Invoice Reconciliation**: Compare expected vs actual costs from 3PL partners
-- **Role-based Access**: Different interfaces for warehouse staff, finance, and administrators
-- **Real-time Updates**: Live updates across all connected users
-- **Mobile Support**: Responsive design for warehouse floor usage
-
-## Tech Stack
-
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, Prisma ORM
-- **Database**: PostgreSQL (via Supabase)
-- **Authentication**: NextAuth.js
-- **Real-time**: Supabase Realtime
-- **Background Jobs**: BullMQ with Redis
-
-## Prerequisites
-
-- Node.js 18+ and npm
-- PostgreSQL database (or Supabase account)
-- Redis server (for background jobs)
-
-## Setup Instructions
-
-1. **Clone the repository**
-   ```bash
-   git clone git@github.com:progami/warehouse-management.git
-   cd warehouse-management
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` with your database credentials and other settings.
-
-4. **Set up the database**
-   ```bash
-   # Push the Prisma schema to your database
-   npm run db:push
-
-   # Generate Prisma client
-   npm run db:generate
-
-   # Seed the database with initial data
-   npm run db:seed
-   ```
-
-5. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-6. **Access the application**
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Default Login Credentials
-
-- **System Admin**: admin@warehouse.com / admin123
-- **Warehouse Staff**: staff@warehouse.com / staff123
-- **Finance Admin**: finance@warehouse.com / finance123
-
-## 📁 Project Structure
+## 🏗️ Project Structure
 
 ```
-├── src/                    # Application source code
-│   ├── app/               # Next.js app router pages
-│   ├── components/        # React components
-│   ├── lib/              # Core libraries and utilities
-│   ├── hooks/            # Custom React hooks
-│   ├── types/            # TypeScript definitions
-│   └── utils/            # Helper functions
-├── prisma/                # Database schema and migrations
-├── public/                # Static assets
-├── docs/                  # Documentation
-│   ├── architecture/      # System design documents
-│   ├── setup/            # Setup guides
-│   └── original-system/  # Original Excel system docs
-├── data/                  # Sample data and migrations
-├── package.json          # Project dependencies
-├── tsconfig.json         # TypeScript configuration
-├── tailwind.config.js    # Tailwind CSS configuration
-└── next.config.js        # Next.js configuration
+warehouse_management/
+├── src/
+│   ├── app/                    # Next.js app directory
+│   │   ├── admin/             # Admin pages
+│   │   ├── finance/           # Finance pages
+│   │   ├── warehouse/         # Warehouse manager pages
+│   │   ├── api/               # API routes
+│   │   └── auth/              # Authentication pages
+│   ├── components/            # Reusable React components
+│   ├── lib/                   # Utility functions and configurations
+│   └── types/                 # TypeScript type definitions
+├── prisma/
+│   ├── schema.prisma         # Database schema
+│   └── seed.ts              # Database seeding script
+├── public/                   # Static assets
+└── docs/                     # Documentation files
 ```
 
-## Key Features by User Role
-
-### Warehouse Staff
-- Quick inventory entry (mobile-optimized)
-- Barcode scanning support
-- Transaction history
-- Real-time inventory levels
-
-### Finance Admin
-- Invoice entry and reconciliation
-- Cost management
-- Monthly billing reports
-- Discrepancy investigation
+## 👥 User Roles
 
 ### System Admin
+- Full system access
 - User management
-- Master data configuration
-- System monitoring
-- Audit logs
+- System configuration
+- Access to all reports and data
+- Import/export functionality
 
-### Managers
-- Real-time dashboards
-- Inventory analytics
-- Cost trends
-- Custom reports
+### Finance Admin
+- Invoice management
+- Cost reconciliation
+- Financial reports
+- Rate management
+- Billing period configuration
 
-## Database Schema
+### Warehouse Manager
+- Inventory management
+- Transaction recording
+- Warehouse-specific reports
+- SKU management
 
-The system tracks:
-- **SKUs**: Product information with dimensions and weights
-- **Warehouses**: Multiple warehouse locations
-- **Inventory Transactions**: All movements (RECEIVE, SHIP, ADJUST)
-- **Storage Calculations**: Weekly Monday stock-takes
-- **Cost Rates**: Time-based pricing for all activities
-- **Invoices**: 3PL billing with line-item detail
-- **Reconciliation**: Expected vs actual cost comparison
+## 📊 Database Schema
 
-## Development
+### Core Tables
+- **warehouses**: Warehouse locations and configurations
+- **skus**: Product/SKU master data
+- **inventory_balances**: Current inventory levels by SKU and warehouse
+- **inventory_transactions**: All inventory movements
+- **storage_ledger**: Calculated weekly storage costs
+- **invoice_input**: 3PL invoices
+- **cost_rates**: 3PL pricing structures
 
-### Running Tests
-```bash
-npm test
-```
+## 🔐 Authentication
 
-### Type Checking
-```bash
-npm run type-check
-```
+The system uses NextAuth.js for authentication with:
+- Email/password login
+- Role-based access control
+- Session management
+- Secure password hashing
 
-### Linting
-```bash
-npm run lint
-```
+Default users (development):
+- Admin: `admin@example.com` / `admin123`
+- Finance: `finance@example.com` / `finance123`
+- Warehouse: `warehouse@example.com` / `warehouse123`
 
-### Database Management
-```bash
-# Open Prisma Studio to view/edit data
-npm run db:studio
+## 📈 Reports
 
-# Create a new migration
-npm run db:migrate
-```
+Available reports:
+- **Storage Charges Report**: Weekly storage costs by warehouse
+- **Monthly Inventory Report**: Detailed inventory snapshot
+- **Invoice Reconciliation**: Compare invoiced vs calculated costs
+- **Transaction History**: All inventory movements
+- **Cost Analysis**: Detailed cost breakdown
+- **Low Stock Report**: Items below minimum levels
 
-## Deployment
+## 🚢 Deployment
 
 ### Production Build
 ```bash
@@ -187,31 +158,58 @@ npm run build
 npm start
 ```
 
-### Environment Variables for Production
-- Set `NODE_ENV=production`
-- Use production database URL
-- Generate secure `NEXTAUTH_SECRET`
-- Configure proper Redis connection
+### Database Setup
+1. Create a PostgreSQL database
+2. Run migrations: `npx prisma migrate deploy`
+3. Configure environment variables
 
-## Data Migration from Excel
+### Recommended Hosting
+- **Application**: Vercel, Railway, or any Node.js hosting
+- **Database**: Supabase, Neon, or managed PostgreSQL
 
-The system includes tools to import your existing Excel data:
-1. Navigate to Admin > Import Data
-2. Upload your Excel file
-3. Map columns to system fields
-4. Review and confirm import
+## 📝 API Documentation
 
-## 📚 Documentation
+### Key Endpoints
+- `POST /api/auth/login` - User authentication
+- `GET /api/inventory` - Fetch inventory data
+- `POST /api/transactions` - Record inventory movement
+- `POST /api/invoices` - Create invoice
+- `POST /api/reports` - Generate reports
+- `POST /api/import` - Import Excel data
 
-- [Architecture Overview](docs/architecture/web-app-architecture.md)
-- [Database Schema](docs/architecture/database-schema.sql)
-- [Original Excel System Documentation](docs/original-system/)
-- [Setup Guide](docs/setup/)
+## 🧪 Testing
 
-## Support
+Run tests:
+```bash
+npm test
+```
 
-For issues or questions, please create an issue in the repository.
+## 🤝 Contributing
 
-## License
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/new-feature`
+3. Commit changes: `git commit -m 'Add new feature'`
+4. Push to branch: `git push origin feature/new-feature`
+5. Submit a pull request
 
-This project is proprietary software. All rights reserved.
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For issues and questions:
+- Create an issue in the repository
+- Contact the development team
+
+## 🔄 Version History
+
+- **v0.1.0** - Initial release with core functionality
+  - Multi-warehouse inventory management
+  - 3PL cost calculations
+  - Invoice processing
+  - Basic reporting
+
+---
+
+Built with ❤️ using Next.js and PostgreSQL

@@ -4,7 +4,7 @@ import openpyxl
 import json
 
 # Load the Excel file
-file_path = '/Users/jarraramjad/Documents/warehouse_management/Warehouse Management.xlsx'
+file_path = '/Users/jarraramjad/Documents/warehouse_management/data/Warehouse Management.xlsx'
 
 # Get all sheet names
 wb = openpyxl.load_workbook(file_path, read_only=True)

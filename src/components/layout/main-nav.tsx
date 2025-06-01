@@ -16,6 +16,7 @@ import {
   X,
   BarChart3,
   Warehouse,
+  Calculator,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -23,11 +24,19 @@ import { cn } from '@/lib/utils'
 const navigation = {
   system_admin: [
     { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
+    // Admin Functions
     { name: 'Inventory', href: '/admin/inventory', icon: Package },
-    { name: 'Invoices', href: '/admin/invoices', icon: FileText },
-    { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-    { name: 'Warehouses', href: '/admin/settings/warehouses', icon: Warehouse },
     { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Calculations', href: '/admin/calculations', icon: Calculator },
+    // Finance Functions
+    { name: 'Finance', href: '/finance/dashboard', icon: DollarSign },
+    { name: 'Invoices', href: '/finance/invoices', icon: FileText },
+    { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
+    // Warehouse Functions
+    { name: 'Warehouse Ops', href: '/warehouse/dashboard', icon: Warehouse },
+    // Reports & Settings
+    { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+    { name: 'SKUs', href: '/admin/settings/skus', icon: Package },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ],
   finance_admin: [
@@ -42,6 +51,8 @@ const navigation = {
     { name: 'Inventory', href: '/warehouse/inventory', icon: Package },
     { name: 'Receive', href: '/warehouse/receive', icon: Package2 },
     { name: 'Ship', href: '/warehouse/ship', icon: Package2 },
+    { name: 'Reports', href: '/warehouse/reports', icon: FileText },
+    { name: 'Settings', href: '/warehouse/settings', icon: Settings },
   ],
   manager: [
     { name: 'Dashboard', href: '/dashboard', icon: Home },

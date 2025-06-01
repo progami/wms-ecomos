@@ -64,6 +64,8 @@ interface ExcelInventoryTransaction {
   Notes?: string
 }
 
+// Storage ledger is calculated, not imported
+
 // Convert Excel date to JavaScript Date
 function excelDateToJS(excelDate: number | Date): Date {
   if (excelDate instanceof Date) return excelDate
@@ -367,6 +369,8 @@ async function updateInventoryBalances() {
   console.log(`✅ Updated balances for ${combinations.length} combinations`)
 }
 
+// Storage ledger will be calculated based on inventory transactions and business rules
+
 async function main() {
   try {
     console.log('🚀 Starting Excel data import...')
@@ -394,6 +398,7 @@ async function main() {
     await importCostRates(workbook, adminUser.id)
     await importInventoryTransactions(workbook, adminUser.id)
     await updateInventoryBalances()
+    // Storage ledger and calculated costs are generated, not imported
     
     console.log('\n✅ Import completed successfully!')
     console.log('\n📊 Summary:')
@@ -402,12 +407,14 @@ async function main() {
     const rateCount = await prisma.costRate.count()
     const transactionCount = await prisma.inventoryTransaction.count()
     const balanceCount = await prisma.inventoryBalance.count()
+    // Storage ledger is calculated separately
     
     console.log(`  - SKUs: ${skuCount}`)
     console.log(`  - Warehouse Configs: ${configCount}`)
     console.log(`  - Cost Rates: ${rateCount}`)
     console.log(`  - Transactions: ${transactionCount}`)
     console.log(`  - Active Inventory Items: ${balanceCount}`)
+    console.log('\nNote: Storage ledger and calculated costs will be generated based on business rules')
     
   } catch (error) {
     console.error('❌ Import failed:', error)

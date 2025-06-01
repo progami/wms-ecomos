@@ -1,6 +1,8 @@
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   Package2, 
@@ -13,15 +15,95 @@ import {
   Warehouse,
   BarChart3,
   Settings,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  Download,
+  Trash2,
+  Database,
+  Bell,
+  Shield
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { toast } from 'react-hot-toast'
 
-export default async function AdminDashboardPage() {
-  const session = await getServerSession(authOptions)
+export default function AdminDashboardPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [loading, setLoading] = useState<string | null>(null)
+
+  if (status === 'loading') {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   if (!session || session.user.role !== 'system_admin') {
-    redirect('/auth/login')
+    router.push('/auth/login')
+    return null
+  }
+
+  const handleImportData = async () => {
+    setLoading('import')
+    try {
+      router.push('/admin/import')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleExportData = async () => {
+    setLoading('export')
+    try {
+      const response = await fetch('/api/export/all-data', {
+        method: 'GET',
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `warehouse-backup-${new Date().toISOString().split('T')[0]}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success('Data exported successfully!')
+      } else {
+        toast.error('Failed to export data')
+      }
+    } catch (error) {
+      toast.error('Export failed')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleClearDemoData = async () => {
+    if (!confirm('Are you sure you want to clear all demo data? This action cannot be undone.')) {
+      return
+    }
+
+    setLoading('clear')
+    try {
+      const response = await fetch('/api/admin/clear-demo-data', {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        toast.success('Demo data cleared successfully!')
+      } else {
+        toast.error('Failed to clear demo data')
+      }
+    } catch (error) {
+      toast.error('Operation failed')
+    } finally {
+      setLoading(null)
+    }
   }
 
   return (
@@ -70,9 +152,38 @@ export default async function AdminDashboardPage() {
           />
         </div>
 
-        {/* Quick Actions */}
+        {/* System Actions */}
+        <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
+          <h3 className="text-lg font-semibold mb-4">System Actions</h3>
+          <div className="grid gap-4 md:grid-cols-3">
+            <SystemAction
+              title="Import Data"
+              description="Bulk import from Excel"
+              icon={Upload}
+              onClick={handleImportData}
+              loading={loading === 'import'}
+            />
+            <SystemAction
+              title="Export All Data"
+              description="Download complete backup"
+              icon={Download}
+              onClick={handleExportData}
+              loading={loading === 'export'}
+            />
+            <SystemAction
+              title="Clear Demo Data"
+              description="Remove all test data"
+              icon={Trash2}
+              onClick={handleClearDemoData}
+              loading={loading === 'clear'}
+              danger
+            />
+          </div>
+        </div>
+
+        {/* Quick Navigation */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+          <h2 className="text-xl font-semibold mb-4">Quick Navigation</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <QuickActionCard
               title="Inventory Management"
@@ -89,11 +200,11 @@ export default async function AdminDashboardPage() {
               color="bg-green-500"
             />
             <QuickActionCard
-              title="User Management"
-              description="Manage users and permissions"
-              icon={Users}
-              href="/admin/users"
-              color="bg-purple-500"
+              title="Reports & Analytics"
+              description="View detailed reports and analytics"
+              icon={BarChart3}
+              href="/admin/reports"
+              color="bg-indigo-500"
             />
             <QuickActionCard
               title="Warehouse Settings"
@@ -103,11 +214,11 @@ export default async function AdminDashboardPage() {
               color="bg-orange-500"
             />
             <QuickActionCard
-              title="Reports & Analytics"
-              description="View detailed reports and analytics"
-              icon={BarChart3}
-              href="/admin/reports"
-              color="bg-indigo-500"
+              title="User Management"
+              description="Manage users and permissions"
+              icon={Users}
+              href="/admin/users"
+              color="bg-purple-500"
             />
             <QuickActionCard
               title="System Settings"
@@ -119,30 +230,43 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* System Status and Info */}
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Recent Transactions</h3>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                No recent transactions. Start by adding inventory movements.
-              </p>
-              <Link 
-                href="/admin/inventory" 
-                className="inline-flex items-center text-sm text-primary hover:underline"
-              >
-                Go to Inventory <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </div>
-          </div>
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">System Status</h3>
             <div className="space-y-2">
-              <StatusItem label="Database" status="Connected" />
-              <StatusItem label="Background Jobs" status="Not configured" />
-              <StatusItem label="Last Sync" status="Never" />
+              <StatusItem label="Database" status="Connected" indicator="success" />
+              <StatusItem label="Background Jobs" status="Not configured" indicator="warning" />
+              <StatusItem label="Last Backup" status="Never" indicator="warning" />
+              <StatusItem label="Email Service" status="Active" indicator="success" />
               <StatusItem label="Version" status="0.1.0" />
             </div>
+          </div>
+          <div className="border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">System Information</h3>
+            <div className="space-y-2">
+              <InfoItem label="Environment" value="Development" />
+              <InfoItem label="Database" value="PostgreSQL 15.4" />
+              <InfoItem label="Active Users" value="3" />
+              <InfoItem label="Total Transactions" value="208" />
+              <InfoItem label="Storage Used" value="125 MB" />
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="border rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Recent Transactions</h3>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              No recent transactions. Start by adding inventory movements.
+            </p>
+            <Link 
+              href="/admin/inventory" 
+              className="inline-flex items-center text-sm text-primary hover:underline"
+            >
+              Go to Inventory <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
           </div>
         </div>
       </div>
@@ -225,16 +349,89 @@ function QuickActionCard({
   )
 }
 
+interface SystemActionProps {
+  title: string
+  description: string
+  icon: React.ElementType
+  onClick: () => void
+  loading?: boolean
+  danger?: boolean
+}
+
+function SystemAction({ title, description, icon: Icon, onClick, loading, danger }: SystemActionProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={`p-4 border rounded-lg transition-all text-left relative overflow-hidden ${
+        danger 
+          ? 'hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' 
+          : 'hover:shadow-md'
+      } ${
+        loading ? 'opacity-50 cursor-not-allowed' : ''
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`p-2 rounded-lg ${
+          danger ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800'
+        }`}>
+          <Icon className={`h-5 w-5 ${
+            danger ? 'text-red-600' : 'text-gray-600'
+          }`} />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-medium">{title}</h4>
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+        </div>
+      </div>
+      {loading && (
+        <div className="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      )}
+    </button>
+  )
+}
+
 interface StatusItemProps {
   label: string
   status: string
+  indicator?: 'success' | 'warning' | 'error'
 }
 
-function StatusItem({ label, status }: StatusItemProps) {
+function StatusItem({ label, status, indicator }: StatusItemProps) {
+  const getIndicatorColor = () => {
+    switch (indicator) {
+      case 'success': return 'bg-green-500'
+      case 'warning': return 'bg-yellow-500'
+      case 'error': return 'bg-red-500'
+      default: return null
+    }
+  }
+
   return (
     <div className="flex justify-between items-center">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{status}</span>
+      <div className="flex items-center gap-2">
+        {indicator && (
+          <div className={`w-2 h-2 rounded-full ${getIndicatorColor()}`} />
+        )}
+        <span className="text-sm font-medium">{status}</span>
+      </div>
+    </div>
+  )
+}
+
+interface InfoItemProps {
+  label: string
+  value: string
+}
+
+function InfoItem({ label, value }: InfoItemProps) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{value}</span>
     </div>
   )
 }
