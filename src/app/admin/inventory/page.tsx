@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Search, Filter, Download, Upload } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { prisma } from '@/lib/prisma'
 
 export default async function AdminInventoryPage() {
   const session = await getServerSession(authOptions)
@@ -11,6 +12,30 @@ export default async function AdminInventoryPage() {
   if (!session || session.user.role !== 'system_admin') {
     redirect('/auth/login')
   }
+
+  // Fetch real inventory data
+  const inventoryBalances = await prisma.inventoryBalance.findMany({
+    include: {
+      warehouse: true,
+      sku: true,
+    },
+    orderBy: [
+      { warehouse: { name: 'asc' } },
+      { sku: { skuCode: 'asc' } },
+    ],
+    take: 50,
+  })
+
+  const totalSkus = await prisma.sku.count()
+  const totalCartons = await prisma.inventoryBalance.aggregate({
+    _sum: { currentCartons: true }
+  })
+  const totalPallets = await prisma.inventoryBalance.aggregate({
+    _sum: { currentPallets: true }
+  })
+  const lowStockItems = await prisma.inventoryBalance.count({
+    where: { currentCartons: { lt: 10 } }
+  })
 
   return (
     <DashboardLayout>
@@ -62,10 +87,10 @@ export default async function AdminInventoryPage() {
 
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <SummaryCard title="Total SKUs" value="8" />
-          <SummaryCard title="Total Cartons" value="1,234" />
-          <SummaryCard title="Total Pallets" value="89" />
-          <SummaryCard title="Low Stock Items" value="2" highlight />
+          <SummaryCard title="Total SKUs" value={totalSkus.toString()} />
+          <SummaryCard title="Total Cartons" value={(totalCartons._sum.currentCartons || 0).toLocaleString()} />
+          <SummaryCard title="Total Pallets" value={(totalPallets._sum.currentPallets || 0).toString()} />
+          <SummaryCard title="Low Stock Items" value={lowStockItems.toString()} highlight={lowStockItems > 0} />
         </div>
 
         {/* Inventory Table */}
@@ -100,62 +125,45 @@ export default async function AdminInventoryPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              <tr className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  FMC
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  CS 007
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  Batch 9
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  140
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  10
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  8,400
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  2 hours ago
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Link href="/admin/inventory/CS007" className="text-primary hover:underline">
-                    View
-                  </Link>
-                </td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  FMC
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  CS 008
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  Batch 9
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  46
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  2
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  2,760
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  3 hours ago
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Link href="/admin/inventory/CS008" className="text-primary hover:underline">
-                    View
-                  </Link>
-                </td>
-              </tr>
+              {inventoryBalances.map((balance) => (
+                <tr key={balance.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {balance.warehouse.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {balance.sku.skuCode}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {balance.batchLot}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    {balance.currentCartons.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    {balance.currentPallets}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    {balance.currentUnits.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {balance.lastTransactionDate 
+                      ? new Date(balance.lastTransactionDate).toLocaleDateString()
+                      : 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <Link href={`/admin/inventory/${balance.sku.skuCode}`} className="text-primary hover:underline">
+                      View
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {inventoryBalances.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                    No inventory data found. Import data to see inventory levels.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

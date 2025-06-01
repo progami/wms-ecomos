@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:import": "tsx scripts/import-excel-data.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -35,6 +36,7 @@
     "@supabase/supabase-js": "^2.39.8",
     "@tanstack/react-query": "^5.28.4",
     "@tanstack/react-table": "^8.13.2",
+    "@types/xlsx": "^0.0.35",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.4.2",
     "class-variance-authority": "^0.7.1",
@@ -51,6 +53,7 @@
     "recharts": "^2.12.2",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },
   "devDependencies": {

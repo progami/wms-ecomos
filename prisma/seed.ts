@@ -31,6 +31,18 @@ async function main() {
     },
   })
 
+  const warehouse3 = await prisma.warehouse.upsert({
+    where: { code: '4AS' },
+    update: {},
+    create: {
+      code: '4AS',
+      name: '4AS Warehouse',
+      address: '789 Logistics Ave, City, State 12345',
+      contactEmail: '4as@warehouse.com',
+      contactPhone: '555-0300',
+    },
+  })
+
   // Create users
   const adminPassword = await bcrypt.hash('admin123', 10)
   const staffPassword = await bcrypt.hash('staff123', 10)
