@@ -45,6 +45,13 @@ prisma/*.db-journal
 *.swo
 *~
 
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
 # OS
 .DS_Store
 Thumbs.db
