@@ -2,6 +2,109 @@
 
 A comprehensive warehouse management system designed to handle 3PL (Third-Party Logistics) operations, inventory tracking, cost management, and invoice reconciliation.
 
+## 🎯 Quick Page Reference - What Each Page Does
+
+### 📊 **Dashboards**
+- **Admin Dashboard** (`/admin/dashboard`) 
+  - System overview with key metrics
+  - Quick actions: Import data, Export backups, Clear demo data
+  - System monitoring and status indicators
+  - User activity tracking
+
+- **Finance Dashboard** (`/finance/dashboard`)
+  - Revenue and outstanding invoice tracking
+  - Cost variance analysis
+  - Collection rate monitoring
+  - Visual cost breakdown by category
+  - Billing calendar with important dates
+
+- **Warehouse Dashboard** (`/warehouse/dashboard`)
+  - Current inventory levels
+  - Today's receives and shipments
+  - Low stock alerts
+  - Quick access to operations
+
+### 📦 **Inventory Management**
+- **Inventory List** (`/warehouse/inventory`)
+  - Real-time stock levels across all SKUs
+  - Advanced search and filtering
+  - Color-coded stock indicators (🔴 Out of stock, 🟠 Low stock, ✅ Healthy)
+  - Export functionality
+
+- **New Transaction** (`/admin/inventory/new`)
+  - Create any type of inventory movement
+  - Supports: Receive, Ship, Adjust In/Out
+  - Multi-line item support
+  - Automatic balance updates
+
+- **Receive Inventory** (`/warehouse/receive`)
+  - Simplified receiving interface for warehouse staff
+  - Quick SKU selection and quantity entry
+  - Reference number tracking
+
+- **Ship Inventory** (`/warehouse/ship`)
+  - Process outbound shipments
+  - Validates available inventory
+  - Prevents negative stock
+
+### 💰 **Financial Management**
+- **Invoices** (`/finance/invoices`)
+  - View all 3PL invoices
+  - Status tracking (Draft, Sent, Paid, Overdue)
+  - Create and edit invoices
+  - PDF export capability
+
+- **Reconciliation** (`/finance/reconciliation`)
+  - Compare calculated costs vs invoiced amounts
+  - Identify variances
+  - Add notes and explanations
+  - Approve or dispute charges
+
+- **Cost Rates** (`/finance/rates`)
+  - Manage storage rates ($/pallet/week)
+  - Configure handling charges
+  - Set effective dates
+  - View rate history
+
+### 📈 **Reports & Analytics**
+- **Reports** (`/admin/reports`)
+  - Generate Excel reports:
+    - Storage charges by week
+    - Monthly inventory summary
+    - Cost analysis
+    - Transaction history
+  - Custom date ranges
+  - Warehouse filtering
+
+- **Calculations** (`/admin/calculations`)
+  - Run storage cost calculations
+  - Update inventory balances
+  - Generate billing period ledgers
+  - Monday snapshot processing
+
+### ⚙️ **Settings & Configuration**
+- **Settings Hub** (`/admin/settings`)
+  - Central configuration center
+  - System actions and maintenance
+  - Quick access to all settings
+
+- **Warehouses** (`/admin/settings/warehouses`)
+  - Add/edit warehouse locations
+  - Configure SKU pallet configurations
+  - Set warehouse-specific parameters
+
+- **SKUs** (`/admin/settings/skus`)
+  - Product master data management
+  - Dimensions and pack configurations
+  - Active/inactive status
+  - ASIN mapping
+
+- **Users** (`/admin/users`)
+  - User account management
+  - Role assignments
+  - Warehouse access control
+  - Password resets
+
 ## 🚀 Features
 
 ### Core Functionality
