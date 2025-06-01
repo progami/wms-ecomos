@@ -24,6 +24,25 @@ import {
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 
+// Helper function to get relative time
+function getTimeAgo(date: Date): string {
+  const now = new Date()
+  const diffInMs = now.getTime() - date.getTime()
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+  
+  if (diffInHours < 1) {
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
+    return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`
+  } else if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`
+  } else if (diffInDays < 30) {
+    return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`
+  } else {
+    return date.toLocaleDateString()
+  }
+}
+
 export default function FinanceDashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -31,20 +50,25 @@ export default function FinanceDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (session?.user.role === 'finance_admin') {
+    if (session && ['finance_admin', 'system_admin'].includes(session.user.role)) {
       fetchFinancialData()
     }
   }, [session])
 
   const fetchFinancialData = async () => {
     try {
-      const response = await fetch('/api/finance/dashboard')
+      const response = await fetch('/api/finance/dashboard-simple')
       if (response.ok) {
         const data = await response.json()
         setFinancialData(data)
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to fetch financial data' }))
+        console.error('Finance API error:', errorData)
+        toast.error(errorData.details || errorData.error || 'Failed to fetch financial data')
       }
     } catch (error) {
       console.error('Failed to fetch financial data:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch financial data')
     } finally {
       setLoading(false)
     }
@@ -60,7 +84,7 @@ export default function FinanceDashboardPage() {
     )
   }
 
-  if (!session || session.user.role !== 'finance_admin') {
+  if (!session || !['finance_admin', 'system_admin'].includes(session.user.role)) {
     router.push('/auth/login')
     return null
   }
@@ -124,42 +148,54 @@ export default function FinanceDashboardPage() {
 
         {/* Financial KPIs */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <FinancialCard
-            title="Total Revenue"
-            value="$45,678"
-            change="+12.5%"
-            trend="up"
-            icon={DollarSign}
-            color="green"
-            description="This billing period"
-          />
-          <FinancialCard
-            title="Outstanding Invoices"
-            value="$8,432"
-            change="3 invoices"
-            trend="neutral"
-            icon={FileText}
-            color="amber"
-            description="Pending payment"
-          />
-          <FinancialCard
-            title="Cost Variance"
-            value="-2.3%"
-            change="$1,245 saved"
-            trend="down"
-            icon={TrendingUp}
-            color="blue"
-            description="vs. budgeted"
-          />
-          <FinancialCard
-            title="Collection Rate"
-            value="94.2%"
-            change="+1.8%"
-            trend="up"
-            icon={CheckCircle}
-            color="purple"
-            description="This month"
-          />
+          {financialData ? (
+            <>
+              <FinancialCard
+                title="Total Revenue"
+                value={`$${parseFloat(financialData.kpis.totalRevenue).toLocaleString()}`}
+                change={`${financialData.kpis.revenueChange > 0 ? '+' : ''}${financialData.kpis.revenueChange}%`}
+                trend={financialData.kpis.revenueChange > 0 ? 'up' : financialData.kpis.revenueChange < 0 ? 'down' : 'neutral'}
+                icon={DollarSign}
+                color="green"
+                description="This billing period"
+              />
+              <FinancialCard
+                title="Outstanding Invoices"
+                value={`$${parseFloat(financialData.kpis.outstandingAmount).toLocaleString()}`}
+                change={`${financialData.kpis.outstandingCount} invoices`}
+                trend="neutral"
+                icon={FileText}
+                color="amber"
+                description="Pending payment"
+              />
+              <FinancialCard
+                title="Cost Variance"
+                value={`${financialData.kpis.costVariance}%`}
+                change={`$${parseFloat(financialData.kpis.costSavings).toLocaleString()} ${financialData.kpis.costVariance < 0 ? 'saved' : 'over'}`}
+                trend={financialData.kpis.costVariance < 0 ? 'down' : 'up'}
+                icon={TrendingUp}
+                color="blue"
+                description="vs. invoiced"
+              />
+              <FinancialCard
+                title="Collection Rate"
+                value={`${financialData.kpis.collectionRate}%`}
+                change="This period"
+                trend={parseFloat(financialData.kpis.collectionRate) >= 90 ? 'up' : 'down'}
+                icon={CheckCircle}
+                color="purple"
+                description="Payments received"
+              />
+            </>
+          ) : (
+            [...Array(4)].map((_, i) => (
+              <div key={i} className="p-6 rounded-lg border animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-32 mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded w-20"></div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Cost Breakdown */}
@@ -169,18 +205,38 @@ export default function FinanceDashboardPage() {
               <PieChart className="h-5 w-5" />
               Cost Breakdown by Category
             </h3>
-            <div className="space-y-4">
-              <CostCategory name="Storage Fees" amount={12543} percentage={45} color="bg-blue-500" />
-              <CostCategory name="Handling Charges" amount={8234} percentage={30} color="bg-green-500" />
-              <CostCategory name="Transportation" amount={4123} percentage={15} color="bg-purple-500" />
-              <CostCategory name="Other Services" amount={2756} percentage={10} color="bg-gray-500" />
-            </div>
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Total Costs</span>
-                <span className="text-xl font-bold">$27,656</span>
+            {financialData?.costBreakdown && financialData.costBreakdown.length > 0 ? (
+              <>
+                <div className="space-y-4">
+                  {financialData.costBreakdown.map((item, index) => {
+                    const total = financialData.costBreakdown.reduce((sum, cat) => sum + cat.amount, 0)
+                    const percentage = total > 0 ? (item.amount / total) * 100 : 0
+                    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-amber-500', 'bg-gray-500']
+                    return (
+                      <CostCategory
+                        key={item.category}
+                        name={item.category}
+                        amount={item.amount}
+                        percentage={percentage}
+                        color={colors[index % colors.length]}
+                      />
+                    )
+                  })}
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Costs</span>
+                    <span className="text-xl font-bold">
+                      ${financialData.costBreakdown.reduce((sum, cat) => sum + cat.amount, 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No cost data available for this period
               </div>
-            </div>
+            )}
           </div>
 
           {/* Invoice Status Summary */}
@@ -189,12 +245,44 @@ export default function FinanceDashboardPage() {
               <Receipt className="h-5 w-5" />
               Invoice Status
             </h3>
-            <div className="space-y-3">
-              <InvoiceStatus status="Paid" count={12} amount={35234} icon={CheckCircle} color="text-green-600" />
-              <InvoiceStatus status="Pending" count={3} amount={8432} icon={Clock} color="text-amber-600" />
-              <InvoiceStatus status="Overdue" count={1} amount={2012} icon={AlertCircle} color="text-red-600" />
-              <InvoiceStatus status="Disputed" count={0} amount={0} icon={XCircle} color="text-gray-400" />
-            </div>
+            {financialData?.invoiceStatus ? (
+              <div className="space-y-3">
+                <InvoiceStatus 
+                  status="Paid" 
+                  count={financialData.invoiceStatus.paid.count} 
+                  amount={financialData.invoiceStatus.paid.amount} 
+                  icon={CheckCircle} 
+                  color="text-green-600" 
+                />
+                <InvoiceStatus 
+                  status="Pending" 
+                  count={financialData.invoiceStatus.pending.count} 
+                  amount={financialData.invoiceStatus.pending.amount} 
+                  icon={Clock} 
+                  color="text-amber-600" 
+                />
+                <InvoiceStatus 
+                  status="Overdue" 
+                  count={financialData.invoiceStatus.overdue.count} 
+                  amount={financialData.invoiceStatus.overdue.amount} 
+                  icon={AlertCircle} 
+                  color="text-red-600" 
+                />
+                <InvoiceStatus 
+                  status="Disputed" 
+                  count={financialData.invoiceStatus.disputed.count} 
+                  amount={financialData.invoiceStatus.disputed.amount} 
+                  icon={XCircle} 
+                  color="text-gray-400" 
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -237,36 +325,27 @@ export default function FinanceDashboardPage() {
               <FileText className="h-5 w-5" />
               Recent Financial Activity
             </h3>
-            <div className="space-y-3">
-              <ActivityItem
-                type="invoice"
-                title="Invoice #INV-2024-045 processed"
-                amount={5234.50}
-                time="2 hours ago"
-                status="success"
-              />
-              <ActivityItem
-                type="payment"
-                title="Payment received from FMC"
-                amount={12450.00}
-                time="1 day ago"
-                status="success"
-              />
-              <ActivityItem
-                type="reconciliation"
-                title="November reconciliation completed"
-                amount={45678.23}
-                time="3 days ago"
-                status="info"
-              />
-              <ActivityItem
-                type="alert"
-                title="Invoice #INV-2024-042 overdue"
-                amount={2012.34}
-                time="5 days ago"
-                status="warning"
-              />
-            </div>
+            {financialData?.recentActivity && financialData.recentActivity.length > 0 ? (
+              <div className="space-y-3">
+                {financialData.recentActivity.map((activity) => {
+                  const timeAgo = getTimeAgo(new Date(activity.time))
+                  return (
+                    <ActivityItem
+                      key={activity.id}
+                      type={activity.type}
+                      title={activity.title}
+                      amount={activity.amount}
+                      time={timeAgo}
+                      status={activity.status}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No recent activity
+              </div>
+            )}
           </div>
         </div>
 

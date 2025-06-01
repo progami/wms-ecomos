@@ -16,7 +16,6 @@ import {
   ArrowRight,
   Upload,
   Download,
-  Trash2
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
@@ -78,28 +77,6 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const handleClearDemoData = async () => {
-    if (!confirm('Are you sure you want to clear all demo data? This action cannot be undone.')) {
-      return
-    }
-
-    setLoading('clear')
-    try {
-      const response = await fetch('/api/admin/clear-demo-data', {
-        method: 'POST',
-      })
-
-      if (response.ok) {
-        toast.success('Demo data cleared successfully!')
-      } else {
-        toast.error('Failed to clear demo data')
-      }
-    } catch (error) {
-      toast.error('Operation failed')
-    } finally {
-      setLoading(null)
-    }
-  }
 
   return (
     <DashboardLayout>
@@ -194,14 +171,6 @@ export default function AdminSettingsPage() {
               icon={Download}
               onClick={handleExportData}
               loading={loading === 'export'}
-            />
-            <QuickAction
-              title="Clear Demo Data"
-              description="Remove all test data"
-              icon={Trash2}
-              onClick={handleClearDemoData}
-              loading={loading === 'clear'}
-              danger
             />
           </div>
         </div>

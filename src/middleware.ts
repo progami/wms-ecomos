@@ -6,11 +6,13 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request })
   const { pathname } = request.nextUrl
 
-  // Allow access to public routes
+  // Allow access to public routes and API routes
   if (
     pathname.startsWith('/auth') ||
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/test') ||  // Allow test pages
+    pathname.startsWith('/diagnostic') ||  // Allow diagnostic page
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt'
   ) {

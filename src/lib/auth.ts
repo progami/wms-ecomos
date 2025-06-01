@@ -1,6 +1,5 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { UserRole } from '@prisma/client'
@@ -30,10 +29,13 @@ declare module 'next-auth/jwt' {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // Remove adapter when using JWT strategy with credentials
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -42,7 +44,10 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        console.log('Auth attempt for:', credentials?.email)
+        
         if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials')
           throw new Error('Invalid credentials')
         }
 
@@ -56,6 +61,7 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user || !user.isActive) {
+          console.log('User not found or inactive:', credentials.email)
           throw new Error('Invalid credentials')
         }
 
@@ -65,8 +71,11 @@ export const authOptions: NextAuthOptions = {
         )
 
         if (!isPasswordValid) {
+          console.log('Invalid password for:', credentials.email)
           throw new Error('Invalid credentials')
         }
+        
+        console.log('Login successful for:', user.email)
 
         // Update last login
         await prisma.user.update({

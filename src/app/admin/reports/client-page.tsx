@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download, Calendar, FileText, Package } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -10,8 +10,34 @@ interface ReportAction {
   warehouseId?: string
 }
 
+interface Warehouse {
+  id: string
+  name: string
+}
+
 export function AdminReportsClient() {
   const [generatingReport, setGeneratingReport] = useState<string | null>(null)
+  const [customReportType, setCustomReportType] = useState('monthly-inventory')
+  const [customPeriod, setCustomPeriod] = useState(new Date().toISOString().slice(0, 7))
+  const [customWarehouseId, setCustomWarehouseId] = useState('')
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [generatingCustom, setGeneratingCustom] = useState(false)
+
+  useEffect(() => {
+    fetchWarehouses()
+  }, [])
+
+  const fetchWarehouses = async () => {
+    try {
+      const response = await fetch('/api/warehouses')
+      if (response.ok) {
+        const data = await response.json()
+        setWarehouses(data)
+      }
+    } catch (error) {
+      console.error('Error fetching warehouses:', error)
+    }
+  }
 
   const generateReport = async (reportType: string, reportName: string) => {
     setGeneratingReport(reportType)
@@ -60,6 +86,52 @@ export function AdminReportsClient() {
       toast.error('Failed to generate report')
     } finally {
       setGeneratingReport(null)
+    }
+  }
+
+  const generateCustomReport = async () => {
+    setGeneratingCustom(true)
+    
+    try {
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportType: customReportType,
+          period: customPeriod,
+          warehouseId: customWarehouseId || undefined,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate report')
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('content-disposition')
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `${customReportType}-${customPeriod}.xlsx`
+
+      // Download the file
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success('Custom report generated successfully!')
+    } catch (error) {
+      console.error('Custom report generation error:', error)
+      toast.error('Failed to generate custom report')
+    } finally {
+      setGeneratingCustom(false)
     }
   }
 
@@ -153,11 +225,19 @@ export function AdminReportsClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Report Type</label>
-              <select className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                <option>Monthly Inventory</option>
-                <option>Transaction History</option>
-                <option>Storage Charges</option>
-                <option>Cost Summary</option>
+              <select 
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                value={customReportType}
+                onChange={(e) => setCustomReportType(e.target.value)}
+              >
+                <option value="monthly-inventory">Monthly Inventory</option>
+                <option value="transaction-history">Transaction History</option>
+                <option value="storage-charges">Storage Charges</option>
+                <option value="cost-summary">Cost Summary</option>
+                <option value="inventory-balance">Current Inventory Balance</option>
+                <option value="reconciliation">Invoice Reconciliation</option>
+                <option value="cost-analysis">Cost Analysis</option>
+                <option value="monthly-billing">Monthly Billing Summary</option>
               </select>
             </div>
             <div>
@@ -165,24 +245,32 @@ export function AdminReportsClient() {
               <input
                 type="month"
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                defaultValue={new Date().toISOString().slice(0, 7)}
+                value={customPeriod}
+                onChange={(e) => setCustomPeriod(e.target.value)}
               />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Warehouse</label>
-            <select className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+            <select 
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              value={customWarehouseId}
+              onChange={(e) => setCustomWarehouseId(e.target.value)}
+            >
               <option value="">All Warehouses</option>
-              <option value="warehouse-1">FMC Warehouse</option>
-              <option value="warehouse-2">Vglobal Warehouse</option>
-              <option value="warehouse-3">4AS Warehouse</option>
+              {warehouses.map(warehouse => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </option>
+              ))}
             </select>
           </div>
           <button
-            onClick={() => toast.info('Custom report generation coming soon!')}
-            className="w-full md:w-auto px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+            onClick={generateCustomReport}
+            disabled={generatingCustom}
+            className="w-full md:w-auto px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Generate Custom Report
+            {generatingCustom ? 'Generating...' : 'Generate Custom Report'}
           </button>
         </div>
       </div>

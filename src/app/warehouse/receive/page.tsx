@@ -2,11 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package2, Plus, Save, X } from 'lucide-react'
+import { Package2, Plus, Save, X, AlertCircle } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { toast } from 'react-hot-toast'
+import { useSession } from 'next-auth/react'
 
 export default function WarehouseReceivePage() {
   const router = useRouter()
+  const { data: session } = useSession()
+  const [loading, setLoading] = useState(false)
   const [items, setItems] = useState([
     { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0 }
   ])
@@ -31,6 +35,15 @@ export default function WarehouseReceivePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate items
+    const validItems = items.filter(item => item.skuCode && item.cartons > 0)
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item with quantity')
+      return
+    }
+    
+    setLoading(true)
+    
     const formData = new FormData(e.target as HTMLFormElement)
     const referenceNumber = formData.get('referenceNumber') as string
     const date = formData.get('receiptDate') as string
@@ -45,21 +58,28 @@ export default function WarehouseReceivePage() {
           type: 'RECEIVE',
           referenceNumber,
           date,
-          items,
-          notes: `Supplier: ${supplier}. ${notes}`,
+          items: validItems,
+          notes: supplier ? `Supplier: ${supplier}. ${notes}` : notes,
+          warehouseId: session?.user.warehouseId, // Include warehouse ID if not staff
         }),
       })
       
       const data = await response.json()
       
       if (response.ok) {
-        alert(`Success! ${data.message}`)
+        toast.success(`Receipt saved successfully! ${data.message}`)
         router.push('/warehouse/inventory')
       } else {
-        alert(`Error: ${data.error}`)
+        toast.error(data.error || 'Failed to save receipt')
+        if (data.details) {
+          console.error('Error details:', data.details)
+        }
       }
     } catch (error) {
-      alert('Failed to save receipt')
+      console.error('Submit error:', error)
+      toast.error('Failed to save receipt. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -268,10 +288,20 @@ export default function WarehouseReceivePage() {
             </button>
             <button
               type="submit"
-              className="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
+              disabled={loading}
+              className="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="h-4 w-4 mr-2" />
-              Save Receipt
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Receipt
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -26,7 +26,6 @@ const navigation = {
     { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
     // Admin Functions
     { name: 'Inventory', href: '/admin/inventory', icon: Package },
-    { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Calculations', href: '/admin/calculations', icon: Calculator },
     // Finance Functions
     { name: 'Finance', href: '/finance/dashboard', icon: DollarSign },
@@ -37,6 +36,7 @@ const navigation = {
     // Reports & Settings
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
     { name: 'SKUs', href: '/admin/settings/skus', icon: Package },
+    { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ],
   finance_admin: [

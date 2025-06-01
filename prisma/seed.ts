@@ -141,17 +141,27 @@ async function main() {
   ]
 
   for (const config of warehouseConfigs) {
-    await prisma.warehouseSkuConfig.create({
-      data: {
+    const existingConfig = await prisma.warehouseSkuConfig.findFirst({
+      where: {
         warehouseId: config.warehouseId,
         skuId: config.skuId,
-        storageCartonsPerPallet: config.storage,
-        shippingCartonsPerPallet: config.shipping,
-        maxStackingHeightCm: 160,
         effectiveDate: new Date('2024-01-01'),
-        createdById: adminUser.id,
       },
     })
+
+    if (!existingConfig) {
+      await prisma.warehouseSkuConfig.create({
+        data: {
+          warehouseId: config.warehouseId,
+          skuId: config.skuId,
+          storageCartonsPerPallet: config.storage,
+          shippingCartonsPerPallet: config.shipping,
+          maxStackingHeightCm: 160,
+          effectiveDate: new Date('2024-01-01'),
+          createdById: adminUser.id,
+        },
+      })
+    }
   }
 
   // Create cost rates
@@ -187,13 +197,24 @@ async function main() {
   ]
 
   for (const rate of costRates) {
-    await prisma.costRate.create({
-      data: {
-        ...rate,
+    const existingRate = await prisma.costRate.findFirst({
+      where: {
+        warehouseId: rate.warehouseId,
+        costCategory: rate.costCategory,
+        costName: rate.costName,
         effectiveDate: new Date('2024-01-01'),
-        createdById: adminUser.id,
       },
     })
+
+    if (!existingRate) {
+      await prisma.costRate.create({
+        data: {
+          ...rate,
+          effectiveDate: new Date('2024-01-01'),
+          createdById: adminUser.id,
+        },
+      })
+    }
   }
 
   console.log('✅ Database seed completed!')

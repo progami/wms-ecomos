@@ -1,14 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Truck, Plus, Save, X } from 'lucide-react'
+import { Truck, Plus, Save, X, AlertTriangle } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { toast } from 'react-hot-toast'
+import { useSession } from 'next-auth/react'
 
 export default function WarehouseShipPage() {
   const router = useRouter()
+  const { data: session } = useSession()
+  const [loading, setLoading] = useState(false)
+  const [inventory, setInventory] = useState<any[]>([])
   const [items, setItems] = useState([
-    { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0 }
+    { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }
   ])
 
   const addItem = () => {
@@ -23,13 +28,66 @@ export default function WarehouseShipPage() {
   }
 
   const updateItem = (id: number, field: string, value: any) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ))
+    setItems(items.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [field]: value }
+        
+        // Update availability when SKU or batch changes
+        if ((field === 'skuCode' || field === 'batchLot') && updated.skuCode) {
+          updated.available = checkAvailability(updated.skuCode, updated.batchLot)
+        }
+        
+        return updated
+      }
+      return item
+    }))
+  }
+
+  useEffect(() => {
+    fetchInventory()
+  }, [])
+
+  const fetchInventory = async () => {
+    try {
+      const response = await fetch('/api/inventory/balances')
+      if (response.ok) {
+        const data = await response.json()
+        setInventory(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch inventory:', error)
+    }
+  }
+
+  const checkAvailability = (skuCode: string, batchLot: string) => {
+    const item = inventory.find(inv => 
+      inv.sku.skuCode === skuCode && inv.batchLot === batchLot
+    )
+    return item?.currentCartons || 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate items
+    const validItems = items.filter(item => item.skuCode && item.cartons > 0)
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item with quantity')
+      return
+    }
+    
+    // Check for insufficient inventory
+    const insufficientItems = validItems.filter(item => {
+      const available = checkAvailability(item.skuCode, item.batchLot)
+      return item.cartons > available
+    })
+    
+    if (insufficientItems.length > 0) {
+      toast.error('Insufficient inventory for some items')
+      return
+    }
+    
+    setLoading(true)
     
     const formData = new FormData(e.target as HTMLFormElement)
     const referenceNumber = formData.get('orderNumber') as string
@@ -48,21 +106,28 @@ export default function WarehouseShipPage() {
           type: 'SHIP',
           referenceNumber,
           date,
-          items,
+          items: validItems,
           notes: `Customer: ${customer}. Carrier: ${carrier}. Tracking: ${tracking}. Destination: ${destination}. ${notes}`,
+          warehouseId: session?.user.warehouseId,
         }),
       })
       
       const data = await response.json()
       
       if (response.ok) {
-        alert(`Success! ${data.message}`)
+        toast.success(`Shipment saved successfully! ${data.message}`)
         router.push('/warehouse/inventory')
       } else {
-        alert(`Error: ${data.error}`)
+        toast.error(data.error || 'Failed to save shipment')
+        if (data.details) {
+          console.error('Error details:', data.details)
+        }
       }
     } catch (error) {
-      alert('Failed to save shipment')
+      console.error('Submit error:', error)
+      toast.error('Failed to save shipment. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -188,6 +253,9 @@ export default function WarehouseShipPage() {
                       Batch/Lot
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Available
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cartons
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -222,15 +290,30 @@ export default function WarehouseShipPage() {
                           required
                         />
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        {item.available > 0 ? (
+                          <span className={item.cartons > item.available ? 'text-red-600 font-medium' : 'text-green-600'}>
+                            {item.available}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <input
                           type="number"
                           value={item.cartons}
                           onChange={(e) => updateItem(item.id, 'cartons', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                          className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
+                            item.cartons > item.available ? 'border-red-500 bg-red-50' : ''
+                          }`}
                           min="0"
+                          max={item.available}
                           required
                         />
+                        {item.cartons > item.available && (
+                          <p className="text-xs text-red-600 mt-1">Exceeds available</p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -307,10 +390,20 @@ export default function WarehouseShipPage() {
             </button>
             <button
               type="submit"
-              className="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
+              disabled={loading}
+              className="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="h-4 w-4 mr-2" />
-              Process Shipment
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Process Shipment
+                </>
+              )}
             </button>
           </div>
         </form>

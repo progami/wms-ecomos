@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Bell, Mail, MessageSquare, Smartphone, Save } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 
 interface NotificationSettings {
   emailEnabled: boolean
@@ -19,6 +21,9 @@ interface NotificationSettings {
 }
 
 export default function NotificationSettingsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<NotificationSettings>({
     emailEnabled: true,
     smsEnabled: false,
@@ -35,13 +40,48 @@ export default function NotificationSettingsPage() {
   const [newReportEmail, setNewReportEmail] = useState('')
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    if (session?.user.role === 'system_admin') {
+      fetchSettings()
+    }
+  }, [session])
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings/notifications')
+      if (response.ok) {
+        const data = await response.json()
+        setSettings(data)
+      } else {
+        toast.error('Failed to load notification settings')
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+      toast.error('Failed to load notification settings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Notification settings saved successfully')
+      const response = await fetch('/api/settings/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings),
+      })
+
+      if (response.ok) {
+        toast.success('Notification settings saved successfully')
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to save settings')
+      }
     } catch (error) {
+      console.error('Error saving settings:', error)
       toast.error('Failed to save settings')
     } finally {
       setSaving(false)
@@ -80,6 +120,21 @@ export default function NotificationSettingsPage() {
       ...settings,
       reportRecipients: settings.reportRecipients.filter(e => e !== email)
     })
+  }
+
+  if (status === 'loading' || loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!session || session.user.role !== 'system_admin') {
+    router.push('/auth/login')
+    return null
   }
 
   return (

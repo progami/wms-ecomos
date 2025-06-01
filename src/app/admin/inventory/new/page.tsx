@@ -1,30 +1,57 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package2, Plus, Save, X, ArrowLeft } from 'lucide-react'
+import { Package, Plus, Save, X, AlertCircle } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
+import { useSession } from 'next-auth/react'
 
-export default function NewInventoryTransactionPage() {
+interface Warehouse {
+  id: string
+  name: string
+}
+
+export default function NewTransactionPage() {
   const router = useRouter()
-  const [transactionType, setTransactionType] = useState<'RECEIVE' | 'SHIP' | 'ADJUSTMENT'>('RECEIVE')
-  const [items, setItems] = useState([
-    { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, warehouseId: '' }
-  ])
+  const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [transactionType, setTransactionType] = useState<'RECEIVE' | 'SHIP' | 'ADJUST'>('RECEIVE')
+  const [warehouseId, setWarehouseId] = useState('')
+  const [adjustmentReason, setAdjustmentReason] = useState('')
+  const [items, setItems] = useState([
+    { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0 }
+  ])
+
+  useEffect(() => {
+    fetchWarehouses()
+  }, [])
+
+  const fetchWarehouses = async () => {
+    try {
+      const response = await fetch('/api/warehouses')
+      if (response.ok) {
+        const data = await response.json()
+        setWarehouses(data)
+        if (data.length > 0 && !warehouseId) {
+          setWarehouseId(data[0].id)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch warehouses:', error)
+    }
+  }
 
   const addItem = () => {
     setItems([
       ...items,
-      { id: Date.now(), skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, warehouseId: '' }
+      { id: Date.now(), skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0 }
     ])
   }
 
   const removeItem = (id: number) => {
-    if (items.length > 1) {
-      setItems(items.filter(item => item.id !== id))
-    }
+    setItems(items.filter(item => item.id !== id))
   }
 
   const updateItem = (id: number, field: string, value: any) => {
@@ -35,6 +62,19 @@ export default function NewInventoryTransactionPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate items
+    const validItems = items.filter(item => item.skuCode && (item.cartons !== 0 || transactionType === 'ADJUST'))
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item')
+      return
+    }
+
+    if (transactionType === 'ADJUST' && !adjustmentReason) {
+      toast.error('Please provide a reason for adjustment')
+      return
+    }
+    
     setLoading(true)
     
     const formData = new FormData(e.target as HTMLFormElement)
@@ -43,15 +83,7 @@ export default function NewInventoryTransactionPage() {
     const notes = formData.get('notes') as string
     
     try {
-      // Validate items
-      const validItems = items.filter(item => item.skuCode && item.warehouseId)
-      if (validItems.length === 0) {
-        toast.error('Please add at least one valid item')
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch('/api/inventory/transactions', {
+      const response = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,20 +91,25 @@ export default function NewInventoryTransactionPage() {
           referenceNumber,
           date,
           items: validItems,
-          notes,
+          notes: transactionType === 'ADJUST' ? `Adjustment Reason: ${adjustmentReason}. ${notes}` : notes,
+          warehouseId,
         }),
       })
       
       const data = await response.json()
       
       if (response.ok) {
-        toast.success('Transaction created successfully!')
+        toast.success(`Transaction saved successfully! ${data.message}`)
         router.push('/admin/inventory')
       } else {
-        toast.error(data.error || 'Failed to create transaction')
+        toast.error(data.error || 'Failed to save transaction')
+        if (data.details) {
+          console.error('Error details:', data.details)
+        }
       }
     } catch (error) {
-      toast.error('Failed to save transaction')
+      console.error('Submit error:', error)
+      toast.error('Failed to save transaction. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -83,64 +120,74 @@ export default function NewInventoryTransactionPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">New Inventory Transaction</h1>
+            <h1 className="text-3xl font-bold">New Transaction</h1>
             <p className="text-muted-foreground">
-              Create a new inventory movement
+              Create inventory movement transaction
             </p>
           </div>
           <button
             onClick={() => router.push('/admin/inventory')}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Inventory
+            Cancel
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Transaction Type Selection */}
+          {/* Transaction Type */}
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">Transaction Type</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <button
-                type="button"
-                onClick={() => setTransactionType('RECEIVE')}
-                className={`p-4 border-2 rounded-lg text-center transition-colors ${
-                  transactionType === 'RECEIVE' 
-                    ? 'border-green-500 bg-green-50 text-green-700' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Package2 className="h-8 w-8 mx-auto mb-2" />
-                <div className="font-medium">Receive</div>
-                <div className="text-sm text-gray-600">Incoming goods</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTransactionType('SHIP')}
-                className={`p-4 border-2 rounded-lg text-center transition-colors ${
-                  transactionType === 'SHIP' 
-                    ? 'border-red-500 bg-red-50 text-red-700' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Package2 className="h-8 w-8 mx-auto mb-2" />
-                <div className="font-medium">Ship</div>
-                <div className="text-sm text-gray-600">Outgoing goods</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTransactionType('ADJUSTMENT')}
-                className={`p-4 border-2 rounded-lg text-center transition-colors ${
-                  transactionType === 'ADJUSTMENT' 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Package2 className="h-8 w-8 mx-auto mb-2" />
-                <div className="font-medium">Adjustment</div>
-                <div className="text-sm text-gray-600">Stock corrections</div>
-              </button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                transactionType === 'RECEIVE' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+              }`}>
+                <input
+                  type="radio"
+                  name="transactionType"
+                  value="RECEIVE"
+                  checked={transactionType === 'RECEIVE'}
+                  onChange={(e) => setTransactionType(e.target.value as any)}
+                  className="sr-only"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">Receive</div>
+                  <div className="text-sm text-gray-500">Incoming inventory</div>
+                </div>
+              </label>
+              
+              <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                transactionType === 'SHIP' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+              }`}>
+                <input
+                  type="radio"
+                  name="transactionType"
+                  value="SHIP"
+                  checked={transactionType === 'SHIP'}
+                  onChange={(e) => setTransactionType(e.target.value as any)}
+                  className="sr-only"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">Ship</div>
+                  <div className="text-sm text-gray-500">Outgoing inventory</div>
+                </div>
+              </label>
+              
+              <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                transactionType === 'ADJUST' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+              }`}>
+                <input
+                  type="radio"
+                  name="transactionType"
+                  value="ADJUST"
+                  checked={transactionType === 'ADJUST'}
+                  onChange={(e) => setTransactionType(e.target.value as any)}
+                  className="sr-only"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">Adjust</div>
+                  <div className="text-sm text-gray-500">Inventory adjustment</div>
+                </div>
+              </label>
             </div>
           </div>
 
@@ -150,19 +197,36 @@ export default function NewInventoryTransactionPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reference Number *
+                  Warehouse
+                </label>
+                <select
+                  value={warehouseId}
+                  onChange={(e) => setWarehouseId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                >
+                  {warehouses.map(warehouse => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reference Number
                 </label>
                 <input
                   type="text"
                   name="referenceNumber"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={transactionType === 'RECEIVE' ? 'PO-2024-001' : transactionType === 'SHIP' ? 'SO-2024-001' : 'ADJ-2024-001'}
+                  placeholder={transactionType === 'RECEIVE' ? 'PO Number' : transactionType === 'SHIP' ? 'SO Number' : 'ADJ Number'}
                   required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Transaction Date *
+                  Transaction Date
                 </label>
                 <input
                   type="date"
@@ -172,18 +236,28 @@ export default function NewInventoryTransactionPage() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {transactionType === 'RECEIVE' ? 'Supplier' : transactionType === 'SHIP' ? 'Customer' : 'Reason'}
-                </label>
-                <input
-                  type="text"
-                  name="party"
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={transactionType === 'RECEIVE' ? 'Supplier name' : transactionType === 'SHIP' ? 'Customer name' : 'Adjustment reason'}
-                />
-              </div>
             </div>
+            
+            {transactionType === 'ADJUST' && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Adjustment Reason
+                </label>
+                <select
+                  value={adjustmentReason}
+                  onChange={(e) => setAdjustmentReason(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                >
+                  <option value="">Select a reason...</option>
+                  <option value="Physical Count">Physical Count</option>
+                  <option value="Damaged Goods">Damaged Goods</option>
+                  <option value="Expired Product">Expired Product</option>
+                  <option value="System Correction">System Correction</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Line Items */}
@@ -200,27 +274,36 @@ export default function NewInventoryTransactionPage() {
               </button>
             </div>
 
+            {transactionType === 'ADJUST' && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex gap-2">
+                  <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium">Adjustment Instructions:</p>
+                    <p>Use positive numbers to increase inventory, negative numbers to decrease.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Warehouse *
+                      SKU Code
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      SKU Code *
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Batch/Lot *
+                      Batch/Lot
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cartons *
+                      Cartons
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pallets
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Units *
+                      Units
                     </th>
                     <th className="px-4 py-3"></th>
                   </tr>
@@ -228,19 +311,6 @@ export default function NewInventoryTransactionPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {items.map((item) => (
                     <tr key={item.id}>
-                      <td className="px-4 py-3">
-                        <select
-                          value={item.warehouseId}
-                          onChange={(e) => updateItem(item.id, 'warehouseId', e.target.value)}
-                          className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                          required
-                        >
-                          <option value="">Select warehouse</option>
-                          <option value="warehouse-1">FMC Warehouse</option>
-                          <option value="warehouse-2">Vglobal Warehouse</option>
-                          <option value="warehouse-3">4AS Warehouse</option>
-                        </select>
-                      </td>
                       <td className="px-4 py-3">
                         <input
                           type="text"
@@ -267,7 +337,7 @@ export default function NewInventoryTransactionPage() {
                           value={item.cartons}
                           onChange={(e) => updateItem(item.id, 'cartons', parseInt(e.target.value) || 0)}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
-                          min="0"
+                          {...(transactionType === 'ADJUST' ? {} : { min: "0" })}
                           required
                         />
                       </td>
@@ -277,7 +347,7 @@ export default function NewInventoryTransactionPage() {
                           value={item.pallets}
                           onChange={(e) => updateItem(item.id, 'pallets', parseInt(e.target.value) || 0)}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
-                          min="0"
+                          {...(transactionType === 'ADJUST' ? {} : { min: "0" })}
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -286,7 +356,7 @@ export default function NewInventoryTransactionPage() {
                           value={item.units}
                           onChange={(e) => updateItem(item.id, 'units', parseInt(e.target.value) || 0)}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
-                          min="0"
+                          {...(transactionType === 'ADJUST' ? {} : { min: "0" })}
                           required
                         />
                       </td>
@@ -305,7 +375,7 @@ export default function NewInventoryTransactionPage() {
                 </tbody>
                 <tfoot className="bg-gray-50">
                   <tr>
-                    <td colSpan={3} className="px-4 py-3 text-right font-semibold">
+                    <td colSpan={2} className="px-4 py-3 text-right font-semibold">
                       Total:
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
@@ -347,17 +417,17 @@ export default function NewInventoryTransactionPage() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Processing...
+                  Saving...
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Create Transaction
+                  Save Transaction
                 </>
               )}
             </button>
