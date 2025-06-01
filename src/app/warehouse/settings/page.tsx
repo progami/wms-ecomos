@@ -25,11 +25,22 @@ export default async function WarehouseSettingsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">
+        {/* Page Header with Description */}
+        <div className="bg-white border rounded-lg p-6">
+          <h1 className="text-3xl font-bold mb-2">Settings</h1>
+          <p className="text-muted-foreground mb-4">
             Manage your preferences and configurations
           </p>
+          
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <Settings className="h-5 w-5 text-gray-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-gray-700">
+                <p className="font-semibold mb-1">About This Page:</p>
+                <p>Configure your personal preferences, notification settings, security options, and warehouse-specific configurations. Changes made here apply only to your account and do not affect other users.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">

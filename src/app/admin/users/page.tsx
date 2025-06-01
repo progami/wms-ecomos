@@ -15,21 +15,33 @@ export default async function AdminUsersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">User Management</h1>
-            <p className="text-muted-foreground">
-              Manage users and their permissions
-            </p>
+        {/* Page Header with Description */}
+        <div className="bg-white border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">User Management</h1>
+              <p className="text-muted-foreground">
+                Manage users and their permissions
+              </p>
+            </div>
+            <Link
+              href="/admin/users/new"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add User
+            </Link>
           </div>
-          <Link
-            href="/admin/users/new"
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
-          </Link>
+          
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <Shield className="h-5 w-5 text-purple-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-purple-800">
+                <p className="font-semibold mb-1">About This Page:</p>
+                <p>Create and manage user accounts for the warehouse management system. Assign roles and permissions, set warehouse access, and monitor user activity. Each role has specific permissions tailored to their responsibilities.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Search */}

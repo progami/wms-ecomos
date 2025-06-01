@@ -1,0 +1,191 @@
+'use client'
+
+import React, { useState } from 'react'
+import { 
+  X, 
+  CheckCircle, 
+  Package, 
+  FileText, 
+  DollarSign, 
+  BarChart3,
+  ArrowRight,
+  BookOpen
+} from 'lucide-react'
+
+interface GuideStep {
+  title: string
+  description: string
+  icon: React.ElementType
+  link: string
+  completed?: boolean
+}
+
+interface QuickStartGuideProps {
+  userRole: string
+}
+
+export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
+  const [isOpen, setIsOpen] = useState(true)
+  const [dismissedPermanently, setDismissedPermanently] = useState(
+    typeof window !== 'undefined' && localStorage.getItem('quickStartDismissed') === 'true'
+  )
+
+  if (dismissedPermanently) return null
+
+  const guideSteps: Record<string, GuideStep[]> = {
+    system_admin: [
+      {
+        title: 'Set Up Warehouses',
+        description: 'Configure your warehouse locations and storage settings',
+        icon: Package,
+        link: '/admin/settings/warehouses'
+      },
+      {
+        title: 'Configure SKUs',
+        description: 'Add product SKUs and set up tracking parameters',
+        icon: Package,
+        link: '/admin/settings/skus'
+      },
+      {
+        title: 'Define Cost Rates',
+        description: 'Set storage and handling rates for accurate billing',
+        icon: DollarSign,
+        link: '/admin/settings/rates'
+      },
+      {
+        title: 'Import Data',
+        description: 'Upload existing inventory and transaction data',
+        icon: FileText,
+        link: '/admin/import'
+      }
+    ],
+    finance_admin: [
+      {
+        title: 'Review Cost Rates',
+        description: 'Check and update warehouse storage and handling rates',
+        icon: DollarSign,
+        link: '/finance/rates'
+      },
+      {
+        title: 'Process Invoices',
+        description: 'Upload and reconcile warehouse invoices',
+        icon: FileText,
+        link: '/finance/invoices'
+      },
+      {
+        title: 'Run Reconciliation',
+        description: 'Compare system calculations with warehouse invoices',
+        icon: BarChart3,
+        link: '/finance/reconciliation'
+      }
+    ],
+    warehouse_staff: [
+      {
+        title: 'Check Inventory',
+        description: 'Review current stock levels and locations',
+        icon: Package,
+        link: '/warehouse/inventory'
+      },
+      {
+        title: 'Receive Shipments',
+        description: 'Process incoming inventory and update records',
+        icon: Package,
+        link: '/warehouse/receive'
+      },
+      {
+        title: 'Ship Orders',
+        description: 'Process outbound shipments and update inventory',
+        icon: Package,
+        link: '/warehouse/ship'
+      }
+    ],
+    manager: [
+      {
+        title: 'View Analytics',
+        description: 'Monitor key performance metrics and trends',
+        icon: BarChart3,
+        link: '/analytics'
+      },
+      {
+        title: 'Generate Reports',
+        description: 'Create custom reports for business insights',
+        icon: FileText,
+        link: '/reports'
+      }
+    ]
+  }
+
+  const steps = guideSteps[userRole] || guideSteps.manager
+
+  const handleDismiss = () => {
+    setIsOpen(false)
+  }
+
+  const handleDismissPermanently = () => {
+    localStorage.setItem('quickStartDismissed', 'true')
+    setDismissedPermanently(true)
+    setIsOpen(false)
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <BookOpen className="h-6 w-6 text-blue-600" />
+          <div>
+            <h3 className="text-lg font-semibold">Quick Start Guide</h3>
+            <p className="text-sm text-gray-600">Get started with your warehouse management tasks</p>
+          </div>
+        </div>
+        <button
+          onClick={handleDismiss}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {steps.map((step, index) => (
+          <a
+            key={index}
+            href={step.link}
+            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition-colors">
+                <step.icon className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-sm mb-1 group-hover:text-blue-600 transition-colors">
+                  {step.title}
+                </h4>
+                <p className="text-xs text-gray-600">
+                  {step.description}
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors mt-0.5" />
+            </div>
+          </a>
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between text-sm">
+        <button
+          onClick={handleDismissPermanently}
+          className="text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Don't show this again
+        </button>
+        <a
+          href="/docs/quick-start"
+          className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+        >
+          View full documentation →
+        </a>
+      </div>
+    </div>
+  )
+}

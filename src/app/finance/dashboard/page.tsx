@@ -22,6 +22,7 @@ import {
   PieChart
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PageHeader } from '@/components/ui/page-header'
 import { toast } from 'react-hot-toast'
 
 // Helper function to get relative time
@@ -130,21 +131,25 @@ export default function FinanceDashboardPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header with Actions */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold">Finance Dashboard</h1>
-            <p className="text-muted-foreground">
-              Billing Period: {billingStart.toLocaleDateString()} - {billingEnd.toLocaleDateString()}
-            </p>
-          </div>
-          <button
-            onClick={handleExportFinancialReport}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export Report
-          </button>
-        </div>
+        <PageHeader
+          title="Finance Dashboard"
+          subtitle={`Billing Period: ${billingStart.toLocaleDateString()} - ${billingEnd.toLocaleDateString()}`}
+          description="Monitor financial performance, track invoices, analyze costs, and manage billing reconciliation. View real-time metrics and ensure accurate 3PL cost management."
+          icon={DollarSign}
+          iconColor="text-emerald-600"
+          bgColor="bg-emerald-50"
+          borderColor="border-emerald-200"
+          textColor="text-emerald-800"
+          actions={
+            <button
+              onClick={handleExportFinancialReport}
+              className="action-button"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Report
+            </button>
+          }
+        />
 
         {/* Financial KPIs */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

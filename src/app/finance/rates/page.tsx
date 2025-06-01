@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { DollarSign, Plus, Calendar, Edit } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PageHeader } from '@/components/ui/page-header'
 import { prisma } from '@/lib/prisma'
 
 export default async function FinanceRatesPage() {
@@ -37,18 +38,17 @@ export default async function FinanceRatesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Cost Rates Management</h1>
-            <p className="text-muted-foreground">
-              Manage warehouse rates and fees
-            </p>
-          </div>
-          <button className="action-button">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Rate
-          </button>
-        </div>
+        <PageHeader
+          title="Cost Rates Management"
+          description="Configure and manage storage rates, handling fees, and other charges for each warehouse. These rates are used to calculate monthly storage costs and reconcile with warehouse invoices."
+          icon={DollarSign}
+          actions={
+            <button className="action-button">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Rate
+            </button>
+          }
+        />
 
         {/* Rates by Warehouse */}
         {warehouses.map((warehouse) => (

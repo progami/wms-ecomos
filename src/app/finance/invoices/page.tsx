@@ -217,28 +217,41 @@ export default function FinanceInvoicesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Invoice Management</h1>
-            <p className="text-muted-foreground">
-              Process and manage warehouse invoices
-            </p>
+        {/* Page Header with Description */}
+        <div className="bg-white border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Invoice Management</h1>
+              <p className="text-muted-foreground">
+                Process and manage warehouse invoices
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleExport}
+                className="secondary-button"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </button>
+              <Link 
+                href="/finance/invoices/new"
+                className="action-button"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Invoice
+              </Link>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handleExport}
-              className="secondary-button"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </button>
-            <Link 
-              href="/finance/invoices/new"
-              className="action-button"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Invoice
-            </Link>
+          
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <FileText className="h-5 w-5 text-purple-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-purple-800">
+                <p className="font-semibold mb-1">About This Page:</p>
+                <p>Manage warehouse service invoices from receipt through payment. Upload invoice files (PDF, Excel, CSV), review line items, reconcile charges against actual usage, and track payment status. Use filters to find specific invoices by warehouse, status, or date range.</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -439,7 +452,8 @@ export default function FinanceInvoicesPage() {
 
         {/* Invoice Upload Section */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Quick Invoice Upload</h3>
+          <h3 className="text-lg font-semibold mb-2">Quick Invoice Upload</h3>
+          <p className="text-sm text-gray-600 mb-4">Upload warehouse invoices for processing and reconciliation</p>
           <div 
             className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center cursor-pointer hover:bg-blue-50 transition-colors"
             onClick={() => fileInputRef.current?.click()}

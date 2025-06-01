@@ -1,8 +1,23 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { Package2, TrendingUp, DollarSign, AlertCircle } from 'lucide-react'
+import { 
+  Package2, 
+  TrendingUp, 
+  DollarSign, 
+  AlertCircle,
+  ArrowRight,
+  FileText,
+  BarChart3,
+  Settings,
+  Users,
+  Warehouse,
+  Calculator
+} from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PageHeader } from '@/components/ui/page-header'
+import { QuickStartGuide } from '@/components/ui/quick-start-guide'
+import Link from 'next/link'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -14,12 +29,16 @@ export default async function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome back, {session.user.name}
-          </p>
-        </div>
+        {/* Page Header with Description */}
+        <PageHeader
+          title="Dashboard"
+          subtitle={`Welcome back, ${session.user.name}`}
+          description="Monitor your warehouse operations at a glance. Track inventory levels, storage costs, active SKUs, and pending invoices. Use the navigation menu to access detailed reports and management tools."
+          icon={Package2}
+        />
+
+        {/* Quick Start Guide */}
+        <QuickStartGuide userRole={session.user.role} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <DashboardCard
@@ -56,18 +75,65 @@ export default async function DashboardPage() {
           />
         </div>
 
+        {/* Quick Actions */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Quick Actions</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {getQuickActions(session.user.role).map((action, index) => (
+              <Link
+                key={index}
+                href={action.href}
+                className="border rounded-lg p-6 hover:border-primary hover:shadow-md transition-all group bg-white"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`p-2 rounded-lg ${action.bgColor} group-hover:scale-110 transition-transform`}>
+                        <action.icon className={`h-5 w-5 ${action.iconColor}`} />
+                      </div>
+                      <h3 className="font-semibold group-hover:text-primary transition-colors">
+                        {action.title}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {action.description}
+                    </p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-primary transition-colors" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">Recent Transactions</h3>
-            <p className="text-muted-foreground">
-              Transaction history will appear here
-            </p>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Your recent receiving and shipping activities
+              </p>
+              <div className="border-t pt-4">
+                <p className="text-center text-gray-500 py-8">
+                  <Package2 className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  No recent transactions
+                </p>
+              </div>
+            </div>
           </div>
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">Storage Utilization</h3>
-            <p className="text-muted-foreground">
-              Warehouse capacity chart will appear here
-            </p>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Current warehouse capacity and usage
+              </p>
+              <div className="border-t pt-4">
+                <p className="text-center text-gray-500 py-8">
+                  <TrendingUp className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  Utilization data coming soon
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -115,4 +181,92 @@ function DashboardCard({
       </div>
     </div>
   )
+}
+
+function getQuickActions(role: string) {
+  const allActions = {
+    inventory: {
+      title: 'Manage Inventory',
+      description: 'View and update inventory levels',
+      href: '/warehouse/inventory',
+      icon: Package2,
+      bgColor: 'bg-blue-100',
+      iconColor: 'text-blue-600'
+    },
+    receive: {
+      title: 'Receive Shipments',
+      description: 'Process incoming inventory',
+      href: '/warehouse/receive',
+      icon: Package2,
+      bgColor: 'bg-green-100',
+      iconColor: 'text-green-600'
+    },
+    ship: {
+      title: 'Ship Orders',
+      description: 'Process outbound shipments',
+      href: '/warehouse/ship',
+      icon: Package2,
+      bgColor: 'bg-purple-100',
+      iconColor: 'text-purple-600'
+    },
+    invoices: {
+      title: 'Process Invoices',
+      description: 'Upload and reconcile invoices',
+      href: '/finance/invoices',
+      icon: FileText,
+      bgColor: 'bg-yellow-100',
+      iconColor: 'text-yellow-600'
+    },
+    rates: {
+      title: 'Cost Rates',
+      description: 'Manage warehouse rates',
+      href: '/finance/rates',
+      icon: DollarSign,
+      bgColor: 'bg-emerald-100',
+      iconColor: 'text-emerald-600'
+    },
+    reconciliation: {
+      title: 'Reconciliation',
+      description: 'Compare calculations with invoices',
+      href: '/finance/reconciliation',
+      icon: Calculator,
+      bgColor: 'bg-indigo-100',
+      iconColor: 'text-indigo-600'
+    },
+    reports: {
+      title: 'Generate Reports',
+      description: 'Create custom reports',
+      href: '/reports',
+      icon: BarChart3,
+      bgColor: 'bg-orange-100',
+      iconColor: 'text-orange-600'
+    },
+    settings: {
+      title: 'System Settings',
+      description: 'Configure system parameters',
+      href: '/admin/settings',
+      icon: Settings,
+      bgColor: 'bg-gray-100',
+      iconColor: 'text-gray-600'
+    },
+    users: {
+      title: 'Manage Users',
+      description: 'User accounts and permissions',
+      href: '/admin/users',
+      icon: Users,
+      bgColor: 'bg-pink-100',
+      iconColor: 'text-pink-600'
+    }
+  }
+
+  const roleActions = {
+    system_admin: ['inventory', 'invoices', 'rates', 'reports', 'settings', 'users'],
+    finance_admin: ['invoices', 'rates', 'reconciliation', 'reports'],
+    warehouse_staff: ['inventory', 'receive', 'ship', 'reports'],
+    manager: ['reports', 'inventory', 'invoices'],
+    viewer: ['reports']
+  }
+
+  const actions = roleActions[role] || roleActions.viewer
+  return actions.map(key => allActions[key]).filter(Boolean)
 }

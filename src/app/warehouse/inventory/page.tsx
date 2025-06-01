@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Search, Filter, Download, Upload, Package2, Calendar, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react'
+import { Search, Filter, Download, Upload, Package2, Calendar, AlertCircle, TrendingUp, TrendingDown, Plus } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PageHeader } from '@/components/ui/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
 import { toast } from 'react-hot-toast'
 
 interface InventoryBalance {
@@ -121,31 +123,35 @@ export default function WarehouseInventoryPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Inventory Overview</h1>
-            <p className="text-muted-foreground">
-              Real-time inventory levels and stock management
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handleImport}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Import
-            </button>
-            <button 
-              onClick={handleExport}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </button>
-          </div>
-        </div>
+        {/* Page Header with Description */}
+        <PageHeader
+          title="Inventory Overview"
+          subtitle="Real-time inventory levels and stock management"
+          description="View and manage current inventory levels across all warehouses. Track stock by SKU, batch/lot numbers, and warehouse location. Use filters to find specific items, identify low stock situations, and export data for reporting."
+          icon={Package2}
+          iconColor="text-green-600"
+          bgColor="bg-green-50"
+          borderColor="border-green-200"
+          textColor="text-green-800"
+          actions={
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleImport}
+                className="secondary-button"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </button>
+              <button 
+                onClick={handleExport}
+                className="secondary-button"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </button>
+            </div>
+          }
+        />
 
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">
@@ -368,11 +374,20 @@ export default function WarehouseInventoryPage() {
               })}
               {filteredData.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
-                    {searchQuery || Object.values(filters).some(v => v) 
-                      ? 'No inventory items match your filters' 
-                      : 'No inventory found'
-                    }
+                  <td colSpan={8} className="px-6 py-12">
+                    <EmptyState
+                      icon={Package2}
+                      title={searchQuery || Object.values(filters).some(v => v) 
+                        ? "No inventory items match your filters" 
+                        : "No inventory found"}
+                      description={searchQuery || Object.values(filters).some(v => v)
+                        ? "Try adjusting your search criteria or filters to find what you're looking for."
+                        : "Start by receiving new inventory or importing existing stock data."}
+                      action={!searchQuery && !Object.values(filters).some(v => v) ? {
+                        label: "Receive Inventory",
+                        onClick: () => router.push('/warehouse/receive')
+                      } : undefined}
+                    />
                   </td>
                 </tr>
               )}

@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Package2, Plus, Edit, Trash2, Search, Loader2 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PageHeader } from '@/components/ui/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface SKU {
   id: string
@@ -30,6 +33,8 @@ export default function AdminSkusPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showInactive, setShowInactive] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [skuToDelete, setSkuToDelete] = useState<SKU | null>(null)
 
   useEffect(() => {
     fetchSkus()
@@ -58,16 +63,16 @@ export default function AdminSkusPage() {
     }
   }
 
-  const handleDelete = async (sku: SKU) => {
-    const hasData = Object.values(sku._count).some(count => count > 0)
-    const message = hasData
-      ? `This SKU has related data and will be deactivated instead of deleted. Continue?`
-      : `Are you sure you want to delete ${sku.skuCode}? This action cannot be undone.`
-    
-    if (!confirm(message)) return
+  const handleDeleteClick = (sku: SKU) => {
+    setSkuToDelete(sku)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!skuToDelete) return
 
     try {
-      const response = await fetch(`/api/skus-simple?id=${sku.id}`, {
+      const response = await fetch(`/api/skus-simple?id=${skuToDelete.id}`, {
         method: 'DELETE'
       })
 
@@ -118,21 +123,26 @@ export default function AdminSkusPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">SKU Management</h1>
-            <p className="text-muted-foreground">
-              Manage product definitions and specifications
-            </p>
-          </div>
-          <Link 
-            href="/admin/settings/skus/new"
-            className="action-button"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add SKU
-          </Link>
-        </div>
+        {/* Page Header with Description */}
+        <PageHeader
+          title="SKU Management"
+          subtitle="Manage product definitions and specifications"
+          description="Define and manage Stock Keeping Units (SKUs) for products in your warehouse. Set up product codes, descriptions, dimensions, weights, and packaging specifications. These definitions are used throughout the system for inventory tracking and invoicing."
+          icon={Package2}
+          iconColor="text-indigo-600"
+          bgColor="bg-indigo-50"
+          borderColor="border-indigo-200"
+          textColor="text-indigo-800"
+          actions={
+            <Link 
+              href="/admin/settings/skus/new"
+              className="action-button"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add SKU
+            </Link>
+          }
+        />
 
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
@@ -200,9 +210,18 @@ export default function AdminSkusPage() {
                 </tr>
               ) : filteredSkus.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
-                    <Package2 className="h-12 w-12 mx-auto text-gray-400" />
-                    <p className="mt-2 text-gray-500">No SKUs found</p>
+                  <td colSpan={8} className="px-6 py-12">
+                    <EmptyState
+                      icon={Package2}
+                      title={searchTerm || showInactive ? "No SKUs match your criteria" : "No SKUs defined yet"}
+                      description={searchTerm || showInactive 
+                        ? "Try adjusting your search or filters to find what you're looking for."
+                        : "Start by adding your first SKU to begin tracking inventory."}
+                      action={!searchTerm && !showInactive ? {
+                        label: "Add First SKU",
+                        onClick: () => router.push('/admin/settings/skus/new')
+                      } : undefined}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -241,7 +260,7 @@ export default function AdminSkusPage() {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button 
-                        onClick={() => handleDelete(sku)}
+                        onClick={() => handleDeleteClick(sku)}
                         className="text-red-600 hover:text-red-700"
                         title="Delete SKU"
                       >
@@ -292,6 +311,26 @@ export default function AdminSkusPage() {
             </div>
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        {skuToDelete && (
+          <ConfirmDialog
+            isOpen={deleteConfirmOpen}
+            onClose={() => {
+              setDeleteConfirmOpen(false)
+              setSkuToDelete(null)
+            }}
+            onConfirm={handleDeleteConfirm}
+            title={`Delete SKU ${skuToDelete.skuCode}?`}
+            message={
+              Object.values(skuToDelete._count).some(count => count > 0)
+                ? "This SKU has related data and will be deactivated instead of deleted. Continue?"
+                : "Are you sure you want to delete this SKU? This action cannot be undone."
+            }
+            confirmText="Delete"
+            type="danger"
+          />
+        )}
       </div>
     </DashboardLayout>
   )

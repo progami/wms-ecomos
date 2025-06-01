@@ -109,20 +109,33 @@ export default function AdminRatesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Cost Rates</h1>
-            <p className="text-muted-foreground">
-              Configure pricing and rate structures for 3PL services
-            </p>
+        {/* Page Header with Description */}
+        <div className="bg-white border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Cost Rates Management</h1>
+              <p className="text-muted-foreground">
+                Configure pricing and rate structures for 3PL services
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Rate
+            </button>
           </div>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Rate
-          </button>
+          
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <DollarSign className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-amber-800">
+                <p className="font-semibold mb-1">About This Page:</p>
+                <p>Manage cost rates for warehouse services including storage, handling, shipping, and other charges. Rates can be set globally or per warehouse, with effective dates for scheduling future changes. These rates are used to calculate customer invoices.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Add Rate Form */}
@@ -337,16 +350,20 @@ export default function AdminRatesPage() {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Rate Configuration Guide</h3>
               <div className="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <p>Configure rates for different services:</p>
+                <p className="font-medium">Configure rates for different services:</p>
                 <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li><strong>Storage Rates:</strong> Weekly charges per pallet stored</li>
-                  <li><strong>Handling Rates:</strong> Fees for receiving, shipping, and labor</li>
-                  <li><strong>Shipping Rates:</strong> Transportation and delivery costs</li>
-                  <li><strong>Other Rates:</strong> Additional services like labeling, repackaging</li>
+                  <li><strong>Storage Rates:</strong> Weekly charges per pallet stored in the warehouse</li>
+                  <li><strong>Handling Rates:</strong> Fees for receiving, shipping, and labor services</li>
+                  <li><strong>Shipping Rates:</strong> Transportation and delivery costs per unit/carton</li>
+                  <li><strong>Other Rates:</strong> Additional services like labeling, repackaging, special handling</li>
                 </ul>
-                <p className="mt-3">
-                  Rates can be set globally or per warehouse. Effective dates allow you to schedule rate changes.
-                </p>
+                <p className="mt-3 font-medium">Tips for effective rate management:</p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>Set competitive rates that cover your operational costs</li>
+                  <li>Use effective dates to plan rate changes in advance</li>
+                  <li>Configure warehouse-specific rates for different service levels</li>
+                  <li>Regularly review and update rates based on market conditions</li>
+                </ul>
               </div>
             </div>
           </div>

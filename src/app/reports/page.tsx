@@ -74,11 +74,22 @@ export default async function ReportsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">
+        {/* Page Header with Description */}
+        <div className="bg-white border rounded-lg p-6">
+          <h1 className="text-3xl font-bold mb-2">Reports Center</h1>
+          <p className="text-muted-foreground mb-4">
             Access operational and analytical reports
           </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <FileText className="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-semibold mb-1">About This Page:</p>
+                <p>Access pre-configured reports for warehouse operations, inventory status, and performance analytics. Download reports in various formats or view them directly in the browser. Reports are automatically updated with real-time data.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Summary Cards */}

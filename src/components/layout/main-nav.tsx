@@ -30,6 +30,7 @@ const navigation = {
     // Finance Functions
     { name: 'Finance', href: '/finance/dashboard', icon: DollarSign },
     { name: 'Invoices', href: '/finance/invoices', icon: FileText },
+    { name: 'Cost Rates', href: '/finance/rates', icon: DollarSign },
     { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
     // Warehouse Functions
     { name: 'Warehouse Ops', href: '/warehouse/dashboard', icon: Warehouse },
