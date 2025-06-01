@@ -40,7 +40,7 @@ export default async function AdminReportsPage() {
       }
     }),
     // Invoices this month
-    prisma.invoiceInput.count({
+    prisma.invoice.count({
       where: {
         invoiceDate: {
           gte: startOfMonth,
