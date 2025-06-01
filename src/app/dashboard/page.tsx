@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { Package2, TrendingUp, DollarSign, AlertCircle } from 'lucide-react'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -11,13 +12,14 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {session.user.name}
-        </p>
-      </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {session.user.name}
+          </p>
+        </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <DashboardCard
@@ -68,7 +70,7 @@ export default async function DashboardPage() {
           </p>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }
 
