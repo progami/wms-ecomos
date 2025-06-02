@@ -19,8 +19,7 @@ import {
   Upload,
   Download,
   Database,
-  Bell,
-  Shield
+  Bell
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
@@ -241,7 +240,7 @@ export default function AdminDashboardPage() {
         {/* System Actions */}
         <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-4">System Actions</h3>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <SystemAction
               title="Import Data"
               description="Bulk import from Excel"
@@ -255,13 +254,6 @@ export default function AdminDashboardPage() {
               icon={Download}
               onClick={handleExportData}
               loading={loading === 'export'}
-            />
-            <SystemAction
-              title="System Verification"
-              description="Test critical features"
-              icon={Shield}
-              onClick={() => router.push('/test-verification')}
-              loading={false}
             />
           </div>
         </div>
