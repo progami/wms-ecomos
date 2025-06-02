@@ -12,13 +12,33 @@ export default function WarehouseReceivePage() {
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState([
-    { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0 }
+    { 
+      id: 1, 
+      skuCode: '', 
+      batchLot: '', 
+      cartons: 0, 
+      pallets: 0, 
+      units: 0,
+      storageCartonsPerPallet: 0,
+      shippingCartonsPerPallet: 0,
+      configLoaded: false
+    }
   ])
 
   const addItem = () => {
     setItems([
       ...items,
-      { id: Date.now(), skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0 }
+      { 
+        id: Date.now(), 
+        skuCode: '', 
+        batchLot: '', 
+        cartons: 0, 
+        pallets: 0, 
+        units: 0,
+        storageCartonsPerPallet: 0,
+        shippingCartonsPerPallet: 0,
+        configLoaded: false
+      }
     ])
   }
 
@@ -26,10 +46,53 @@ export default function WarehouseReceivePage() {
     setItems(items.filter(item => item.id !== id))
   }
 
-  const updateItem = (id: number, field: string, value: any) => {
+  const updateItem = async (id: number, field: string, value: any) => {
     setItems(items.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ))
+    
+    // If SKU code changed, fetch warehouse config
+    if (field === 'skuCode' && value) {
+      await fetchWarehouseConfig(id, value)
+    }
+  }
+  
+  const fetchWarehouseConfig = async (itemId: number, skuCode: string) => {
+    try {
+      const warehouseId = session?.user.warehouseId
+      if (!warehouseId) return
+      
+      // First get the SKU ID
+      const skuResponse = await fetch(`/api/skus?search=${skuCode}`)
+      if (!skuResponse.ok) return
+      
+      const skus = await skuResponse.json()
+      const sku = skus.find((s: any) => s.skuCode === skuCode)
+      if (!sku) return
+      
+      // Then get the warehouse config
+      const configResponse = await fetch(`/api/warehouse-configs?warehouseId=${warehouseId}&skuId=${sku.id}`)
+      if (!configResponse.ok) return
+      
+      const configs = await configResponse.json()
+      if (configs.length > 0) {
+        const config = configs[0] // Get the most recent config
+        setItems(items.map(item => 
+          item.id === itemId 
+            ? { 
+                ...item, 
+                storageCartonsPerPallet: config.storageCartonsPerPallet || 0,
+                shippingCartonsPerPallet: config.shippingCartonsPerPallet || 0,
+                configLoaded: true,
+                // Auto-calculate pallets based on cartons
+                pallets: item.cartons > 0 ? Math.ceil(item.cartons / (config.storageCartonsPerPallet || 1)) : 0
+              } 
+            : item
+        ))
+      }
+    } catch (error) {
+      console.error('Error fetching warehouse config:', error)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +124,18 @@ export default function WarehouseReceivePage() {
     if (validItems.length === 0) {
       toast.error('Please add at least one item with quantity')
       return
+    }
+    
+    // Validate pallet configurations
+    for (const item of validItems) {
+      if (!item.storageCartonsPerPallet || item.storageCartonsPerPallet <= 0) {
+        toast.error(`Please enter storage cartons per pallet for SKU ${item.skuCode}`)
+        return
+      }
+      if (!item.shippingCartonsPerPallet || item.shippingCartonsPerPallet <= 0) {
+        toast.error(`Please enter shipping cartons per pallet for SKU ${item.skuCode}`)
+        return
+      }
     }
     
     // Check for duplicate SKU/batch combinations
@@ -218,6 +293,12 @@ export default function WarehouseReceivePage() {
                       Cartons
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Storage Cartons/Pallet
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Shipping Cartons/Pallet
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pallets
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -253,7 +334,15 @@ export default function WarehouseReceivePage() {
                         <input
                           type="number"
                           value={item.cartons}
-                          onChange={(e) => updateItem(item.id, 'cartons', parseInt(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const newCartons = parseInt(e.target.value) || 0
+                            updateItem(item.id, 'cartons', newCartons)
+                            // Auto-calculate pallets if config is loaded
+                            if (item.configLoaded && item.storageCartonsPerPallet > 0) {
+                              const newPallets = Math.ceil(newCartons / item.storageCartonsPerPallet)
+                              updateItem(item.id, 'pallets', newPallets)
+                            }
+                          }}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
                           min="0"
                           required
@@ -262,10 +351,46 @@ export default function WarehouseReceivePage() {
                       <td className="px-4 py-3">
                         <input
                           type="number"
+                          value={item.storageCartonsPerPallet}
+                          onChange={(e) => {
+                            const newValue = parseInt(e.target.value) || 0
+                            updateItem(item.id, 'storageCartonsPerPallet', newValue)
+                            // Recalculate pallets
+                            if (newValue > 0 && item.cartons > 0) {
+                              const newPallets = Math.ceil(item.cartons / newValue)
+                              updateItem(item.id, 'pallets', newPallets)
+                            }
+                          }}
+                          className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
+                            item.configLoaded ? 'bg-yellow-50' : ''
+                          }`}
+                          min="1"
+                          placeholder="Loading..."
+                          title={item.configLoaded ? 'Loaded from warehouse config (editable)' : 'Enter value'}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={item.shippingCartonsPerPallet}
+                          onChange={(e) => updateItem(item.id, 'shippingCartonsPerPallet', parseInt(e.target.value) || 0)}
+                          className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
+                            item.configLoaded ? 'bg-yellow-50' : ''
+                          }`}
+                          min="1"
+                          placeholder="Loading..."
+                          title={item.configLoaded ? 'Loaded from warehouse config (editable)' : 'Enter value'}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
                           value={item.pallets}
                           onChange={(e) => updateItem(item.id, 'pallets', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary bg-gray-50"
                           min="0"
+                          readOnly={item.configLoaded && item.storageCartonsPerPallet > 0}
+                          title={item.configLoaded && item.storageCartonsPerPallet > 0 ? 'Auto-calculated from cartons and config' : 'Enter value'}
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -299,6 +424,7 @@ export default function WarehouseReceivePage() {
                     <td className="px-4 py-3 text-right font-semibold">
                       {items.reduce((sum, item) => sum + item.cartons, 0).toLocaleString()}
                     </td>
+                    <td colSpan={2}></td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {items.reduce((sum, item) => sum + item.pallets, 0)}
                     </td>

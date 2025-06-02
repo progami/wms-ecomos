@@ -7,12 +7,40 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 
+interface InventoryItem {
+  id: string
+  sku: {
+    id: string
+    skuCode: string
+    description: string
+    unitsPerCarton: number
+  }
+  batchLot: string
+  currentCartons: number
+  currentPallets: number
+  currentUnits: number
+  storageCartonsPerPallet?: number | null
+  shippingCartonsPerPallet?: number | null
+}
+
+interface ShipItem {
+  id: number
+  skuCode: string
+  batchLot: string
+  cartons: number
+  pallets: number
+  units: number
+  available: number
+  shippingCartonsPerPallet?: number | null
+  unitsPerCarton?: number
+}
+
 export default function WarehouseShipPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
-  const [inventory, setInventory] = useState<any[]>([])
-  const [items, setItems] = useState([
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [items, setItems] = useState<ShipItem[]>([
     { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }
   ])
 
@@ -32,14 +60,33 @@ export default function WarehouseShipPage() {
       if (item.id === id) {
         const updated = { ...item, [field]: value }
         
-        // Update availability when SKU or batch changes
-        if ((field === 'skuCode' || field === 'batchLot') && updated.skuCode) {
-          updated.available = checkAvailability(updated.skuCode, updated.batchLot)
+        // Update availability and batch config when SKU or batch changes
+        if ((field === 'skuCode' || field === 'batchLot') && updated.skuCode && updated.batchLot) {
+          const inventoryItem = inventory.find(inv => 
+            inv.sku.skuCode === updated.skuCode && inv.batchLot === updated.batchLot
+          )
+          if (inventoryItem) {
+            updated.available = inventoryItem.currentCartons
+            updated.shippingCartonsPerPallet = inventoryItem.shippingCartonsPerPallet
+            updated.unitsPerCarton = inventoryItem.sku.unitsPerCarton
+            // Auto-calculate pallets based on batch-specific config
+            if (updated.cartons > 0 && updated.shippingCartonsPerPallet) {
+              updated.pallets = Math.ceil(updated.cartons / updated.shippingCartonsPerPallet)
+            }
+          } else {
+            updated.available = 0
+            updated.shippingCartonsPerPallet = null
+            updated.unitsPerCarton = undefined
+          }
         }
         
-        // Ensure cartons doesn't exceed available inventory
-        if (field === 'cartons' && updated.available > 0) {
-          updated.cartons = Math.min(value, updated.available)
+        // Update cartons and recalculate pallets
+        if (field === 'cartons') {
+          updated.cartons = updated.available > 0 ? Math.min(value, updated.available) : value
+          // Auto-calculate pallets based on batch-specific config
+          if (updated.shippingCartonsPerPallet && updated.shippingCartonsPerPallet > 0) {
+            updated.pallets = Math.ceil(updated.cartons / updated.shippingCartonsPerPallet)
+          }
         }
         
         return updated
@@ -62,13 +109,6 @@ export default function WarehouseShipPage() {
     } catch (error) {
       console.error('Failed to fetch inventory:', error)
     }
-  }
-
-  const checkAvailability = (skuCode: string, batchLot: string) => {
-    const item = inventory.find(inv => 
-      inv.sku.skuCode === skuCode && inv.batchLot === batchLot
-    )
-    return item?.currentCartons || 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,8 +171,7 @@ export default function WarehouseShipPage() {
     
     // Check for insufficient inventory
     const insufficientItems = validItems.filter(item => {
-      const available = checkAvailability(item.skuCode, item.batchLot)
-      return item.cartons > available
+      return item.cartons > item.available
     })
     
     if (insufficientItems.length > 0) {
@@ -312,6 +351,9 @@ export default function WarehouseShipPage() {
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cartons
                     </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Shipping Config
+                    </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pallets
                     </th>
@@ -376,6 +418,15 @@ export default function WarehouseShipPage() {
                           <p className="text-xs text-red-600 mt-1">Exceeds available</p>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        {item.shippingCartonsPerPallet ? (
+                          <span className="text-sm text-gray-600" title="Cartons per shipping pallet for this batch">
+                            {item.shippingCartonsPerPallet}/pallet
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <input
                           type="number"
@@ -387,9 +438,13 @@ export default function WarehouseShipPage() {
                               e.preventDefault()
                             }
                           }}
-                          className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                          className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
+                            item.shippingCartonsPerPallet ? 'bg-gray-50' : ''
+                          }`}
                           min="0"
                           step="1"
+                          readOnly={!!item.shippingCartonsPerPallet}
+                          title={item.shippingCartonsPerPallet ? 'Auto-calculated based on cartons and batch config' : 'Enter pallets manually'}
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -427,9 +482,11 @@ export default function WarehouseShipPage() {
                     <td colSpan={2} className="px-4 py-3 text-right font-semibold">
                       Total:
                     </td>
+                    <td></td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {items.reduce((sum, item) => sum + item.cartons, 0).toLocaleString()}
                     </td>
+                    <td></td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {items.reduce((sum, item) => sum + item.pallets, 0)}
                     </td>

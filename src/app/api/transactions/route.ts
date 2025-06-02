@@ -187,6 +187,8 @@ export async function POST(request: NextRequest) {
           cartonsOut: type === 'SHIP' ? item.cartons : 0,
           storagePalletsIn: type === 'RECEIVE' ? (item.pallets || 0) : 0,
           shippingPalletsOut: type === 'SHIP' ? (item.pallets || 0) : 0,
+          storageCartonsPerPallet: type === 'RECEIVE' ? item.storageCartonsPerPallet : null,
+          shippingCartonsPerPallet: type === 'RECEIVE' ? item.shippingCartonsPerPallet : null,
           notes,
           transactionDate: new Date(date),
           createdById: session.user.id,
@@ -216,21 +218,18 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
 
-      // Get warehouse config for pallet calculation
-      const warehouseConfig = await prisma.warehouseSkuConfig.findFirst({
-        where: {
-          warehouseId,
-          skuId: sku.id,
-          OR: [
-            { endDate: null },
-            { endDate: { gte: new Date() } }
-          ]
-        },
-        orderBy: { effectiveDate: 'desc' }
-      })
-
-      const currentPallets = warehouseConfig && newBalance > 0
-        ? Math.ceil(newBalance / warehouseConfig.storageCartonsPerPallet)
+      // Calculate pallets based on batch-specific config or existing balance config
+      let storageCartonsPerPallet = item.storageCartonsPerPallet
+      let shippingCartonsPerPallet = item.shippingCartonsPerPallet
+      
+      // For SHIP transactions, use the config from the existing balance
+      if (type === 'SHIP' && balance) {
+        storageCartonsPerPallet = balance.storageCartonsPerPallet || 1
+        shippingCartonsPerPallet = balance.shippingCartonsPerPallet || 1
+      }
+      
+      const currentPallets = storageCartonsPerPallet && newBalance > 0
+        ? Math.ceil(newBalance / storageCartonsPerPallet)
         : 0
 
       if (balance) {
@@ -241,6 +240,11 @@ export async function POST(request: NextRequest) {
             currentPallets,
             currentUnits: Math.max(0, newBalance) * sku.unitsPerCarton,
             lastTransactionDate: new Date(date),
+            // Only update config for RECEIVE transactions
+            ...(type === 'RECEIVE' && {
+              storageCartonsPerPallet: item.storageCartonsPerPallet,
+              shippingCartonsPerPallet: item.shippingCartonsPerPallet,
+            }),
           }
         })
       } else if (type === 'RECEIVE' && newBalance > 0) {
@@ -252,6 +256,8 @@ export async function POST(request: NextRequest) {
             currentCartons: newBalance,
             currentPallets,
             currentUnits: newBalance * sku.unitsPerCarton,
+            storageCartonsPerPallet: item.storageCartonsPerPallet,
+            shippingCartonsPerPallet: item.shippingCartonsPerPallet,
             lastTransactionDate: new Date(date),
           }
         })

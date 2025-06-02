@@ -18,6 +18,8 @@ interface InventoryBalance {
   currentCartons: number
   currentPallets: number
   currentUnits: number
+  storageCartonsPerPallet: number | null
+  shippingCartonsPerPallet: number | null
   lastTransactionDate: string | null
 }
 
@@ -578,6 +580,9 @@ export default function UnifiedInventoryPage() {
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cartons
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Pallet Config
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pallets
                     </th>
@@ -627,6 +632,22 @@ export default function UnifiedInventoryPage() {
                             {balance.currentCartons.toLocaleString()}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="text-xs text-gray-600">
+                            {balance.storageCartonsPerPallet && balance.shippingCartonsPerPallet ? (
+                              <div className="space-y-1">
+                                <div title="Storage cartons per pallet">
+                                  S: {balance.storageCartonsPerPallet}/pallet
+                                </div>
+                                <div title="Shipping cartons per pallet">
+                                  P: {balance.shippingCartonsPerPallet}/pallet
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                           {balance.currentPallets}
                         </td>
@@ -648,7 +669,7 @@ export default function UnifiedInventoryPage() {
                   })}
                   {filteredInventory.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-6 py-12">
+                      <td colSpan={9} className="px-6 py-12">
                         <EmptyState
                           icon={Package2}
                           title={searchQuery || Object.values(filters).some(v => v) 

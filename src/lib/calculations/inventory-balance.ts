@@ -29,13 +29,24 @@ export async function updateInventoryBalances(warehouseId?: string) {
       orderBy: { transactionDate: 'asc' }
     })
     
-    // Calculate running balance
+    // Calculate running balance and get batch config from first receive
     let balance = 0
     let lastTransactionDate: Date | null = null
+    let storageCartonsPerPallet: number | null = null
+    let shippingCartonsPerPallet: number | null = null
     
     for (const transaction of transactions) {
       balance += transaction.cartonsIn - transaction.cartonsOut
       lastTransactionDate = transaction.transactionDate
+      
+      // Capture batch-specific config from first RECEIVE transaction
+      if (transaction.transactionType === 'RECEIVE' && 
+          transaction.storageCartonsPerPallet && 
+          transaction.shippingCartonsPerPallet &&
+          !storageCartonsPerPallet) {
+        storageCartonsPerPallet = transaction.storageCartonsPerPallet
+        shippingCartonsPerPallet = transaction.shippingCartonsPerPallet
+      }
     }
     
     // Never allow negative balance
@@ -46,21 +57,26 @@ export async function updateInventoryBalances(warehouseId?: string) {
       where: { id: combo.skuId }
     })
     
-    // Get warehouse config for pallet calculation
-    const warehouseConfig = await prisma.warehouseSkuConfig.findFirst({
-      where: {
-        warehouseId: combo.warehouseId,
-        skuId: combo.skuId,
-        OR: [
-          { endDate: null },
-          { endDate: { gte: new Date() } }
-        ]
-      },
-      orderBy: { effectiveDate: 'desc' }
-    })
+    // If no batch config found, fall back to warehouse config
+    if (!storageCartonsPerPallet || !shippingCartonsPerPallet) {
+      const warehouseConfig = await prisma.warehouseSkuConfig.findFirst({
+        where: {
+          warehouseId: combo.warehouseId,
+          skuId: combo.skuId,
+          OR: [
+            { endDate: null },
+            { endDate: { gte: new Date() } }
+          ]
+        },
+        orderBy: { effectiveDate: 'desc' }
+      })
+      
+      storageCartonsPerPallet = warehouseConfig?.storageCartonsPerPallet || null
+      shippingCartonsPerPallet = warehouseConfig?.shippingCartonsPerPallet || null
+    }
     
-    const currentPallets = warehouseConfig && balance > 0
-      ? Math.ceil(balance / warehouseConfig.storageCartonsPerPallet)
+    const currentPallets = storageCartonsPerPallet && balance > 0
+      ? Math.ceil(balance / storageCartonsPerPallet)
       : 0
     
     // Update or create balance record
@@ -76,6 +92,8 @@ export async function updateInventoryBalances(warehouseId?: string) {
         currentCartons: balance,
         currentPallets,
         currentUnits: balance * (sku?.unitsPerCarton || 1),
+        storageCartonsPerPallet,
+        shippingCartonsPerPallet,
         lastTransactionDate,
       },
       create: {
@@ -85,6 +103,8 @@ export async function updateInventoryBalances(warehouseId?: string) {
         currentCartons: balance,
         currentPallets,
         currentUnits: balance * (sku?.unitsPerCarton || 1),
+        storageCartonsPerPallet,
+        shippingCartonsPerPallet,
         lastTransactionDate,
       }
     })

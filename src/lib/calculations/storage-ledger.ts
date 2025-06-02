@@ -2,6 +2,25 @@ import { prisma } from '@/lib/prisma'
 import { addDays, startOfWeek, endOfWeek, eachWeekOfInterval, isMonday, startOfDay } from 'date-fns'
 
 /**
+ * Calculate cubic feet from dimensions in centimeters
+ */
+function calculateCubicFeetFromCm(dimensionsCm: string): number {
+  // Parse dimensions string (expected format: "LxWxH cm")
+  const matches = dimensionsCm.match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)/i)
+  if (!matches) {
+    return 1.5 // Default if can't parse
+  }
+  
+  const [_, length, width, height] = matches
+  const volumeCubicCm = parseFloat(length) * parseFloat(width) * parseFloat(height)
+  
+  // Convert cubic cm to cubic feet (1 cubic foot = 28,316.8 cubic cm)
+  const volumeCubicFeet = volumeCubicCm / 28316.8
+  
+  return Math.max(0.1, volumeCubicFeet) // Minimum 0.1 cubic feet
+}
+
+/**
  * Calculate storage ledger entries based on inventory snapshots
  * Storage is calculated weekly, with snapshots taken every Monday
  */
@@ -46,33 +65,46 @@ export async function calculateStorageLedger(
       
       if (balanceAsOfMonday === 0) continue
       
-      // Get warehouse config for pallet calculation
-      const warehouseConfig = await prisma.warehouseSkuConfig.findFirst({
-        where: {
-          warehouseId: combo.warehouseId,
-          skuId: combo.skuId,
-          effectiveDate: { lte: monday },
-          OR: [
-            { endDate: null },
-            { endDate: { gte: monday } }
-          ]
+      // Check if this is an Amazon warehouse
+      const isAmazonWarehouse = combo.warehouse.code?.includes('AMZN') || combo.warehouse.name.toLowerCase().includes('amazon')
+      
+      let quantityCharged: number
+      let storageUnit: string
+      
+      if (isAmazonWarehouse) {
+        // For Amazon, calculate cubic feet instead of pallets
+        // Assume standard carton dimensions if not specified
+        const cartonVolumeCubicFeet = combo.sku.cartonDimensionsCm ? 
+          calculateCubicFeetFromCm(combo.sku.cartonDimensionsCm) : 
+          1.5 // Default cubic feet per carton
+        
+        quantityCharged = Math.ceil(balanceAsOfMonday * cartonVolumeCubicFeet)
+        storageUnit = 'cubic foot'
+      } else {
+        // Get batch-specific pallet configuration for non-Amazon warehouses
+        const { storageCartonsPerPallet } = await getBatchPalletConfig(
+          combo.warehouseId,
+          combo.skuId,
+          combo.batchLot,
+          monday
+        )
+        
+        if (!storageCartonsPerPallet) {
+          console.warn(`No pallet config found for ${combo.warehouse.name} - ${combo.sku.skuCode} - Batch: ${combo.batchLot}`)
+          continue
         }
-      })
-      
-      if (!warehouseConfig) {
-        console.warn(`No warehouse config found for ${combo.warehouse.name} - ${combo.sku.skuCode}`)
-        continue
+        
+        // Calculate pallets (round up)
+        quantityCharged = Math.ceil(balanceAsOfMonday / storageCartonsPerPallet)
+        storageUnit = 'pallet'
       }
-      
-      // Calculate pallets (round up)
-      const palletsCharged = Math.ceil(balanceAsOfMonday / warehouseConfig.storageCartonsPerPallet)
       
       // Get applicable storage rate
       const storageRate = await prisma.costRate.findFirst({
         where: {
           warehouseId: combo.warehouseId,
           costCategory: 'Storage',
-          costName: { contains: 'pallet' },
+          costName: { contains: storageUnit },
           effectiveDate: { lte: monday },
           OR: [
             { endDate: null },
@@ -82,7 +114,7 @@ export async function calculateStorageLedger(
       })
       
       if (!storageRate) {
-        console.warn(`No storage rate found for ${combo.warehouse.name}`)
+        console.warn(`No storage rate found for ${combo.warehouse.name} (${storageUnit})`)
         continue
       }
       
@@ -94,9 +126,9 @@ export async function calculateStorageLedger(
           where: { slId },
           update: {
             cartonsEndOfMonday: balanceAsOfMonday,
-            storagePalletsCharged: palletsCharged,
+            storagePalletsCharged: isAmazonWarehouse ? 0 : quantityCharged, // For Amazon, store as 0 pallets
             applicableWeeklyRate: storageRate.costValue.toNumber(),
-            calculatedWeeklyCost: palletsCharged * storageRate.costValue.toNumber(),
+            calculatedWeeklyCost: quantityCharged * storageRate.costValue.toNumber(),
           },
           create: {
             slId,
@@ -105,9 +137,9 @@ export async function calculateStorageLedger(
             skuId: combo.skuId,
             batchLot: combo.batchLot,
             cartonsEndOfMonday: balanceAsOfMonday,
-            storagePalletsCharged: palletsCharged,
+            storagePalletsCharged: isAmazonWarehouse ? 0 : quantityCharged, // For Amazon, store as 0 pallets
             applicableWeeklyRate: storageRate.costValue.toNumber(),
-            calculatedWeeklyCost: palletsCharged * storageRate.costValue.toNumber(),
+            calculatedWeeklyCost: quantityCharged * storageRate.costValue.toNumber(),
             billingPeriodStart,
             billingPeriodEnd,
           }
@@ -121,6 +153,69 @@ export async function calculateStorageLedger(
   
   console.log(`✅ Created/updated ${created} storage ledger entries`)
   return created
+}
+
+/**
+ * Get batch-specific pallet configuration
+ */
+async function getBatchPalletConfig(
+  warehouseId: string,
+  skuId: string,
+  batchLot: string,
+  asOfDate: Date
+): Promise<{ storageCartonsPerPallet: number | null; shippingCartonsPerPallet: number | null }> {
+  // First check if we have the config in the inventory balance
+  const balance = await prisma.inventoryBalance.findFirst({
+    where: {
+      warehouseId,
+      skuId,
+      batchLot
+    }
+  })
+  
+  if (balance?.storageCartonsPerPallet && balance?.shippingCartonsPerPallet) {
+    return {
+      storageCartonsPerPallet: balance.storageCartonsPerPallet,
+      shippingCartonsPerPallet: balance.shippingCartonsPerPallet
+    }
+  }
+  
+  // If not in balance, look for the first RECEIVE transaction for this batch
+  const firstReceive = await prisma.inventoryTransaction.findFirst({
+    where: {
+      warehouseId,
+      skuId,
+      batchLot,
+      transactionType: 'RECEIVE',
+      transactionDate: { lte: asOfDate }
+    },
+    orderBy: { transactionDate: 'asc' }
+  })
+  
+  if (firstReceive?.storageCartonsPerPallet && firstReceive?.shippingCartonsPerPallet) {
+    return {
+      storageCartonsPerPallet: firstReceive.storageCartonsPerPallet,
+      shippingCartonsPerPallet: firstReceive.shippingCartonsPerPallet
+    }
+  }
+  
+  // Fall back to warehouse config if no batch-specific config found
+  const warehouseConfig = await prisma.warehouseSkuConfig.findFirst({
+    where: {
+      warehouseId,
+      skuId,
+      effectiveDate: { lte: asOfDate },
+      OR: [
+        { endDate: null },
+        { endDate: { gte: asOfDate } }
+      ]
+    }
+  })
+  
+  return {
+    storageCartonsPerPallet: warehouseConfig?.storageCartonsPerPallet || null,
+    shippingCartonsPerPallet: warehouseConfig?.shippingCartonsPerPallet || null
+  }
 }
 
 /**

@@ -232,6 +232,8 @@ model InventoryTransaction {
   cartonsOut          Int             @default(0) @map("cartons_out")
   storagePalletsIn    Int             @default(0) @map("storage_pallets_in")
   shippingPalletsOut  Int             @default(0) @map("shipping_pallets_out")
+  storageCartonsPerPallet   Int?      @map("storage_cartons_per_pallet") // Batch-specific config
+  shippingCartonsPerPallet  Int?      @map("shipping_cartons_per_pallet") // Batch-specific config
   notes               String?
   transactionDate     DateTime        @map("transaction_date")
   createdAt           DateTime        @default(now()) @map("created_at")
@@ -259,6 +261,8 @@ model InventoryBalance {
   currentCartons      Int       @default(0) @map("current_cartons")
   currentPallets      Int       @default(0) @map("current_pallets")
   currentUnits        Int       @default(0) @map("current_units")
+  storageCartonsPerPallet   Int?      @map("storage_cartons_per_pallet") // Batch-specific config
+  shippingCartonsPerPallet  Int?      @map("shipping_cartons_per_pallet") // Batch-specific config
   lastTransactionDate DateTime? @map("last_transaction_date")
   lastUpdated         DateTime  @default(now()) @updatedAt @map("last_updated")
 
