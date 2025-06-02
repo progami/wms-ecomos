@@ -30,7 +30,7 @@ async function ensureAmazonWarehouse() {
     // Also create some sample Amazon inventory transactions if needed
     const sampleSku = await prisma.sku.findFirst()
     if (sampleSku && existingWarehouse) {
-      const amazonTransactions = await prisma.transaction.count({
+      const amazonTransactions = await prisma.inventoryTransaction.count({
         where: {
           warehouseId: existingWarehouse.id
         }
@@ -38,16 +38,28 @@ async function ensureAmazonWarehouse() {
 
       if (amazonTransactions === 0) {
         // Create a sample Amazon inventory transaction
-        await prisma.transaction.create({
-          data: {
-            type: 'RECEIVE',
-            date: new Date(),
-            skuId: sampleSku.id,
-            warehouseId: existingWarehouse.id,
-            quantity: 100,
-            notes: 'Sample Amazon FBA inventory'
-          }
+        const adminUser = await prisma.user.findFirst({
+          where: { role: 'admin' }
         })
+        
+        if (adminUser) {
+          await prisma.inventoryTransaction.create({
+            data: {
+              transactionId: `AMZN-${Date.now()}`,
+              transactionType: 'RECEIVE',
+              transactionDate: new Date(),
+              skuId: sampleSku.id,
+              warehouseId: existingWarehouse.id,
+              batchLot: 'AMZN-001',
+              cartonsIn: 10,
+              cartonsOut: 0,
+              storagePalletsIn: 1,
+              shippingPalletsOut: 0,
+              notes: 'Sample Amazon FBA inventory',
+              createdById: adminUser.id
+            }
+          })
+        }
         console.log('Created sample Amazon inventory transaction')
       }
     }

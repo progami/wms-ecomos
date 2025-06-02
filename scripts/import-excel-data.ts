@@ -139,10 +139,20 @@ async function importWarehouseConfigs(workbook: XLSX.WorkBook, adminUserId: stri
   const warehouses = await prisma.warehouse.findMany()
   const warehouseMap = new Map()
   warehouses.forEach(w => {
+    // Map by code
     warehouseMap.set(w.code, w.id)
     warehouseMap.set(w.code.toLowerCase(), w.id)
+    warehouseMap.set(w.code.toUpperCase(), w.id)
+    
+    // Map by name
+    warehouseMap.set(w.name, w.id)
+    warehouseMap.set(w.name.toLowerCase(), w.id)
+    warehouseMap.set(w.name.toUpperCase(), w.id)
+    
+    // Special cases for compatibility
     if (w.code === 'VGLOBAL') {
       warehouseMap.set('Vglobal', w.id)
+      warehouseMap.set('vglobal', w.id)
     }
     if (w.code === '4AS') {
       warehouseMap.set('4as', w.id)
@@ -193,7 +203,18 @@ async function importCostRates(workbook: XLSX.WorkBook, adminUserId: string) {
   const data: ExcelCostRate[] = XLSX.utils.sheet_to_json(sheet)
   
   const warehouses = await prisma.warehouse.findMany()
-  const warehouseMap = new Map(warehouses.map(w => [w.code.toLowerCase(), w.id]))
+  const warehouseMap = new Map()
+  warehouses.forEach(w => {
+    // Map by code
+    warehouseMap.set(w.code, w.id)
+    warehouseMap.set(w.code.toLowerCase(), w.id)
+    warehouseMap.set(w.code.toUpperCase(), w.id)
+    
+    // Map by name
+    warehouseMap.set(w.name, w.id)
+    warehouseMap.set(w.name.toLowerCase(), w.id)
+    warehouseMap.set(w.name.toUpperCase(), w.id)
+  })
   
   const categoryMap: Record<string, CostCategory> = {
     'container': CostCategory.Container,
@@ -248,10 +269,20 @@ async function importInventoryTransactions(workbook: XLSX.WorkBook, adminUserId:
   const warehouses = await prisma.warehouse.findMany()
   const warehouseMap = new Map()
   warehouses.forEach(w => {
+    // Map by code
     warehouseMap.set(w.code, w.id)
     warehouseMap.set(w.code.toLowerCase(), w.id)
+    warehouseMap.set(w.code.toUpperCase(), w.id)
+    
+    // Map by name
+    warehouseMap.set(w.name, w.id)
+    warehouseMap.set(w.name.toLowerCase(), w.id)
+    warehouseMap.set(w.name.toUpperCase(), w.id)
+    
+    // Special cases for compatibility
     if (w.code === 'VGLOBAL') {
       warehouseMap.set('Vglobal', w.id)
+      warehouseMap.set('vglobal', w.id)
     }
     if (w.code === '4AS') {
       warehouseMap.set('4as', w.id)

@@ -50,6 +50,7 @@ export default function UnifiedInventoryPage() {
   // Data states
   const [inventoryData, setInventoryData] = useState<InventoryBalance[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [warehouses, setWarehouses] = useState<{id: string; name: string}[]>([])
   const [loading, setLoading] = useState(true)
   
   // Filter states
@@ -81,6 +82,15 @@ export default function UnifiedInventoryPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
+      
+      // Fetch warehouses on first load
+      if (warehouses.length === 0) {
+        const warehouseResponse = await fetch('/api/warehouses')
+        if (warehouseResponse.ok) {
+          const warehouseData = await warehouseResponse.json()
+          setWarehouses(warehouseData)
+        }
+      }
       
       if (activeTab === 'balances') {
         // Fetch inventory balances
@@ -115,7 +125,7 @@ export default function UnifiedInventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, viewMode, selectedDate])
+  }, [activeTab, viewMode, selectedDate, warehouses.length])
 
   useEffect(() => {
     fetchData()
@@ -396,9 +406,11 @@ export default function UnifiedInventoryPage() {
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">All Warehouses</option>
-                    <option value="warehouse-1">FMC Warehouse</option>
-                    <option value="warehouse-2">Vglobal Warehouse</option>
-                    <option value="warehouse-3">4AS Warehouse</option>
+                    {warehouses.map((warehouse) => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 

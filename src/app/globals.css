@@ -210,6 +210,22 @@
   @apply bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-medium;
 }
 
+.badge-purple {
+  @apply bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-pink {
+  @apply bg-pink-100 text-pink-700 px-3 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-secondary {
+  @apply bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium;
+}
+
 .input-focus {
   @apply focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
 }

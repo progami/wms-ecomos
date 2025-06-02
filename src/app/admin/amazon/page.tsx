@@ -49,7 +49,9 @@ export default function AmazonIntegrationPage() {
         setInventory(data)
         setLastRefresh(new Date())
       } else {
-        toast.error('Failed to fetch inventory comparison')
+        const errorData = await response.json()
+        console.error('API Error:', errorData)
+        toast.error(errorData.details || 'Failed to fetch inventory comparison')
       }
     } catch (error) {
       toast.error('Error fetching inventory data')
@@ -121,13 +123,13 @@ export default function AmazonIntegrationPage() {
           <div className="bg-white border rounded-lg p-4">
             <h3 className="text-sm font-medium text-gray-600">Total Warehouse Stock</h3>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {totalWarehouse.toLocaleString()}
+              {totalWarehouse.toLocaleString()} units
             </p>
           </div>
           <div className="bg-white border rounded-lg p-4">
             <h3 className="text-sm font-medium text-gray-600">Total Amazon FBA Stock</h3>
             <p className="text-2xl font-bold text-orange-600 mt-1">
-              {totalAmazon.toLocaleString()}
+              {totalAmazon.toLocaleString()} units
             </p>
           </div>
           <div className="bg-white border rounded-lg p-4">
@@ -151,13 +153,13 @@ export default function AmazonIntegrationPage() {
                     Description
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Warehouse Qty
+                    Warehouse Units
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amazon FBA Qty
+                    Amazon FBA Units
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Difference
+                    Difference (Units)
                   </th>
                 </tr>
               </thead>

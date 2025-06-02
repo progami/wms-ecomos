@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { DollarSign, Plus, Edit2, Calendar, AlertCircle, Filter } from 'lucide-react'
+import { DollarSign, Plus, Edit2, Calendar, AlertCircle, Filter, X } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { toast } from 'react-hot-toast'
@@ -37,11 +37,18 @@ export default function AdminRatesPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [showActiveOnly, setShowActiveOnly] = useState(true)
+  const [groupBy, setGroupBy] = useState<'warehouse' | 'category'>('warehouse')
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session || session.user.role !== 'admin') {
+    if (!session) {
       router.push('/auth/login')
+      return
+    }
+    // Both admin and staff can view rates
+    if (!['admin', 'staff'].includes(session.user.role)) {
+      router.push('/dashboard')
       return
     }
     fetchData()
@@ -69,26 +76,21 @@ export default function AdminRatesPage() {
     }
   }
 
-  const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      Storage: 'bg-blue-100 text-blue-800',
-      Container: 'bg-purple-100 text-purple-800',
-      Carton: 'bg-green-100 text-green-800',
-      Pallet: 'bg-yellow-100 text-yellow-800',
-      Unit: 'bg-pink-100 text-pink-800',
-      Shipment: 'bg-indigo-100 text-indigo-800',
-      Accessorial: 'bg-gray-100 text-gray-800'
+  const getCategoryBadgeClass = (category: string) => {
+    const classes: { [key: string]: string } = {
+      Storage: 'badge-primary',
+      Container: 'badge-purple',
+      Carton: 'badge-success',
+      Pallet: 'badge-warning',
+      Unit: 'badge-pink',
+      Shipment: 'badge-info',
+      Accessorial: 'badge-secondary'
     }
-    return colors[category] || 'bg-gray-100 text-gray-800'
+    return classes[category] || 'badge-secondary'
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value)
+    return `$${value.toFixed(2)}`
   }
 
   // Filter rates
@@ -99,53 +101,68 @@ export default function AdminRatesPage() {
       const now = new Date()
       const effectiveDate = new Date(rate.effectiveDate)
       const endDate = rate.endDate ? new Date(rate.endDate) : null
-      const isActive = effectiveDate <= now && (!endDate || endDate >= now)
-      if (!isActive) return false
+      if (effectiveDate > now) return false // Future rates
+      if (endDate && endDate < now) return false // Expired rates
     }
     return true
   })
 
-  // Group rates by category
-  const groupedRates = filteredRates.reduce((acc, rate) => {
-    if (!acc[rate.costCategory]) {
-      acc[rate.costCategory] = []
+  // Group rates
+  const groupedRates = () => {
+    if (groupBy === 'warehouse') {
+      return warehouses.map(warehouse => ({
+        key: warehouse.id,
+        title: warehouse.name,
+        subtitle: `${filteredRates.filter(r => r.warehouseId === warehouse.id).length} active rates`,
+        rates: filteredRates.filter(r => r.warehouseId === warehouse.id)
+      }))
+    } else {
+      const categories = ['Storage', 'Container', 'Carton', 'Pallet', 'Unit', 'Shipment', 'Accessorial']
+      return categories.map(category => ({
+        key: category,
+        title: category,
+        subtitle: getCategoryDescription(category),
+        rates: filteredRates.filter(r => r.costCategory === category)
+      })).filter(group => group.rates.length > 0)
     }
-    acc[rate.costCategory].push(rate)
-    return acc
-  }, {} as { [key: string]: CostRate[] })
+  }
 
-  // Sort rates within each category by warehouse name and effective date
-  Object.keys(groupedRates).forEach(category => {
-    groupedRates[category].sort((a, b) => {
-      const warehouseCompare = a.warehouse.name.localeCompare(b.warehouse.name)
-      if (warehouseCompare !== 0) return warehouseCompare
-      return new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
-    })
-  })
+  const getCategoryDescription = (category: string) => {
+    const descriptions: { [key: string]: string } = {
+      Storage: 'Weekly storage charges per pallet',
+      Container: 'Container handling and unloading fees',
+      Carton: 'Per carton charges for special handling',
+      Pallet: 'Pallet movement and handling fees',
+      Unit: 'Per unit charges for pick and pack',
+      Shipment: 'Shipping and freight charges',
+      Accessorial: 'Additional services and special charges'
+    }
+    return descriptions[category] || 'Other charges'
+  }
 
-  // Get unique categories in logical order
-  const categoryOrder = ['Storage', 'Container', 'Carton', 'Pallet', 'Unit', 'Shipment', 'Accessorial']
-  const categories = [...new Set(rates.map(r => r.costCategory))].sort((a, b) => {
-    const aIndex = categoryOrder.indexOf(a)
-    const bIndex = categoryOrder.indexOf(b)
-    if (aIndex === -1) return 1
-    if (bIndex === -1) return -1
-    return aIndex - bIndex
-  })
+  const getStatusBadge = (rate: CostRate) => {
+    const now = new Date()
+    const effectiveDate = new Date(rate.effectiveDate)
+    const endDate = rate.endDate ? new Date(rate.endDate) : null
 
-  // Count active storage rates per warehouse
-  const storageRateCount = rates
-    .filter(r => r.costCategory === 'Storage' && (!r.endDate || new Date(r.endDate) >= new Date()))
-    .reduce((acc, rate) => {
-      acc[rate.warehouseId] = (acc[rate.warehouseId] || 0) + 1
-      return acc
-    }, {} as { [key: string]: number })
+    if (endDate && endDate < now) {
+      return <span className="text-xs text-gray-500">Expired</span>
+    } else if (effectiveDate > now) {
+      return <span className="text-xs text-blue-600">Future</span>
+    } else {
+      return <span className="text-xs text-green-600">Active</span>
+    }
+  }
 
-  // Check for warehouses with multiple active storage rates
-  const warehousesWithMultipleStorageRates = Object.entries(storageRateCount)
-    .filter(([_, count]) => count > 1)
-    .map(([warehouseId]) => warehouses.find(w => w.id === warehouseId)?.name)
-    .filter(Boolean)
+  const hasActiveStorageRate = (warehouseId: string) => {
+    const storageRates = rates.filter(r => 
+      r.warehouseId === warehouseId && 
+      r.costCategory === 'Storage' &&
+      new Date(r.effectiveDate) <= new Date() &&
+      (!r.endDate || new Date(r.endDate) >= new Date())
+    )
+    return storageRates.length > 1
+  }
 
   if (loading) {
     return (
@@ -157,299 +174,300 @@ export default function AdminRatesPage() {
     )
   }
 
+  // Get stats for the history section
+  const activeRatesCount = rates.filter(rate => {
+    const now = new Date()
+    const effectiveDate = new Date(rate.effectiveDate)
+    const endDate = rate.endDate ? new Date(rate.endDate) : null
+    return effectiveDate <= now && (!endDate || endDate >= now)
+  }).length
+
+  const lastUpdateDate = rates.reduce((latest, rate) => {
+    const rateDate = new Date(rate.effectiveDate)
+    return rateDate > latest ? rateDate : latest
+  }, new Date(0))
+
+  const pendingChanges = rates.filter(rate => 
+    new Date(rate.effectiveDate) > new Date()
+  ).length
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Page Header */}
         <PageHeader
-          title="Cost Rates Master"
-          subtitle="3PL pricing and rate structures"
-          description="Manage cost rates for all warehouses. Rates are organized by category (Storage, Container, Carton, etc.) as defined in the Excel system. Each warehouse must have exactly one active storage rate."
+          title="Cost Rates Management"
+          description="Configure and manage storage rates, handling fees, and other charges for each warehouse. These rates are used to calculate monthly storage costs and reconcile with warehouse invoices."
           icon={DollarSign}
-          iconColor="text-green-600"
-          bgColor="bg-green-50"
-          borderColor="border-green-200"
-          textColor="text-green-800"
           actions={
-            <Link
-              href="/admin/settings/rates/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Rate
-            </Link>
+            session?.user.role === 'admin' && (
+              <Link
+                href="/admin/settings/rates/new"
+                className="action-button"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Rate
+              </Link>
+            )
           }
         />
 
-        {/* Warnings */}
-        {warehousesWithMultipleStorageRates.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+        {/* Filters */}
+        <div className="bg-white border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            >
+              <Filter className="h-4 w-4" />
+              Filters {showFilters ? <X className="h-4 w-4" /> : null}
+            </button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Group by:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setGroupBy('warehouse')}
+                  className={`px-3 py-1 text-sm rounded-md ${
+                    groupBy === 'warehouse' 
+                      ? 'bg-primary text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Warehouse
+                </button>
+                <button
+                  onClick={() => setGroupBy('category')}
+                  className={`px-3 py-1 text-sm rounded-md ${
+                    groupBy === 'category' 
+                      ? 'bg-primary text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Category
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
               <div>
-                <h3 className="font-semibold text-red-900">Multiple Storage Rates Detected</h3>
-                <p className="text-sm text-red-800 mt-1">
-                  The following warehouses have multiple active storage rates: {warehousesWithMultipleStorageRates.join(', ')}.
-                  Each warehouse should have only one active storage rate at a time.
-                </p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Warehouse
+                </label>
+                <select
+                  value={selectedWarehouse}
+                  onChange={(e) => setSelectedWarehouse(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="all">All Warehouses</option>
+                  {warehouses.map(warehouse => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="all">All Categories</option>
+                  {['Storage', 'Container', 'Carton', 'Pallet', 'Unit', 'Shipment', 'Accessorial'].map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={showActiveOnly}
+                    onChange={(e) => setShowActiveOnly(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Active rates only</span>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Warnings */}
+        {warehouses.some(w => hasActiveStorageRate(w.id)) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-yellow-800">
+                <p className="font-semibold mb-1">Multiple Active Storage Rates Detected</p>
+                <p>Some warehouses have multiple active storage rates. This may cause calculation issues.</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <span className="font-medium text-gray-700">Filters</span>
+        {/* Rates by Group */}
+        {groupedRates().map((group) => (
+          <div key={group.key} className="border rounded-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b">
+              <h2 className="text-xl font-semibold">{group.title}</h2>
+              <p className="text-sm text-gray-600">{group.subtitle}</p>
+            </div>
+            
+            {group.rates.length === 0 ? (
+              <div className="px-6 py-8 text-center text-gray-500">
+                No rates configured
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {groupBy === 'category' && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Warehouse
+                        </th>
+                      )}
+                      {groupBy === 'warehouse' && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Category
+                        </th>
+                      )}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Cost Name
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Rate
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Unit
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Effective Date
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      {session?.user.role === 'admin' && (
+                        <th className="relative px-6 py-3">
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {group.rates.map((rate) => (
+                      <tr key={rate.id} className="hover:bg-gray-50">
+                        {groupBy === 'category' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {rate.warehouse.name}
+                          </td>
+                        )}
+                        {groupBy === 'warehouse' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={getCategoryBadgeClass(rate.costCategory)}>
+                              {rate.costCategory}
+                            </span>
+                          </td>
+                        )}
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {rate.costName}
+                          {rate.notes && (
+                            <p className="text-xs text-gray-500 mt-1">{rate.notes}</p>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                          {formatCurrency(rate.costValue)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {rate.unitOfMeasure}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(rate.effectiveDate).toLocaleDateString()}
+                          {rate.endDate && (
+                            <span className="text-xs text-gray-400 block">
+                              to {new Date(rate.endDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {getStatusBadge(rate)}
+                        </td>
+                        {session?.user.role === 'admin' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <Link
+                              href={`/admin/settings/rates/${rate.id}/edit`}
+                              className="text-primary hover:text-primary/80"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Link>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Warehouse
-              </label>
-              <select
-                value={selectedWarehouse}
-                onChange={(e) => setSelectedWarehouse(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">All Warehouses</option>
-                {warehouses.map(warehouse => (
-                  <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name} ({warehouse.code})
-                  </option>
-                ))}
-              </select>
+        ))}
+
+        {/* Rate History Summary */}
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-6 w-6 text-indigo-600" />
+              <div>
+                <h3 className="text-lg font-semibold">Rate History</h3>
+                <p className="text-sm text-gray-600">Overview of rate changes and status</p>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">All Categories</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="bg-white p-4 rounded-lg">
+              <p className="text-sm text-gray-600">Last Rate Update</p>
+              <p className="text-lg font-semibold">
+                {lastUpdateDate.getTime() > 0 
+                  ? lastUpdateDate.toLocaleDateString()
+                  : 'No rates yet'
+                }
+              </p>
             </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={showActiveOnly}
-                  onChange={(e) => setShowActiveOnly(e.target.checked)}
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <span className="text-sm font-medium text-gray-700">Active rates only</span>
-              </label>
+            <div className="bg-white p-4 rounded-lg">
+              <p className="text-sm text-gray-600">Total Active Rates</p>
+              <p className="text-lg font-semibold">{activeRatesCount}</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg">
+              <p className="text-sm text-gray-600">Pending Changes</p>
+              <p className="text-lg font-semibold">{pendingChanges}</p>
             </div>
           </div>
         </div>
 
-        {/* Rates Display */}
-        {Object.keys(groupedRates).length === 0 ? (
-          <div className="bg-white border rounded-lg p-12 text-center">
-            <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Rates Found</h3>
-            <p className="text-gray-600 mb-4">
-              {showActiveOnly ? 'No active rates match your filters.' : 'No rates match your filters.'}
-            </p>
-            <Link
-              href="/admin/settings/rates/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Rate
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {categoryOrder
-              .filter(category => groupedRates[category])
-              .map((category) => {
-                const categoryRates = groupedRates[category]
-                return (
-                <div key={category} className="bg-white border rounded-lg overflow-hidden">
-                  <div className={`px-6 py-3 border-b ${getCategoryColor(category).replace('text-', 'bg-').replace('-800', '-50')}`}>
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold flex items-center gap-3">
-                        <span className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryColor(category)}`}>
-                          {category}
-                        </span>
-                        <span className="text-gray-600">
-                          {category === 'Storage' ? 'Weekly pallet storage charges' :
-                           category === 'Container' ? 'Container handling charges' :
-                           category === 'Carton' ? 'Per carton handling' :
-                           category === 'Pallet' ? 'Pallet movement charges' :
-                           category === 'Unit' ? 'Individual unit handling' :
-                           category === 'Shipment' ? 'Per shipment/order charges' :
-                           'Additional services'}
-                        </span>
-                      </h3>
-                      <span className="text-sm text-gray-500">
-                        {categoryRates.length} rate{categoryRates.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Warehouse
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cost Name
-                          </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Rate
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Unit
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Effective Period
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {categoryRates.map((rate) => {
-                          const now = new Date()
-                          const effectiveDate = new Date(rate.effectiveDate)
-                          const endDate = rate.endDate ? new Date(rate.endDate) : null
-                          const isActive = effectiveDate <= now && (!endDate || endDate >= now)
-                          const isFuture = effectiveDate > now
-                          
-                          return (
-                            <tr key={rate.id} className={!isActive ? 'bg-gray-50' : ''}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {rate.warehouse.name}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {rate.warehouse.code}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {rate.costName}
-                                </div>
-                                {rate.notes && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {rate.notes}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right">
-                                <span className="text-lg font-semibold text-gray-900">
-                                  {formatCurrency(rate.costValue)}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {rate.unitOfMeasure}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                  <Calendar className="h-4 w-4" />
-                                  {new Date(rate.effectiveDate).toLocaleDateString()}
-                                  {rate.endDate && (
-                                    <>
-                                      <span className="mx-1">→</span>
-                                      {new Date(rate.endDate).toLocaleDateString()}
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {isActive ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Active
-                                  </span>
-                                ) : isFuture ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Future
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    Expired
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                <Link
-                                  href={`/admin/settings/rates/${rate.id}/edit`}
-                                  className="text-primary hover:text-primary/80"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Link>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Information Section */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-4">Cost Categories Reference</h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <div>
-                <h4 className="font-medium text-blue-900">Storage</h4>
-                <p className="text-sm text-blue-800">Weekly pallet storage charges. Only one active rate per warehouse.</p>
-                <p className="text-xs text-blue-700 mt-1">Required unit: pallet/week</p>
+        {/* Category Reference */}
+        <div className="bg-gray-50 border rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Cost Category Reference</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries({
+              Storage: 'Weekly storage charges per pallet',
+              Container: 'Container handling and unloading fees',
+              Carton: 'Per carton charges for special handling',
+              Pallet: 'Pallet movement and handling fees',
+              Unit: 'Per unit charges for pick and pack',
+              Shipment: 'Shipping and freight charges',
+              Accessorial: 'Additional services and special charges'
+            }).map(([category, description]) => (
+              <div key={category} className="flex items-start gap-3">
+                <span className={`${getCategoryBadgeClass(category)} mt-1`}>
+                  {category}
+                </span>
+                <p className="text-sm text-gray-600">{description}</p>
               </div>
-              <div>
-                <h4 className="font-medium text-blue-900">Container</h4>
-                <p className="text-sm text-blue-800">Container handling and devanning charges.</p>
-                <p className="text-xs text-blue-700 mt-1">Units: container, 20ft, 40ft, hc</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-900">Carton</h4>
-                <p className="text-sm text-blue-800">Per carton handling charges.</p>
-                <p className="text-xs text-blue-700 mt-1">Units: carton, case</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-900">Pallet</h4>
-                <p className="text-sm text-blue-800">Pallet in/out movement charges.</p>
-                <p className="text-xs text-blue-700 mt-1">Units: pallet, pallet/in, pallet/out</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <h4 className="font-medium text-blue-900">Unit</h4>
-                <p className="text-sm text-blue-800">Individual unit handling charges.</p>
-                <p className="text-xs text-blue-700 mt-1">Units: unit, piece, item</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-900">Shipment</h4>
-                <p className="text-sm text-blue-800">Per shipment/order processing charges.</p>
-                <p className="text-xs text-blue-700 mt-1">Units: shipment, order, delivery</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-900">Accessorial</h4>
-                <p className="text-sm text-blue-800">Additional services and special handling.</p>
-                <p className="text-xs text-blue-700 mt-1">Units: hour, service, fee, charge</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>

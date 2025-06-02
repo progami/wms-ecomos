@@ -48,7 +48,7 @@ describe('Warehouse Inventory Page', () => {
     it('should allow warehouse_staff to access their warehouse inventory', async () => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ id: 'warehouse-1', name: 'FMC Warehouse' })
+        mockData.warehouse({ id: 'warehouse-1', name: 'FMC' })
       )
       ;(prisma.inventoryBalance.findMany as jest.Mock).mockResolvedValue([])
 
@@ -124,7 +124,7 @@ describe('Warehouse Inventory Page', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ name: 'FMC Warehouse' })
+        mockData.warehouse({ name: 'FMC' })
       )
     })
 
@@ -133,8 +133,8 @@ describe('Warehouse Inventory Page', () => {
 
       render(await WarehouseInventoryPage())
 
-      expect(screen.getByText('Inventory - FMC Warehouse')).toBeInTheDocument()
-      expect(screen.getByText('Current inventory levels for FMC Warehouse')).toBeInTheDocument()
+      expect(screen.getByText('Inventory - FMC')).toBeInTheDocument()
+      expect(screen.getByText('Current inventory levels for FMC')).toBeInTheDocument()
     })
 
     it('should display generic title for admin', async () => {
@@ -172,7 +172,7 @@ describe('Warehouse Inventory Page', () => {
     it('should display inventory balances', async () => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ name: 'FMC Warehouse' })
+        mockData.warehouse({ name: 'FMC' })
       )
 
       const mockInventory = [
@@ -183,7 +183,7 @@ describe('Warehouse Inventory Page', () => {
           currentPallets: 5,
           currentUnits: 1200,
           lastTransactionDate: new Date('2024-01-15'),
-          warehouse: { name: 'FMC Warehouse' },
+          warehouse: { name: 'FMC' },
         }),
         mockData.inventoryBalance({
           sku: { skuCode: 'CS-002', description: 'Product 2' },
@@ -192,7 +192,7 @@ describe('Warehouse Inventory Page', () => {
           currentPallets: 3,
           currentUnits: 600,
           lastTransactionDate: new Date('2024-01-14'),
-          warehouse: { name: 'FMC Warehouse' },
+          warehouse: { name: 'FMC' },
         }),
       ]
 
@@ -219,11 +219,11 @@ describe('Warehouse Inventory Page', () => {
 
       const mockInventory = [
         mockData.inventoryBalance({
-          warehouse: { name: 'FMC Warehouse' },
+          warehouse: { name: 'FMC' },
           sku: { skuCode: 'CS-001', description: 'Product 1' },
         }),
         mockData.inventoryBalance({
-          warehouse: { name: 'HSQ Warehouse' },
+          warehouse: { name: 'HSQ' },
           sku: { skuCode: 'CS-002', description: 'Product 2' },
         }),
       ]
@@ -232,8 +232,8 @@ describe('Warehouse Inventory Page', () => {
 
       render(await WarehouseInventoryPage())
 
-      expect(screen.getByText('FMC Warehouse')).toBeInTheDocument()
-      expect(screen.getByText('HSQ Warehouse')).toBeInTheDocument()
+      expect(screen.getByText('FMC')).toBeInTheDocument()
+      expect(screen.getByText('HSQ')).toBeInTheDocument()
     })
   })
 
@@ -241,7 +241,7 @@ describe('Warehouse Inventory Page', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ name: 'FMC Warehouse' })
+        mockData.warehouse({ name: 'FMC' })
       )
     })
 
@@ -290,7 +290,7 @@ describe('Warehouse Inventory Page', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ name: 'FMC Warehouse' })
+        mockData.warehouse({ name: 'FMC' })
       )
       ;(prisma.inventoryBalance.findMany as jest.Mock).mockResolvedValue([])
     })
@@ -314,7 +314,7 @@ describe('Warehouse Inventory Page', () => {
     it('should format numbers with commas', async () => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ name: 'FMC Warehouse' })
+        mockData.warehouse({ name: 'FMC' })
       )
 
       const mockInventory = [
@@ -334,7 +334,7 @@ describe('Warehouse Inventory Page', () => {
     it('should format dates correctly', async () => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ name: 'FMC Warehouse' })
+        mockData.warehouse({ name: 'FMC' })
       )
 
       const mockInventory = [
@@ -354,7 +354,7 @@ describe('Warehouse Inventory Page', () => {
     it('should show "-" for null last transaction date', async () => {
       mockGetServerSession.mockResolvedValue(mockSessions.warehouseStaff)
       ;(prisma.warehouse.findUnique as jest.Mock).mockResolvedValue(
-        mockData.warehouse({ name: 'FMC Warehouse' })
+        mockData.warehouse({ name: 'FMC' })
       )
 
       const mockInventory = [

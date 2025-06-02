@@ -231,8 +231,8 @@ describe('Billing and Reporting Workflow Integration Tests', () => {
   describe('Multi-Warehouse Billing Workflow', () => {
     it('should generate consolidated billing for multiple warehouses', async () => {
       const warehouses = [
-        mockData.warehouse({ id: 'wh-1', code: 'FMC', name: 'FMC Warehouse' }),
-        mockData.warehouse({ id: 'wh-2', code: 'HSQ', name: 'HSQ Warehouse' }),
+        mockData.warehouse({ id: 'wh-1', code: 'FMC', name: 'FMC' }),
+        mockData.warehouse({ id: 'wh-2', code: 'HSQ', name: 'HSQ' }),
       ]
 
       // Generate storage ledger for all warehouses

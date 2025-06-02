@@ -69,16 +69,28 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const validatedData = createWarehouseSchema.parse(body)
 
-    // Check if warehouse code already exists
-    const existingWarehouse = await prisma.warehouse.findUnique({
-      where: { code: validatedData.code }
+    // Check if warehouse code already exists (case-insensitive)
+    const existingWarehouse = await prisma.warehouse.findFirst({
+      where: {
+        OR: [
+          { code: { equals: validatedData.code, mode: 'insensitive' } },
+          { name: { equals: validatedData.name, mode: 'insensitive' } }
+        ]
+      }
     })
 
     if (existingWarehouse) {
-      return NextResponse.json(
-        { error: 'Warehouse code already exists' },
-        { status: 400 }
-      )
+      if (existingWarehouse.code.toLowerCase() === validatedData.code.toLowerCase()) {
+        return NextResponse.json(
+          { error: 'Warehouse code already exists (case-insensitive match)' },
+          { status: 400 }
+        )
+      } else {
+        return NextResponse.json(
+          { error: 'Warehouse name already exists (case-insensitive match)' },
+          { status: 400 }
+        )
+      }
     }
 
     const warehouse = await prisma.warehouse.create({
@@ -131,20 +143,40 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
     const validatedData = updateWarehouseSchema.parse(body)
 
-    // If updating code, check if it's already in use
-    if (validatedData.code) {
-      const existingWarehouse = await prisma.warehouse.findFirst({
-        where: {
-          code: validatedData.code,
+    // If updating code or name, check if they're already in use (case-insensitive)
+    if (validatedData.code || validatedData.name) {
+      const whereConditions = []
+      
+      if (validatedData.code) {
+        whereConditions.push({
+          code: { equals: validatedData.code, mode: 'insensitive' as const },
           id: { not: warehouseId }
-        }
+        })
+      }
+      
+      if (validatedData.name) {
+        whereConditions.push({
+          name: { equals: validatedData.name, mode: 'insensitive' as const },
+          id: { not: warehouseId }
+        })
+      }
+      
+      const existingWarehouse = await prisma.warehouse.findFirst({
+        where: { OR: whereConditions }
       })
 
       if (existingWarehouse) {
-        return NextResponse.json(
-          { error: 'Warehouse code already in use' },
-          { status: 400 }
-        )
+        if (validatedData.code && existingWarehouse.code.toLowerCase() === validatedData.code.toLowerCase()) {
+          return NextResponse.json(
+            { error: 'Warehouse code already in use (case-insensitive match)' },
+            { status: 400 }
+          )
+        } else if (validatedData.name && existingWarehouse.name.toLowerCase() === validatedData.name.toLowerCase()) {
+          return NextResponse.json(
+            { error: 'Warehouse name already in use (case-insensitive match)' },
+            { status: 400 }
+          )
+        }
       }
     }
 

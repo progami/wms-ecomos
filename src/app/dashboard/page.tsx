@@ -220,7 +220,7 @@ function getQuickActions(role: string) {
     rates: {
       title: 'Cost Rates',
       description: 'Manage warehouse rates',
-      href: '/finance/rates',
+      href: '/admin/settings/rates',
       icon: DollarSign,
       bgColor: 'bg-emerald-100',
       iconColor: 'text-emerald-600'

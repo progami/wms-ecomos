@@ -319,7 +319,7 @@ export default function FinanceDashboardPage() {
                 title="Rate Management"
                 description="Update 3PL rates"
                 icon={DollarSign}
-                href="/finance/rates"
+                href="/admin/settings/rates"
               />
             </div>
           </div>

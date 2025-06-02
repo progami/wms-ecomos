@@ -41,7 +41,7 @@ describe('Reports Client Page', () => {
       render(<ReportsClientPage {...defaultProps} />)
 
       expect(screen.getByText('Reports')).toBeInTheDocument()
-      expect(screen.getByText('FMC Warehouse Reports')).toBeInTheDocument()
+      expect(screen.getByText('FMC Reports')).toBeInTheDocument()
     })
 
     it('renders all main sections', () => {

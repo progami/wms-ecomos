@@ -145,7 +145,7 @@ describe('Storage Ledger Calculations', () => {
         skuId: 'sku-1',
         batchLot: 'BATCH001',
         currentCartons: 100,
-        warehouse: { code: 'FMC', name: 'FMC Warehouse' },
+        warehouse: { code: 'FMC', name: 'FMC' },
         sku: { skuCode: 'CS-001' },
       })
 
@@ -208,7 +208,7 @@ describe('Storage Ledger Calculations', () => {
     it('should handle missing warehouse config', async () => {
       const mockBalance = mockData.inventoryBalance({
         currentCartons: 100,
-        warehouse: { code: 'FMC', name: 'FMC Warehouse' },
+        warehouse: { code: 'FMC', name: 'FMC' },
         sku: { skuCode: 'CS-001' },
       })
 
@@ -230,7 +230,7 @@ describe('Storage Ledger Calculations', () => {
     it('should handle missing storage rate', async () => {
       const mockBalance = mockData.inventoryBalance({
         currentCartons: 100,
-        warehouse: { code: 'FMC', name: 'FMC Warehouse' },
+        warehouse: { code: 'FMC', name: 'FMC' },
         sku: { skuCode: 'CS-001' },
       })
 
@@ -266,7 +266,7 @@ describe('Storage Ledger Calculations', () => {
 
         const mockBalance = mockData.inventoryBalance({
           currentCartons: cartons,
-          warehouse: { code: 'FMC', name: 'FMC Warehouse' },
+          warehouse: { code: 'FMC', name: 'FMC' },
           sku: { skuCode: 'CS-001' },
         })
 
@@ -293,7 +293,7 @@ describe('Storage Ledger Calculations', () => {
     it('should handle database errors gracefully', async () => {
       const mockBalance = mockData.inventoryBalance({
         currentCartons: 100,
-        warehouse: { code: 'FMC', name: 'FMC Warehouse' },
+        warehouse: { code: 'FMC', name: 'FMC' },
         sku: { skuCode: 'CS-001' },
       })
 
@@ -345,7 +345,7 @@ describe('Storage Ledger Calculations', () => {
     it('should pass warehouse filter to calculation', async () => {
       const mockBalance = mockData.inventoryBalance({
         currentCartons: 100,
-        warehouse: { code: 'FMC', name: 'FMC Warehouse' },
+        warehouse: { code: 'FMC', name: 'FMC' },
         sku: { skuCode: 'CS-001' },
       })
 
@@ -379,7 +379,7 @@ describe('Storage Ledger Calculations', () => {
       const monday = new Date('2024-01-22') // A Monday
       const mockBalance = mockData.inventoryBalance({
         currentCartons: 100,
-        warehouse: { code: 'FMC', name: 'FMC Warehouse' },
+        warehouse: { code: 'FMC', name: 'FMC' },
         sku: { skuCode: 'CS-001' },
       })
 

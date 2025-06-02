@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
@@ -10,44 +10,68 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // First, get the Amazon warehouse to ensure we have the correct ID
+    const amazonWarehouse = await prisma.warehouse.findFirst({
+      where: {
+        OR: [
+          { code: 'AMZN-UK' },
+          { name: 'Amazon FBA UK' }
+        ]
+      }
+    })
+
+    if (!amazonWarehouse) {
+      console.warn('Amazon FBA UK warehouse not found')
+    }
+
     // Get all SKUs from the database with their current inventory
-    const skus = await db.sku.findMany({
+    const skus = await prisma.sku.findMany({
       include: {
-        transactions: {
+        inventoryTransactions: {
           include: {
             warehouse: true
           }
         }
       },
       orderBy: {
-        code: 'asc'
+        skuCode: 'asc'
       }
     })
 
     // Calculate inventory for each SKU
     const inventoryData = skus.map(sku => {
       // Calculate warehouse quantity (excluding Amazon FBA UK)
-      let warehouseQty = 0
-      let amazonQty = 0
+      let warehouseCartons = 0
+      let amazonCartons = 0
 
-      sku.transactions.forEach(tx => {
-        const qty = tx.type === 'RECEIVE' || tx.type === 'ADJUST_IN' 
-          ? tx.quantity 
-          : -tx.quantity
+      sku.inventoryTransactions.forEach(tx => {
+        // Calculate net quantity change for this transaction
+        const cartonsQty = tx.cartonsIn - tx.cartonsOut
 
-        if (tx.warehouse.name === 'Amazon FBA UK') {
-          amazonQty += qty
+        // Use warehouse ID for comparison if available, fallback to name/code
+        const isAmazonTransaction = amazonWarehouse 
+          ? tx.warehouseId === amazonWarehouse.id
+          : (tx.warehouse.name === 'Amazon FBA UK' || tx.warehouse.code === 'AMZN-UK')
+
+        if (isAmazonTransaction) {
+          amazonCartons += cartonsQty
         } else {
-          warehouseQty += qty
+          warehouseCartons += cartonsQty
         }
       })
 
+      // Convert cartons to units
+      const unitsPerCarton = sku.unitsPerCarton || 1
+      const warehouseUnits = Math.max(0, warehouseCartons * unitsPerCarton)
+      const amazonUnits = Math.max(0, amazonCartons * unitsPerCarton)
+
       return {
-        sku: sku.code,
+        sku: sku.skuCode,
         description: sku.description || '',
-        warehouseQty: Math.max(0, warehouseQty), // Ensure non-negative
-        amazonQty: Math.max(0, amazonQty), // Ensure non-negative
-        difference: warehouseQty - amazonQty
+        warehouseQty: warehouseUnits, // Now in units
+        amazonQty: amazonUnits, // Now in units
+        difference: warehouseUnits - amazonUnits,
+        unitsPerCarton: unitsPerCarton // Include for reference
       }
     })
 
@@ -60,7 +84,10 @@ export async function GET() {
   } catch (error) {
     console.error('Error in inventory comparison:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch inventory comparison' },
+      { 
+        error: 'Failed to fetch inventory comparison',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

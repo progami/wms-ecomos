@@ -79,7 +79,7 @@ export const mockData = {
   warehouse: (overrides = {}) => ({
     id: 'warehouse-1',
     code: 'FMC',
-    name: 'FMC Warehouse',
+    name: 'FMC',
     address: '123 Warehouse St',
     contactEmail: 'fmc@warehouse.com',
     contactPhone: '+1234567890',

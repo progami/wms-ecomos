@@ -19,6 +19,12 @@ interface GeneralSettings {
   lowStockThreshold: number
 }
 
+interface Warehouse {
+  id: string
+  name: string
+  code: string
+}
+
 export default function GeneralSettingsPage() {
   const [settings, setSettings] = useState<GeneralSettings>({
     companyName: '',
@@ -33,11 +39,13 @@ export default function GeneralSettingsPage() {
     autoCalculateStorage: true,
     lowStockThreshold: 10,
   })
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     fetchSettings()
+    fetchWarehouses()
   }, [])
 
   const fetchSettings = async () => {
@@ -51,6 +59,18 @@ export default function GeneralSettingsPage() {
       toast.error('Failed to load settings')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWarehouses = async () => {
+    try {
+      const response = await fetch('/api/warehouses')
+      if (response.ok) {
+        const data = await response.json()
+        setWarehouses(data)
+      }
+    } catch (error) {
+      toast.error('Failed to load warehouses')
     }
   }
 
@@ -267,9 +287,11 @@ export default function GeneralSettingsPage() {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">No Default</option>
-                  <option value="warehouse-1">FMC Warehouse</option>
-                  <option value="warehouse-2">Vglobal Warehouse</option>
-                  <option value="warehouse-3">4AS Warehouse</option>
+                  {warehouses.map((warehouse) => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>

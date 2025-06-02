@@ -78,7 +78,7 @@ export default async function AdminUsersPage() {
             name="Umair (Operations Manager)"
             email="umair@warehouse.com"
             role="staff"
-            warehouse="FMC Warehouse"
+            warehouse="FMC"
             lastLogin="3 hours ago"
             isActive={true}
           />

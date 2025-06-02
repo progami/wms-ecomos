@@ -35,7 +35,7 @@ jest.mock('@/app/warehouse/dashboard/page', () => ({
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Warehouse Dashboard</h1>
-            <p className="text-muted-foreground">FMC Warehouse</p>
+            <p className="text-muted-foreground">FMC</p>
           </div>
 
           {/* Summary Cards */}
@@ -176,7 +176,7 @@ describe('Warehouse Dashboard Page', () => {
       render(<WarehouseDashboardPage />)
 
       expect(screen.getByText('Warehouse Dashboard')).toBeInTheDocument()
-      expect(screen.getByText('FMC Warehouse')).toBeInTheDocument()
+      expect(screen.getByText('FMC')).toBeInTheDocument()
     })
 
     it('renders all dashboard sections', async () => {

@@ -12,7 +12,7 @@ async function main() {
     update: {},
     create: {
       code: 'FMC',
-      name: 'FMC Warehouse',
+      name: 'FMC',
       address: '123 Main St, City, State 12345',
       contactEmail: 'fmc@warehouse.com',
       contactPhone: '555-0100',
@@ -24,7 +24,7 @@ async function main() {
     update: {},
     create: {
       code: 'VGLOBAL',
-      name: 'Vglobal Warehouse',
+      name: 'VGlobal',
       address: '456 Industrial Blvd, City, State 12345',
       contactEmail: 'vglobal@warehouse.com',
       contactPhone: '555-0200',
@@ -36,7 +36,7 @@ async function main() {
     update: {},
     create: {
       code: '4AS',
-      name: '4AS Warehouse',
+      name: '4AS',
       address: '789 Logistics Ave, City, State 12345',
       contactEmail: '4as@warehouse.com',
       contactPhone: '555-0300',
