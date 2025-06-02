@@ -37,6 +37,11 @@ export default function WarehouseShipPage() {
           updated.available = checkAvailability(updated.skuCode, updated.batchLot)
         }
         
+        // Ensure cartons doesn't exceed available inventory
+        if (field === 'cartons' && updated.available > 0) {
+          updated.cartons = Math.min(value, updated.available)
+        }
+        
         return updated
       }
       return item
@@ -69,11 +74,59 @@ export default function WarehouseShipPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    const formData = new FormData(e.target as HTMLFormElement)
+    const shipDate = formData.get('shipDate') as string
+    
+    // Validate date is not in future
+    const shipDateObj = new Date(shipDate)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    
+    if (shipDateObj > today) {
+      toast.error('Ship date cannot be in the future')
+      return
+    }
+    
+    // Validate date is not too old
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    if (shipDateObj < oneYearAgo) {
+      toast.error('Ship date is too far in the past (max 1 year)')
+      return
+    }
+    
     // Validate items
     const validItems = items.filter(item => item.skuCode && item.cartons > 0)
     if (validItems.length === 0) {
       toast.error('Please add at least one item with quantity')
       return
+    }
+    
+    // Check for duplicate SKU/batch combinations
+    const seen = new Set()
+    for (const item of validItems) {
+      const key = `${item.skuCode}-${item.batchLot}`
+      if (seen.has(key)) {
+        toast.error(`Duplicate SKU/Batch combination: ${item.skuCode} - ${item.batchLot}`)
+        return
+      }
+      seen.add(key)
+    }
+    
+    // Validate all numeric values are integers
+    for (const item of validItems) {
+      if (!Number.isInteger(item.cartons) || item.cartons <= 0 || item.cartons > 99999) {
+        toast.error(`Invalid cartons value for SKU ${item.skuCode}. Must be between 1 and 99,999`)
+        return
+      }
+      if (item.pallets && (!Number.isInteger(item.pallets) || item.pallets < 0 || item.pallets > 9999)) {
+        toast.error(`Invalid pallets value for SKU ${item.skuCode}. Must be between 0 and 9,999`)
+        return
+      }
+      if (item.units && (!Number.isInteger(item.units) || item.units < 0)) {
+        toast.error(`Invalid units value for SKU ${item.skuCode}. Must be non-negative`)
+        return
+      }
     }
     
     // Check for insufficient inventory
@@ -89,9 +142,8 @@ export default function WarehouseShipPage() {
     
     setLoading(true)
     
-    const formData = new FormData(e.target as HTMLFormElement)
     const referenceNumber = formData.get('orderNumber') as string
-    const date = formData.get('shipDate') as string
+    const date = shipDate
     const customer = formData.get('customer') as string
     const carrier = formData.get('carrier') as string
     const tracking = formData.get('tracking') as string
@@ -187,6 +239,8 @@ export default function WarehouseShipPage() {
                   name="shipDate"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   defaultValue={new Date().toISOString().split('T')[0]}
+                  max={new Date().toISOString().split('T')[0]}
+                  min={new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0]}
                   required
                 />
               </div>
@@ -304,11 +358,18 @@ export default function WarehouseShipPage() {
                           type="number"
                           value={item.cartons}
                           onChange={(e) => updateItem(item.id, 'cartons', parseInt(e.target.value) || 0)}
+                          onKeyDown={(e) => {
+                            // Prevent decimal point and negative sign
+                            if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                              e.preventDefault()
+                            }
+                          }}
                           className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
                             item.cartons > item.available ? 'border-red-500 bg-red-50' : ''
                           }`}
                           min="0"
                           max={item.available}
+                          step="1"
                           required
                         />
                         {item.cartons > item.available && (
@@ -320,8 +381,15 @@ export default function WarehouseShipPage() {
                           type="number"
                           value={item.pallets}
                           onChange={(e) => updateItem(item.id, 'pallets', parseInt(e.target.value) || 0)}
+                          onKeyDown={(e) => {
+                            // Prevent decimal point and negative sign
+                            if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                              e.preventDefault()
+                            }
+                          }}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
                           min="0"
+                          step="1"
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -329,8 +397,15 @@ export default function WarehouseShipPage() {
                           type="number"
                           value={item.units}
                           onChange={(e) => updateItem(item.id, 'units', parseInt(e.target.value) || 0)}
+                          onKeyDown={(e) => {
+                            // Prevent decimal point and negative sign
+                            if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
+                              e.preventDefault()
+                            }
+                          }}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
                           min="0"
+                          step="1"
                           required
                         />
                       </td>

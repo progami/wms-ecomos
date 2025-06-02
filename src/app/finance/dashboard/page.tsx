@@ -51,7 +51,7 @@ export default function FinanceDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (session && ['admin', 'staff'].includes(session.user.role)) {
+    if (session) {
       fetchFinancialData()
     }
   }, [session])
@@ -85,7 +85,7 @@ export default function FinanceDashboardPage() {
     )
   }
 
-  if (!session || !['admin', 'staff'].includes(session.user.role)) {
+  if (!session) {
     router.push('/auth/login')
     return null
   }
@@ -213,8 +213,8 @@ export default function FinanceDashboardPage() {
             {financialData?.costBreakdown && financialData.costBreakdown.length > 0 ? (
               <>
                 <div className="space-y-4">
-                  {financialData.costBreakdown.map((item, index) => {
-                    const total = financialData.costBreakdown.reduce((sum, cat) => sum + cat.amount, 0)
+                  {financialData.costBreakdown.map((item: any, index: number) => {
+                    const total = financialData.costBreakdown.reduce((sum: number, cat: any) => sum + cat.amount, 0)
                     const percentage = total > 0 ? (item.amount / total) * 100 : 0
                     const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-amber-500', 'bg-gray-500']
                     return (
@@ -232,7 +232,7 @@ export default function FinanceDashboardPage() {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total Costs</span>
                     <span className="text-xl font-bold">
-                      £{financialData.costBreakdown.reduce((sum, cat) => sum + cat.amount, 0).toLocaleString()}
+                      £{financialData.costBreakdown.reduce((sum: number, cat: any) => sum + cat.amount, 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -332,7 +332,7 @@ export default function FinanceDashboardPage() {
             </h3>
             {financialData?.recentActivity && financialData.recentActivity.length > 0 ? (
               <div className="space-y-3">
-                {financialData.recentActivity.map((activity) => {
+                {financialData.recentActivity.map((activity: any) => {
                   const timeAgo = getTimeAgo(new Date(activity.time))
                   return (
                     <ActivityItem

@@ -15,6 +15,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { type, referenceNumber, date, items, notes } = body
 
+    // Validate transaction type
+    if (!type || !['RECEIVE', 'SHIP'].includes(type)) {
+      return NextResponse.json({ 
+        error: 'Invalid transaction type. Must be RECEIVE or SHIP' 
+      }, { status: 400 })
+    }
+
+    // Validate required fields
+    if (!referenceNumber || !date || !items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ 
+        error: 'Missing required fields: referenceNumber, date, and items' 
+      }, { status: 400 })
+    }
+
+    // Validate date is not in the future
+    const transactionDate = new Date(date)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    
+    if (isNaN(transactionDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+    }
+    
+    if (transactionDate > today) {
+      return NextResponse.json({ 
+        error: 'Transaction date cannot be in the future' 
+      }, { status: 400 })
+    }
+
+    // Validate date is not too far in the past (e.g., 1 year)
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    if (transactionDate < oneYearAgo) {
+      return NextResponse.json({ 
+        error: 'Transaction date is too far in the past (max 1 year)' 
+      }, { status: 400 })
+    }
+
     // Validate warehouse assignment for staff
     if (session.user.role === 'warehouse_staff' && !session.user.warehouseId) {
       return NextResponse.json({ error: 'No warehouse assigned' }, { status: 400 })
@@ -26,20 +64,114 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Warehouse ID required' }, { status: 400 })
     }
 
-    // Create transactions for each item
-    const transactions = []
-    
+    // Check for duplicate transaction (prevent double submission)
+    const recentDuplicate = await prisma.inventoryTransaction.findFirst({
+      where: {
+        referenceId: referenceNumber,
+        transactionType: type as TransactionType,
+        warehouseId,
+        createdAt: {
+          gte: new Date(Date.now() - 60000) // Within last minute
+        }
+      }
+    })
+
+    if (recentDuplicate) {
+      return NextResponse.json({ 
+        error: 'Duplicate transaction detected. A transaction with this reference was just processed.' 
+      }, { status: 409 })
+    }
+
+    // Validate all items before processing
     for (const item of items) {
-      // Verify SKU exists
+      // Validate item structure
+      if (!item.skuCode || !item.batchLot || typeof item.cartons !== 'number') {
+        return NextResponse.json({ 
+          error: `Invalid item structure. Each item must have skuCode, batchLot, and cartons` 
+        }, { status: 400 })
+      }
+      
+      // Validate cartons is a positive integer
+      if (!Number.isInteger(item.cartons) || item.cartons <= 0) {
+        return NextResponse.json({ 
+          error: `Cartons must be positive integers. Invalid value for SKU ${item.skuCode}: ${item.cartons}` 
+        }, { status: 400 })
+      }
+      
+      // Validate maximum cartons (prevent unrealistic values)
+      if (item.cartons > 99999) {
+        return NextResponse.json({ 
+          error: `Cartons value too large for SKU ${item.skuCode}. Maximum allowed: 99,999` 
+        }, { status: 400 })
+      }
+      
+      // Validate pallets if provided
+      if (item.pallets !== undefined && item.pallets !== null) {
+        if (!Number.isInteger(item.pallets) || item.pallets < 0 || item.pallets > 9999) {
+          return NextResponse.json({ 
+            error: `Pallets must be integers between 0 and 9,999. Invalid value for SKU ${item.skuCode}` 
+          }, { status: 400 })
+        }
+      }
+      
+      // Validate batch/lot is not empty
+      if (!item.batchLot || item.batchLot.trim() === '') {
+        return NextResponse.json({ 
+          error: `Batch/Lot is required for SKU ${item.skuCode}` 
+        }, { status: 400 })
+      }
+    }
+
+    // Check for duplicate SKU/batch combinations in the request
+    const itemKeys = new Set()
+    for (const item of items) {
+      const key = `${item.skuCode}-${item.batchLot}`
+      if (itemKeys.has(key)) {
+        return NextResponse.json({ 
+          error: `Duplicate SKU/Batch combination found: ${item.skuCode} - ${item.batchLot}` 
+        }, { status: 400 })
+      }
+      itemKeys.add(key)
+    }
+
+    // Verify all SKUs exist and check inventory for SHIP transactions
+    for (const item of items) {
       const sku = await prisma.sku.findFirst({
         where: { skuCode: item.skuCode }
       })
 
       if (!sku) {
         return NextResponse.json({ 
-          error: `SKU ${item.skuCode} not found` 
+          error: `SKU ${item.skuCode} not found. Please create the SKU first.` 
         }, { status: 400 })
       }
+
+      // For SHIP transactions, verify inventory availability
+      if (type === 'SHIP') {
+        const balance = await prisma.inventoryBalance.findFirst({
+          where: {
+            warehouseId,
+            skuId: sku.id,
+            batchLot: item.batchLot,
+          }
+        })
+        
+        if (!balance || balance.currentCartons < item.cartons) {
+          return NextResponse.json({ 
+            error: `Insufficient inventory for SKU ${item.skuCode} batch ${item.batchLot}. Available: ${balance?.currentCartons || 0}, Requested: ${item.cartons}` 
+          }, { status: 400 })
+        }
+      }
+    }
+
+    // Create transactions for each item
+    const transactions = []
+    
+    for (const item of items) {
+      // Get SKU (already validated above)
+      const sku = await prisma.sku.findFirst({
+        where: { skuCode: item.skuCode }
+      })!
 
       const transactionId = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       
@@ -76,6 +208,13 @@ export async function POST(request: NextRequest) {
       const newBalance = type === 'RECEIVE' 
         ? currentBalance + item.cartons
         : currentBalance - item.cartons
+
+      // Additional check to prevent negative inventory
+      if (newBalance < 0) {
+        return NextResponse.json({ 
+          error: `Operation would result in negative inventory for SKU ${item.skuCode} batch ${item.batchLot}` 
+        }, { status: 400 })
+      }
 
       // Get warehouse config for pallet calculation
       const warehouseConfig = await prisma.warehouseSkuConfig.findFirst({

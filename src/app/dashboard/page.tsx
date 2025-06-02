@@ -79,7 +79,7 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Quick Actions</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {getQuickActions(session.user.role).map((action, index) => (
+            {getQuickActions(session.user.role).map((action: any, index: number) => (
               <Link
                 key={index}
                 href={action.href}
@@ -259,7 +259,7 @@ function getQuickActions(role: string) {
     }
   }
 
-  const roleActions = {
+  const roleActions: Record<string, string[]> = {
     system_admin: ['inventory', 'invoices', 'rates', 'reports', 'settings', 'users'],
     finance_admin: ['invoices', 'rates', 'reconciliation', 'reports'],
     warehouse_staff: ['inventory', 'receive', 'ship', 'reports'],
@@ -268,5 +268,5 @@ function getQuickActions(role: string) {
   }
 
   const actions = roleActions[role] || roleActions.viewer
-  return actions.map(key => allActions[key]).filter(Boolean)
+  return actions.map(key => allActions[key as keyof typeof allActions]).filter(Boolean)
 }

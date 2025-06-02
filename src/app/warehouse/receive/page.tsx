@@ -35,6 +35,27 @@ export default function WarehouseReceivePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    const formData = new FormData(e.target as HTMLFormElement)
+    const receiptDate = formData.get('receiptDate') as string
+    
+    // Validate date is not in future
+    const receiptDateObj = new Date(receiptDate)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    
+    if (receiptDateObj > today) {
+      toast.error('Receipt date cannot be in the future')
+      return
+    }
+    
+    // Validate date is not too old
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    if (receiptDateObj < oneYearAgo) {
+      toast.error('Receipt date is too far in the past (max 1 year)')
+      return
+    }
+    
     // Validate items
     const validItems = items.filter(item => item.skuCode && item.cartons > 0)
     if (validItems.length === 0) {
@@ -42,11 +63,36 @@ export default function WarehouseReceivePage() {
       return
     }
     
+    // Check for duplicate SKU/batch combinations
+    const seen = new Set()
+    for (const item of validItems) {
+      const key = `${item.skuCode}-${item.batchLot}`
+      if (seen.has(key)) {
+        toast.error(`Duplicate SKU/Batch combination: ${item.skuCode} - ${item.batchLot}`)
+        return
+      }
+      seen.add(key)
+    }
+    
+    // Validate all numeric values are integers
+    for (const item of validItems) {
+      if (!Number.isInteger(item.cartons) || item.cartons <= 0 || item.cartons > 99999) {
+        toast.error(`Invalid cartons value for SKU ${item.skuCode}. Must be between 1 and 99,999`)
+        return
+      }
+      if (item.pallets && (!Number.isInteger(item.pallets) || item.pallets < 0 || item.pallets > 9999)) {
+        toast.error(`Invalid pallets value for SKU ${item.skuCode}. Must be between 0 and 9,999`)
+        return
+      }
+      if (item.units && (!Number.isInteger(item.units) || item.units < 0)) {
+        toast.error(`Invalid units value for SKU ${item.skuCode}. Must be non-negative`)
+        return
+      }
+    }
+    
     setLoading(true)
     
-    const formData = new FormData(e.target as HTMLFormElement)
     const referenceNumber = formData.get('referenceNumber') as string
-    const date = formData.get('receiptDate') as string
     const supplier = formData.get('supplier') as string
     const notes = formData.get('notes') as string
     
@@ -57,7 +103,7 @@ export default function WarehouseReceivePage() {
         body: JSON.stringify({
           type: 'RECEIVE',
           referenceNumber,
-          date,
+          date: receiptDate,
           items: validItems,
           notes: supplier ? `Supplier: ${supplier}. ${notes}` : notes,
           warehouseId: session?.user.warehouseId, // Include warehouse ID if not staff

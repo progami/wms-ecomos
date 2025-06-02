@@ -117,7 +117,7 @@ export default function DatabaseSettingsPage() {
 
   const restoreBackup = async () => {
     // In a real app, this would show a file picker and restore
-    toast.info('Restore functionality will be implemented soon')
+    toast.success('Restore functionality will be implemented soon')
   }
 
   const optimizeDatabase = async () => {
@@ -395,7 +395,7 @@ export default function DatabaseSettingsPage() {
             </button>
             
             <button
-              onClick={() => toast.info('Rebuild indexes functionality coming soon')}
+              onClick={() => toast.success('Rebuild indexes functionality coming soon')}
               className="p-4 border rounded-lg hover:shadow-md transition-shadow text-left"
             >
               <Database className="h-5 w-5 mb-2" />

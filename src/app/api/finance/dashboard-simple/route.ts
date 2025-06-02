@@ -1,164 +1,129 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { pool } from '@/lib/db'
+import prisma from '@/lib/prisma'
 
-export async function GET() {
-  console.log('Simple finance dashboard API called')
-  
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    console.log('Session in finance API:', session)
     
-    // For testing, temporarily disable auth check
-    // if (!session || !['finance_admin', 'system_admin'].includes(session.user.role)) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // }
-    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Get current billing period (16th to 15th)
-    const today = new Date()
-    const billingStart = today.getDate() >= 16 
-      ? new Date(today.getFullYear(), today.getMonth(), 16)
-      : new Date(today.getFullYear(), today.getMonth() - 1, 16)
+    const now = new Date()
+    const day = now.getDate()
+    const billingStart = day >= 16 
+      ? new Date(now.getFullYear(), now.getMonth(), 16)
+      : new Date(now.getFullYear(), now.getMonth() - 1, 16)
     const billingEnd = new Date(billingStart)
     billingEnd.setMonth(billingEnd.getMonth() + 1)
     billingEnd.setDate(15)
 
-    // Fetch financial data with simple queries
-    const results = await Promise.all([
-      // Total revenue (sum of all invoices in current period)
-      pool.query(`
-        SELECT COALESCE(SUM(total_amount), 0) as total_revenue
-        FROM invoices
-        WHERE billing_period_start >= $1 AND billing_period_start <= $2
-      `, [billingStart, billingEnd]),
-      
-      // Outstanding invoices
-      pool.query(`
-        SELECT 
-          COUNT(*) as count,
-          COALESCE(SUM(total_amount), 0) as amount
-        FROM invoices
-        WHERE status = 'pending'
-        AND billing_period_start >= $1 AND billing_period_start <= $2
-      `, [billingStart, billingEnd]),
-      
-      // Invoice status breakdown
-      pool.query(`
-        SELECT 
-          status,
-          COUNT(*) as count,
-          COALESCE(SUM(total_amount), 0) as amount
-        FROM invoices
-        WHERE billing_period_start >= $1 AND billing_period_start <= $2
-        GROUP BY status
-      `, [billingStart, billingEnd]),
-      
-      // Cost breakdown by category (simplified)
-      pool.query(`
-        SELECT 
-          COALESCE(w.name, 'Unknown') as category,
-          COALESCE(SUM(i.total_amount), 0) as amount
-        FROM invoices i
-        LEFT JOIN warehouses w ON i.warehouse_id = w.id
-        WHERE i.billing_period_start >= $1 AND i.billing_period_start <= $2
-        GROUP BY w.name
-        LIMIT 5
-      `, [billingStart, billingEnd]),
-      
-      // Recent invoices
-      pool.query(`
-        SELECT 
-          i.id,
-          i.invoice_number,
-          i.total_amount,
-          i.status,
-          i.created_at,
-          w.name as warehouse_name
-        FROM invoices i
-        JOIN warehouses w ON i.warehouse_id = w.id
-        ORDER BY i.created_at DESC
-        LIMIT 5
-      `)
+    // Get invoice stats
+    const [totalInvoices, pendingInvoices, paidInvoices] = await Promise.all([
+      prisma.invoice.count(),
+      prisma.invoice.count({ where: { status: 'pending' } }),
+      prisma.invoice.count({ where: { status: 'paid' } })
     ])
-    
-    const totalRevenue = parseFloat(results[0].rows[0].total_revenue)
-    const outstanding = results[1].rows[0]
-    const invoiceStatuses = results[2].rows
-    const costBreakdown = results[3].rows
-    const recentInvoices = results[4].rows
-    
-    // Process invoice status data
-    const invoiceStatus = {
-      paid: { count: 0, amount: 0 },
-      pending: { count: 0, amount: 0 },
-      overdue: { count: 0, amount: 0 },
-      disputed: { count: 0, amount: 0 }
-    }
-    
-    invoiceStatuses.forEach(row => {
-      if (row.status === 'paid') {
-        invoiceStatus.paid = { count: parseInt(row.count), amount: parseFloat(row.amount) }
-      } else if (row.status === 'pending') {
-        invoiceStatus.pending = { count: parseInt(row.count), amount: parseFloat(row.amount) }
-      } else if (row.status === 'disputed') {
-        invoiceStatus.disputed = { count: parseInt(row.count), amount: parseFloat(row.amount) }
+
+    const [totalAmount, pendingAmount, paidAmount] = await Promise.all([
+      prisma.invoice.aggregate({ _sum: { totalAmount: true } }),
+      prisma.invoice.aggregate({ 
+        where: { status: 'pending' },
+        _sum: { totalAmount: true } 
+      }),
+      prisma.invoice.aggregate({ 
+        where: { status: 'paid' },
+        _sum: { totalAmount: true } 
+      })
+    ])
+
+    // Get cost breakdown by category from calculated costs
+    const calculatedCosts = await prisma.calculatedCost.findMany({
+      where: {
+        billingPeriodStart: {
+          gte: billingStart,
+          lte: billingEnd
+        }
+      },
+      include: {
+        costRate: true
       }
     })
-    
-    // Calculate overdue separately based on due_date
-    const overdueResult = await pool.query(`
-      SELECT 
-        COUNT(*) as count,
-        COALESCE(SUM(total_amount), 0) as amount
-      FROM invoices
-      WHERE status = 'pending' 
-      AND due_date < CURRENT_DATE
-      AND billing_period_start >= $1 AND billing_period_start <= $2
-    `, [billingStart, billingEnd])
-    
-    invoiceStatus.overdue = {
-      count: parseInt(overdueResult.rows[0].count),
-      amount: parseFloat(overdueResult.rows[0].amount)
-    }
-    
-    // Calculate collection rate
-    const totalBilled = invoiceStatus.paid.amount + invoiceStatus.pending.amount + invoiceStatus.overdue.amount
-    const collectionRate = totalBilled > 0 ? (invoiceStatus.paid.amount / totalBilled) * 100 : 0
-    
+
+    // Group by cost category
+    const costBreakdownMap = new Map<string, number>()
+    calculatedCosts.forEach(cost => {
+      const category = cost.costRate.costCategory
+      const current = costBreakdownMap.get(category) || 0
+      costBreakdownMap.set(category, current + Number(cost.finalExpectedCost))
+    })
+
+    const costBreakdown = Array.from(costBreakdownMap.entries()).map(([category, amount]) => ({
+      costCategory: category,
+      amount: amount
+    }))
+
+    // Get recent activity
+    const recentActivity = await prisma.invoice.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        warehouse: true
+      }
+    })
+
     return NextResponse.json({
       kpis: {
-        totalRevenue: totalRevenue.toFixed(2),
-        revenueChange: 0, // Simplified - no comparison
-        outstandingAmount: parseFloat(outstanding.amount).toFixed(2),
-        outstandingCount: parseInt(outstanding.count),
-        costVariance: 0, // Simplified
-        costSavings: "0",
-        collectionRate: collectionRate.toFixed(1),
+        totalRevenue: Number(totalAmount._sum.totalAmount || 0).toFixed(2),
+        revenueChange: '0.0', // Placeholder
+        outstandingAmount: Number(pendingAmount._sum.totalAmount || 0).toFixed(2),
+        outstandingCount: pendingInvoices,
+        costVariance: '0.0', // Placeholder
+        costSavings: '0.00', // Placeholder
+        collectionRate: totalInvoices > 0 
+          ? ((paidInvoices / totalInvoices) * 100).toFixed(1)
+          : '0.0'
       },
-      costBreakdown: costBreakdown.map(row => ({
-        category: row.category,
-        amount: parseFloat(row.amount),
-      })),
-      invoiceStatus,
-      recentActivity: recentInvoices.map(invoice => ({
-        id: invoice.id,
+      costBreakdown: costBreakdown,
+      invoiceStatus: {
+        paid: {
+          count: paidInvoices,
+          amount: Number(paidAmount._sum.totalAmount || 0)
+        },
+        pending: {
+          count: pendingInvoices,
+          amount: Number(pendingAmount._sum.totalAmount || 0)
+        },
+        overdue: {
+          count: 0, // Calculated separately
+          amount: 0
+        },
+        disputed: {
+          count: 0,
+          amount: 0
+        }
+      },
+      recentActivity: recentActivity.map(activity => ({
+        id: activity.id,
         type: 'invoice',
-        title: `Invoice #${invoice.invoice_number} processed`,
-        amount: parseFloat(invoice.total_amount),
-        time: invoice.created_at,
-        status: invoice.status === 'paid' ? 'success' : invoice.status === 'disputed' ? 'warning' : 'info',
-        warehouse: invoice.warehouse_name,
+        title: `Invoice #${activity.invoiceNumber}`,
+        amount: Number(activity.totalAmount),
+        time: activity.createdAt,
+        status: activity.status === 'paid' ? 'success' : 'warning',
+        warehouse: activity.warehouse.name
       })),
       billingPeriod: {
         start: billingStart,
-        end: billingEnd,
-      },
+        end: billingEnd
+      }
     })
   } catch (error) {
-    console.error('Simple finance dashboard error:', error)
+    console.error('Finance dashboard error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch financial data', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to fetch financial data' },
       { status: 500 }
     )
   }

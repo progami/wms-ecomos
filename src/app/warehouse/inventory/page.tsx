@@ -98,7 +98,7 @@ export default function WarehouseInventoryPage() {
   }, [searchQuery, filters, inventoryData])
 
   const handleExport = () => {
-    toast.info('Export functionality coming soon!')
+    toast.success('Export functionality coming soon!')
   }
 
   const handleImport = () => {
@@ -125,9 +125,9 @@ export default function WarehouseInventoryPage() {
       <div className="space-y-6">
         {/* Page Header with Description */}
         <PageHeader
-          title="Inventory Overview"
-          subtitle="Real-time inventory levels and stock management"
-          description="View and manage current inventory levels across all warehouses. Track stock by SKU, batch/lot numbers, and warehouse location. Use filters to find specific items, identify low stock situations, and export data for reporting."
+          title="Current Inventory Balances"
+          subtitle="Real-time stock levels calculated from all transactions"
+          description="This page shows current inventory balances calculated from the transaction ledger. Each row represents stock for a specific Warehouse + SKU + Batch/Lot combination. Balances are updated in real-time as transactions (RECEIVE, SHIP, ADJUST) are recorded. Use filters to find specific items or identify low stock situations."
           icon={Package2}
           iconColor="text-green-600"
           bgColor="bg-green-50"
@@ -289,8 +289,12 @@ export default function WarehouseInventoryPage() {
           )}
         </div>
 
-        {/* Inventory Table */}
+        {/* Inventory Balance Table */}
         <div className="border rounded-lg overflow-hidden">
+          <div className="bg-gray-50 px-6 py-3 border-b">
+            <h3 className="text-lg font-semibold">Inventory Balance Details</h3>
+            <p className="text-sm text-gray-600 mt-1">Current stock levels by Warehouse, SKU, and Batch/Lot</p>
+          </div>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -366,7 +370,12 @@ export default function WarehouseInventoryPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {balance.lastTransactionDate
-                        ? new Date(balance.lastTransactionDate).toLocaleDateString()
+                        ? new Date(balance.lastTransactionDate).toLocaleDateString('en-US', {
+                            timeZone: 'America/Chicago',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })
                         : 'No activity'}
                     </td>
                   </tr>
@@ -412,6 +421,17 @@ export default function WarehouseInventoryPage() {
               </span>
             </div>
           )}
+        </div>
+        
+        {/* Info Box */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="text-sm text-blue-900">
+              <p className="font-medium mb-1">About Inventory Balances</p>
+              <p>This page shows calculated balances based on all transactions in the system. To view the detailed transaction history (all RECEIVE, SHIP, and ADJUST movements), please contact your administrator for access to the transaction ledger.</p>
+            </div>
+          </div>
         </div>
       </div>
     </DashboardLayout>

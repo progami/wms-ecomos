@@ -6,7 +6,7 @@ import prisma from '@/lib/prisma'
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || !['finance_admin', 'system_admin'].includes(session.user.role)) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -75,21 +75,66 @@ export async function GET() {
 
     const paidInvoices = invoiceStats.find(s => s.status === 'paid') || { _count: 0, _sum: { totalAmount: 0 } }
     const pendingInvoices = invoiceStats.find(s => s.status === 'pending') || { _count: 0, _sum: { totalAmount: 0 } }
-    const overdueInvoices = invoiceStats.find(s => s.status === 'overdue') || { _count: 0, _sum: { totalAmount: 0 } }
-
-    // Get cost breakdown by category
-    const costBreakdown = await prisma.calculatedCost.groupBy({
-      by: ['costCategory'],
+    // Calculate overdue invoices separately (pending invoices > 30 days old)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    
+    const overdueCount = await prisma.invoice.count({
       where: {
+        status: 'pending',
+        invoiceDate: {
+          lt: thirtyDaysAgo,
+        },
+        billingPeriodStart: {
+          gte: billingStart,
+          lte: billingEnd,
+        },
+      },
+    })
+    
+    const overdueSum = await prisma.invoice.aggregate({
+      where: {
+        status: 'pending',
+        invoiceDate: {
+          lt: thirtyDaysAgo,
+        },
         billingPeriodStart: {
           gte: billingStart,
           lte: billingEnd,
         },
       },
       _sum: {
-        finalExpectedCost: true,
+        totalAmount: true,
       },
     })
+    
+    const overdueInvoices = { _count: overdueCount, _sum: { totalAmount: overdueSum._sum.totalAmount || 0 } }
+
+    // Get cost breakdown by cost type (through cost rates)
+    const costBreakdownRaw = await prisma.calculatedCost.findMany({
+      where: {
+        billingPeriodStart: {
+          gte: billingStart,
+          lte: billingEnd,
+        },
+      },
+      include: {
+        costRate: true,
+      },
+    })
+    
+    // Group by costName from costRate
+    const costBreakdownMap = new Map<string, number>()
+    for (const cost of costBreakdownRaw) {
+      const category = cost.costRate.costName
+      const currentAmount = costBreakdownMap.get(category) || 0
+      costBreakdownMap.set(category, currentAmount + Number(cost.finalExpectedCost))
+    }
+    
+    const costBreakdown = Array.from(costBreakdownMap.entries()).map(([category, amount]) => ({
+      costCategory: category,
+      _sum: { finalExpectedCost: amount }
+    }))
 
     // Calculate cost variance (compare invoiced vs calculated)
     const invoicedAmount = await prisma.invoice.aggregate({
@@ -141,7 +186,7 @@ export async function GET() {
       },
       costBreakdown: costBreakdown.map(item => ({
         category: item.costCategory,
-        amount: Number(item._sum.finalExpectedCost || 0),
+        amount: item._sum.finalExpectedCost,
       })),
       invoiceStatus: {
         paid: {
@@ -167,7 +212,7 @@ export async function GET() {
         title: `Invoice #${activity.invoiceNumber} processed`,
         amount: Number(activity.totalAmount),
         time: activity.createdAt,
-        status: activity.status === 'paid' ? 'success' : activity.status === 'overdue' ? 'warning' : 'info',
+        status: activity.status === 'paid' ? 'success' : activity.status === 'pending' ? 'warning' : 'info',
         warehouse: activity.warehouse.name,
       })),
       billingPeriod: {

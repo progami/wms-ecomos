@@ -136,15 +136,20 @@ export async function GET() {
       // Pending invoices count
       pendingInvoices = await prisma.invoice.count({
         where: {
-          status: {
-            in: ['pending', 'overdue'],
-          },
+          status: 'pending',
         },
       })
 
+      // Overdue invoices (pending invoices past due date)
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      
       overdueInvoices = await prisma.invoice.count({
         where: {
-          status: 'overdue',
+          status: 'pending',
+          invoiceDate: {
+            lt: thirtyDaysAgo,
+          },
         },
       })
     } catch (invoiceError) {
@@ -162,9 +167,11 @@ export async function GET() {
     // Get database size (approximate)
     let dbSize = [{ size: 0 }]
     try {
-      dbSize = await prisma.$queryRaw<{size: bigint}[]>`
+      const dbSizeResult = await prisma.$queryRaw<{size: bigint}[]>`
         SELECT pg_database_size(current_database()) as size
       `
+      // Convert bigint to number
+      dbSize = dbSizeResult.map(row => ({ size: Number(row.size) }))
     } catch (dbError) {
       console.warn('Failed to get database size:', dbError)
       // Continue with default value

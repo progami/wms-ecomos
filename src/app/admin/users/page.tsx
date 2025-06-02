@@ -8,7 +8,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 export default async function AdminUsersPage() {
   const session = await getServerSession(authOptions)
 
-  if (!session || session.user.role !== 'admin') {
+  if (!session || session.user.role !== 'system_admin') {
     redirect('/auth/login')
   }
 

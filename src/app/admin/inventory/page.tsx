@@ -82,7 +82,7 @@ export default async function AdminInventoryPage() {
     cartonsIn: tx.cartonsIn,
     cartonsOut: tx.cartonsOut,
     createdBy: {
-      id: tx.userId,
+      id: tx.createdBy.id,
       fullName: tx.createdBy.fullName,
     },
   }))
