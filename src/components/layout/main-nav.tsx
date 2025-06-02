@@ -25,46 +25,89 @@ import {
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
+interface NavSection {
+  title: string
+  items: Array<{
+    name: string
+    href: string
+    icon: any
+  }>
+}
+
 const navigation = {
   admin: [
-    { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
-    
-    // Operations
-    { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
-    { name: 'Run Calculations', href: '/admin/calculations', icon: Calculator },
-    
-    // Finance
-    { name: 'Finance Dashboard', href: '/finance/dashboard', icon: DollarSign },
-    { name: 'Invoices', href: '/finance/invoices', icon: FileText },
-    { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-    
-    // Reports
-    { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-    
-    // Master Data
-    { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
-    { name: 'Warehouse Configs', href: '/admin/settings/warehouse-configs', icon: Building },
-    { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
-    
-    // System
-    { name: 'Users', href: '/admin/users', icon: Users },
-    { name: 'Amazon Integration', href: '/admin/amazon', icon: Cloud },
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
-  ],
+    {
+      title: '',
+      items: [
+        { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
+      ]
+    },
+    {
+      title: 'Operations',
+      items: [
+        { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
+        { name: 'Run Calculations', href: '/admin/calculations', icon: Calculator },
+      ]
+    },
+    {
+      title: 'Finance',
+      items: [
+        { name: 'Finance Dashboard', href: '/finance/dashboard', icon: DollarSign },
+        { name: 'Invoices', href: '/finance/invoices', icon: FileText },
+        { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
+      ]
+    },
+    {
+      title: 'Reports',
+      items: [
+        { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+      ]
+    },
+    {
+      title: 'Master Data',
+      items: [
+        { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
+        { name: 'Warehouse Configs', href: '/admin/settings/warehouse-configs', icon: Building },
+        { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
+      ]
+    },
+    {
+      title: 'System',
+      items: [
+        { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'Amazon Integration', href: '/admin/amazon', icon: Cloud },
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ]
+    },
+  ] as NavSection[],
   staff: [
-    { name: 'Dashboard', href: '/warehouse/dashboard', icon: Home },
-    
-    // Operations
-    { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
-    
-    // Finance
-    { name: 'Invoices', href: '/finance/invoices', icon: FileText },
-    { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-    
-    // Reports & Settings
-    { name: 'Reports', href: '/warehouse/reports', icon: BarChart3 },
-    { name: 'Settings', href: '/warehouse/settings', icon: Settings },
-  ],
+    {
+      title: '',
+      items: [
+        { name: 'Dashboard', href: '/warehouse/dashboard', icon: Home },
+      ]
+    },
+    {
+      title: 'Operations',
+      items: [
+        { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
+      ]
+    },
+    {
+      title: 'Finance',
+      items: [
+        { name: 'Invoices', href: '/finance/invoices', icon: FileText },
+        { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
+      ]
+    },
+    {
+      title: 'Reports & Settings',
+      items: [
+        { name: 'Reports', href: '/warehouse/reports', icon: BarChart3 },
+        { name: 'Settings', href: '/warehouse/settings', icon: Settings },
+      ]
+    },
+  ] as NavSection[],
 }
 
 export function MainNav() {
@@ -92,29 +135,40 @@ export function MainNav() {
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
               <li>
-                <ul role="list" className="-mx-2 space-y-1">
-                  {userNavigation.map((item) => (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          pathname.startsWith(item.href)
-                            ? 'bg-gray-100 text-primary dark:bg-gray-800'
-                            : 'text-gray-700 hover:text-primary hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800',
-                          'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
-                        )}
-                      >
-                        <item.icon
-                          className={cn(
-                            pathname.startsWith(item.href)
-                              ? 'text-primary'
-                              : 'text-gray-400 group-hover:text-primary',
-                            'h-6 w-6 shrink-0'
-                          )}
-                          aria-hidden="true"
-                        />
-                        {item.name}
-                      </Link>
+                <ul role="list" className="-mx-2 space-y-6">
+                  {userNavigation.map((section, sectionIdx) => (
+                    <li key={sectionIdx}>
+                      {section.title && (
+                        <div className="px-2 pb-2 text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wider">
+                          {section.title}
+                        </div>
+                      )}
+                      <ul role="list" className="space-y-1">
+                        {section.items.map((item) => (
+                          <li key={item.name}>
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                pathname.startsWith(item.href)
+                                  ? 'bg-gray-100 text-primary dark:bg-gray-800'
+                                  : 'text-gray-700 hover:text-primary hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800',
+                                'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
+                              )}
+                            >
+                              <item.icon
+                                className={cn(
+                                  pathname.startsWith(item.href)
+                                    ? 'text-primary'
+                                    : 'text-gray-400 group-hover:text-primary',
+                                  'h-6 w-6 shrink-0'
+                                )}
+                                aria-hidden="true"
+                              />
+                              {item.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
                     </li>
                   ))}
                 </ul>
@@ -184,30 +238,41 @@ export function MainNav() {
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
                     <li>
-                      <ul role="list" className="-mx-2 space-y-1">
-                        {userNavigation.map((item) => (
-                          <li key={item.name}>
-                            <Link
-                              href={item.href}
-                              className={cn(
-                                pathname.startsWith(item.href)
-                                  ? 'bg-gray-100 text-primary dark:bg-gray-800'
-                                  : 'text-gray-700 hover:text-primary hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800',
-                                'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
-                              )}
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              <item.icon
-                                className={cn(
-                                  pathname.startsWith(item.href)
-                                    ? 'text-primary'
-                                    : 'text-gray-400 group-hover:text-primary',
-                                  'h-6 w-6 shrink-0'
-                                )}
-                                aria-hidden="true"
-                              />
-                              {item.name}
-                            </Link>
+                      <ul role="list" className="-mx-2 space-y-6">
+                        {userNavigation.map((section, sectionIdx) => (
+                          <li key={sectionIdx}>
+                            {section.title && (
+                              <div className="px-2 pb-2 text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wider">
+                                {section.title}
+                              </div>
+                            )}
+                            <ul role="list" className="space-y-1">
+                              {section.items.map((item) => (
+                                <li key={item.name}>
+                                  <Link
+                                    href={item.href}
+                                    className={cn(
+                                      pathname.startsWith(item.href)
+                                        ? 'bg-gray-100 text-primary dark:bg-gray-800'
+                                        : 'text-gray-700 hover:text-primary hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800',
+                                      'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
+                                    )}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                  >
+                                    <item.icon
+                                      className={cn(
+                                        pathname.startsWith(item.href)
+                                          ? 'text-primary'
+                                          : 'text-gray-400 group-hover:text-primary',
+                                        'h-6 w-6 shrink-0'
+                                      )}
+                                      aria-hidden="true"
+                                    />
+                                    {item.name}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
                           </li>
                         ))}
                       </ul>

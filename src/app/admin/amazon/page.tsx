@@ -1,26 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
-import { Package2, RefreshCw, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { Package2, RefreshCw, Loader2, Search } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-interface SyncResult {
-  message: string
-  synced?: number
-  updated?: number
-  errors?: Array<{ asin: string; error: string }>
+interface InventoryComparison {
+  sku: string
+  description: string
+  warehouseQty: number
+  amazonQty: number
+  difference: number
+  lastUpdated?: string
 }
 
 export default function AmazonIntegrationPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const [syncing, setSyncing] = useState<string | null>(null)
-  const [lastSync, setLastSync] = useState<{ [key: string]: Date }>({})
-  const [syncResults, setSyncResults] = useState<{ [key: string]: SyncResult }>({})
+  const [loading, setLoading] = useState(false)
+  const [inventory, setInventory] = useState<InventoryComparison[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
   if (status === 'loading') {
     return (
@@ -37,39 +40,44 @@ export default function AmazonIntegrationPage() {
     return null
   }
 
-  const handleSync = async (syncType: string) => {
-    setSyncing(syncType)
+  const fetchInventoryComparison = async () => {
+    setLoading(true)
     try {
-      const response = await fetch('/api/amazon/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ syncType })
-      })
-
-      const result = await response.json()
-
+      const response = await fetch('/api/amazon/inventory-comparison')
       if (response.ok) {
-        setSyncResults(prev => ({ ...prev, [syncType]: result }))
-        setLastSync(prev => ({ ...prev, [syncType]: new Date() }))
-        toast.success(result.message)
+        const data = await response.json()
+        setInventory(data)
+        setLastRefresh(new Date())
       } else {
-        toast.error(result.message || 'Sync failed')
+        toast.error('Failed to fetch inventory comparison')
       }
     } catch (error) {
-      toast.error('Failed to sync Amazon data')
-      console.error('Sync error:', error)
+      toast.error('Error fetching inventory data')
+      console.error('Error:', error)
     } finally {
-      setSyncing(null)
+      setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchInventoryComparison()
+  }, [])
+
+  const filteredInventory = inventory.filter(item =>
+    item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.description.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const totalWarehouse = inventory.reduce((sum, item) => sum + item.warehouseQty, 0)
+  const totalAmazon = inventory.reduce((sum, item) => sum + item.amazonQty, 0)
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Amazon Integration"
-          subtitle="Sync data with Amazon Seller Central"
-          description="Import inventory levels, product details, and orders from Amazon FBA. This integration helps keep your warehouse system in sync with Amazon's fulfillment centers."
+          title="Amazon Inventory Comparison"
+          subtitle="Compare warehouse and Amazon FBA inventory"
+          description="View side-by-side comparison of your warehouse stock and Amazon FBA inventory levels for all SKUs."
           icon={Package2}
           iconColor="text-orange-600"
           bgColor="bg-orange-50"
@@ -77,184 +85,130 @@ export default function AmazonIntegrationPage() {
           textColor="text-orange-800"
         />
 
-        {/* Sync Options */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Inventory Sync */}
-          <div className="bg-white border rounded-lg p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold">Inventory Sync</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Import current FBA inventory levels and update stock quantities
-                </p>
-              </div>
-              <Package2 className="h-8 w-8 text-gray-400" />
-            </div>
-
-            {lastSync.inventory && (
-              <div className="text-sm text-gray-500 mb-4">
-                Last synced: {lastSync.inventory.toLocaleString()}
-              </div>
-            )}
-
-            {syncResults.inventory && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700">
-                  {syncResults.inventory.message}
-                </p>
-                {syncResults.inventory.errors && syncResults.inventory.errors.length > 0 && (
-                  <details className="mt-2">
-                    <summary className="text-sm text-red-600 cursor-pointer">
-                      {syncResults.inventory.errors.length} errors occurred
-                    </summary>
-                    <ul className="mt-2 text-xs text-gray-600 space-y-1">
-                      {syncResults.inventory.errors.map((error, idx) => (
-                        <li key={idx}>
-                          {error.asin}: {error.error}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            )}
-
-            <button
-              onClick={() => handleSync('inventory')}
-              disabled={syncing !== null}
-              className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {syncing === 'inventory' ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Sync Inventory
-                </>
-              )}
-            </button>
+        {/* Actions Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by SKU or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
           </div>
-
-          {/* Product Details Sync */}
-          <div className="bg-white border rounded-lg p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold">Product Details</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Update product information from Amazon catalog (titles, dimensions, weights)
-                </p>
-              </div>
-              <Package2 className="h-8 w-8 text-gray-400" />
-            </div>
-
-            {lastSync.products && (
-              <div className="text-sm text-gray-500 mb-4">
-                Last synced: {lastSync.products.toLocaleString()}
-              </div>
+          <button
+            onClick={fetchInventoryComparison}
+            disabled={loading}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Refresh Data
+              </>
             )}
+          </button>
+        </div>
 
-            {syncResults.products && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700">
-                  {syncResults.products.message}
-                </p>
-                {syncResults.products.errors && syncResults.products.errors.length > 0 && (
-                  <details className="mt-2">
-                    <summary className="text-sm text-red-600 cursor-pointer">
-                      {syncResults.products.errors.length} errors occurred
-                    </summary>
-                    <ul className="mt-2 text-xs text-gray-600 space-y-1">
-                      {syncResults.products.errors.map((error, idx) => (
-                        <li key={idx}>
-                          {error.asin}: {error.error}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </div>
-            )}
-
-            <button
-              onClick={() => handleSync('products')}
-              disabled={syncing !== null}
-              className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {syncing === 'products' ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Sync Products
-                </>
-              )}
-            </button>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-600">Total Warehouse Stock</h3>
+            <p className="text-2xl font-bold text-gray-900 mt-1">
+              {totalWarehouse.toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-600">Total Amazon FBA Stock</h3>
+            <p className="text-2xl font-bold text-orange-600 mt-1">
+              {totalAmazon.toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-600">Last Updated</h3>
+            <p className="text-lg font-medium text-gray-900 mt-1">
+              {lastRefresh ? lastRefresh.toLocaleString() : 'Never'}
+            </p>
           </div>
         </div>
 
-        {/* Information Section */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-2">How Amazon Integration Works</h3>
-              <ul className="text-sm text-blue-800 space-y-2">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span><strong>Inventory Sync:</strong> Imports current FBA inventory levels and creates adjustment transactions to match Amazon's quantities</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span><strong>Product Details:</strong> Updates product information like titles, dimensions, and weights from Amazon's catalog</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span><strong>Automatic SKU Creation:</strong> Creates new SKUs for products found in Amazon that don't exist in your system</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span><strong>Amazon Warehouse:</strong> All Amazon inventory is tracked under a virtual "Amazon FBA UK" warehouse</span>
-                </li>
-              </ul>
-            </div>
+        {/* Inventory Table */}
+        <div className="bg-white border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    SKU
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Warehouse Qty
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amazon FBA Qty
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Difference
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                    </td>
+                  </tr>
+                ) : filteredInventory.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                      No inventory data found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInventory.map((item) => (
+                    <tr key={item.sku} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.sku}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {item.description}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {item.warehouseQty.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-medium text-right">
+                        {item.amazonQty.toLocaleString()}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
+                        item.difference > 0 ? 'text-green-600' : item.difference < 0 ? 'text-red-600' : 'text-gray-500'
+                      }`}>
+                        {item.difference > 0 && '+'}{item.difference.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Configuration Status */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">API Configuration Status</h3>
-          <div className="grid gap-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Application ID:</span>
-              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                {process.env.AMAZON_SP_APP_ID ? '✓ Configured' : '✗ Not configured'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Refresh Token:</span>
-              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                {process.env.AMAZON_REFRESH_TOKEN ? '✓ Configured' : '✗ Not configured'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Marketplace:</span>
-              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                UK (A1F83G8C2ARO7P)
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Region:</span>
-              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                Europe (eu-west-1)
-              </span>
-            </div>
-          </div>
+        {/* Info Note */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Note:</strong> This page displays a read-only comparison of inventory levels. 
+            Warehouse quantities are managed through the warehouse system, while Amazon FBA quantities 
+            are fetched from Amazon's API. The difference column shows warehouse quantity minus Amazon quantity.
+          </p>
         </div>
       </div>
     </DashboardLayout>

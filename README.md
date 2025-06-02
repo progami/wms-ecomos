@@ -6,7 +6,7 @@ A comprehensive warehouse management system with 3PL billing reconciliation, des
 
 - **Inventory Management**: Track inventory movements with immutable transaction ledger
 - **3PL Billing**: Automated storage calculations and invoice reconciliation
-- **Amazon Integration**: Sync FBA inventory and product data
+- **Amazon Integration**: View Amazon FBA inventory alongside warehouse stock
 - **Multi-Warehouse**: Support for multiple warehouse locations
 - **Role-Based Access**: Admin and staff user roles
 - **Real-Time Reporting**: Financial dashboards and inventory reports
@@ -124,22 +124,41 @@ All inventory movements are recorded as immutable transactions:
 - Financial dashboards
 
 ### Amazon Integration
-- Sync FBA inventory levels
-- Import product details
-- Automatic SKU creation
+- Compare warehouse and Amazon FBA inventory side-by-side
+- View inventory differences by SKU
+- Read-only inventory comparison dashboard
+
+## Navigation Structure
+
+### Admin Navigation
+- **Dashboard**: Overview and metrics
+- **Operations**: Inventory Ledger, Run Calculations
+- **Finance**: Finance Dashboard, Invoices, Reconciliation
+- **Reports**: Comprehensive reporting
+- **Master Data**: SKU Master, Warehouse Configs, Cost Rates
+- **System**: Users, Amazon Integration, Settings
+
+### Staff Navigation
+- **Dashboard**: Warehouse-specific view
+- **Operations**: Inventory Ledger
+- **Finance**: Invoices, Reconciliation
+- **Reports & Settings**: Basic reports and preferences
 
 ## Scripts
 
 ```bash
 # Import data from Excel
-npm run script scripts/import-warehouse-excel.ts
+npx tsx scripts/import-warehouse-excel.ts
 
 # Add sample data
-npm run script scripts/add-sample-rates.ts
-npm run script scripts/add-sample-finance-data.ts
+npx tsx scripts/add-sample-rates.ts
+npx tsx scripts/add-sample-finance-data.ts
 
 # Create additional users
-npm run script scripts/create-staff-users.ts
+npx tsx scripts/create-staff-users.ts
+
+# Ensure Amazon warehouse exists
+npx tsx scripts/ensure-amazon-warehouse.ts
 ```
 
 ## Environment Variables
