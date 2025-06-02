@@ -177,7 +177,7 @@ export default function AdminRatesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Rate ($) *</label>
+                <label className="block text-sm font-medium mb-1">Rate (£) *</label>
                 <input
                   type="number"
                   value={newRate.rate}
@@ -300,7 +300,7 @@ export default function AdminRatesPage() {
                               step="0.01"
                             />
                           ) : (
-                            `$${rate.rate.toFixed(2)}`
+                            `£${rate.rate.toFixed(2)}`
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

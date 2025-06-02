@@ -1,15 +1,16 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { format, startOfWeek, endOfWeek, addDays } from 'date-fns'
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-GB', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'GBP',
   }).format(amount)
 }
 
@@ -17,9 +18,21 @@ export function formatNumber(num: number): string {
   return new Intl.NumberFormat('en-US').format(num)
 }
 
+const CENTRAL_TIMEZONE = 'America/Chicago'
+
 export function formatDate(date: Date | string, formatStr: string = 'MMM dd, yyyy'): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date
-  return format(dateObj, formatStr)
+  return formatInTimeZone(dateObj, CENTRAL_TIMEZONE, formatStr)
+}
+
+export function formatDateTime(date: Date | string, formatStr: string = 'MMM dd, yyyy HH:mm'): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  return formatInTimeZone(dateObj, CENTRAL_TIMEZONE, formatStr + ' zzz')
+}
+
+export function toCentralTime(date: Date | string): Date {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  return toZonedTime(dateObj, CENTRAL_TIMEZONE)
 }
 
 export function getWeekRange(date: Date): { start: Date; end: Date } {

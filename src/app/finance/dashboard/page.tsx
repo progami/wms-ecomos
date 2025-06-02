@@ -157,7 +157,7 @@ export default function FinanceDashboardPage() {
             <>
               <FinancialCard
                 title="Total Revenue"
-                value={`$${parseFloat(financialData.kpis.totalRevenue).toLocaleString()}`}
+                value={`£${parseFloat(financialData.kpis.totalRevenue).toLocaleString()}`}
                 change={`${financialData.kpis.revenueChange > 0 ? '+' : ''}${financialData.kpis.revenueChange}%`}
                 trend={financialData.kpis.revenueChange > 0 ? 'up' : financialData.kpis.revenueChange < 0 ? 'down' : 'neutral'}
                 icon={DollarSign}
@@ -166,7 +166,7 @@ export default function FinanceDashboardPage() {
               />
               <FinancialCard
                 title="Outstanding Invoices"
-                value={`$${parseFloat(financialData.kpis.outstandingAmount).toLocaleString()}`}
+                value={`£${parseFloat(financialData.kpis.outstandingAmount).toLocaleString()}`}
                 change={`${financialData.kpis.outstandingCount} invoices`}
                 trend="neutral"
                 icon={FileText}
@@ -176,7 +176,7 @@ export default function FinanceDashboardPage() {
               <FinancialCard
                 title="Cost Variance"
                 value={`${financialData.kpis.costVariance}%`}
-                change={`$${parseFloat(financialData.kpis.costSavings).toLocaleString()} ${financialData.kpis.costVariance < 0 ? 'saved' : 'over'}`}
+                change={`£${parseFloat(financialData.kpis.costSavings).toLocaleString()} ${financialData.kpis.costVariance < 0 ? 'saved' : 'over'}`}
                 trend={financialData.kpis.costVariance < 0 ? 'down' : 'up'}
                 icon={TrendingUp}
                 color="blue"
@@ -232,7 +232,7 @@ export default function FinanceDashboardPage() {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total Costs</span>
                     <span className="text-xl font-bold">
-                      ${financialData.costBreakdown.reduce((sum, cat) => sum + cat.amount, 0).toLocaleString()}
+                      £{financialData.costBreakdown.reduce((sum, cat) => sum + cat.amount, 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -448,7 +448,7 @@ function CostCategory({ name, amount, percentage, color }: CostCategoryProps) {
     <div className="space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium">{name}</span>
-        <span className="text-sm font-semibold">${amount.toLocaleString()}</span>
+        <span className="text-sm font-semibold">£{amount.toLocaleString()}</span>
       </div>
       <div className="w-full bg-gray-200 rounded-full h-2">
         <div className={`${color} h-2 rounded-full`} style={{ width: `${percentage}%` }} />
@@ -474,7 +474,7 @@ function InvoiceStatus({ status, count, amount, icon: Icon, color }: InvoiceStat
         <span className="text-sm font-medium">{status}</span>
         <span className="text-xs text-gray-500">({count})</span>
       </div>
-      <span className="text-sm font-semibold">${amount.toLocaleString()}</span>
+      <span className="text-sm font-semibold">£{amount.toLocaleString()}</span>
     </div>
   )
 }
@@ -521,7 +521,7 @@ function ActivityItem({ type, title, amount, time, status }: ActivityItemProps) 
       </div>
       <div className="text-right">
         <p className={`text-sm font-semibold ${statusColors[status]}`}>
-          ${amount.toLocaleString()}
+          £{amount.toLocaleString()}
         </p>
       </div>
     </div>

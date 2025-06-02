@@ -256,6 +256,13 @@ export default function AdminDashboardPage() {
               onClick={handleExportData}
               loading={loading === 'export'}
             />
+            <SystemAction
+              title="System Verification"
+              description="Test critical features"
+              icon={Shield}
+              onClick={() => router.push('/test-verification')}
+              loading={false}
+            />
           </div>
         </div>
 
