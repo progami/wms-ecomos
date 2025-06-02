@@ -60,7 +60,7 @@ describe('Calculations API Route', () => {
       }
     })
 
-    it('should allow system_admin to trigger calculations', async () => {
+    it('should allow admin to trigger calculations', async () => {
       mockGetServerSession.mockResolvedValue(mockSessions.admin)
       mockUpdateInventoryBalances.mockResolvedValue(10)
 

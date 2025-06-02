@@ -17,29 +17,34 @@ export async function GET(request: NextRequest) {
       include: {
         warehouse: {
           select: {
-            name: true
+            id: true,
+            name: true,
+            code: true
           }
         }
       },
       orderBy: [
+        { warehouse: { name: 'asc' } },
         { costCategory: 'asc' },
         { effectiveDate: 'desc' }
       ]
     })
 
-    // Transform the data to match the expected format
-    const transformedRates = rates.map(rate => ({
+    // Return the data in the correct format
+    const formattedRates = rates.map(rate => ({
       id: rate.id,
-      name: rate.costName,
-      type: rate.costCategory.toUpperCase(),
-      unit: rate.unitOfMeasure,
-      rate: parseFloat(rate.costValue.toString()),
-      effectiveDate: rate.effectiveDate.toISOString(),
       warehouseId: rate.warehouseId,
-      warehouse: rate.warehouse
+      warehouse: rate.warehouse,
+      costCategory: rate.costCategory,
+      costName: rate.costName,
+      costValue: parseFloat(rate.costValue.toString()),
+      unitOfMeasure: rate.unitOfMeasure,
+      effectiveDate: rate.effectiveDate.toISOString(),
+      endDate: rate.endDate?.toISOString() || null,
+      notes: rate.notes
     }))
 
-    return NextResponse.json(transformedRates)
+    return NextResponse.json(formattedRates)
   } catch (error) {
     console.error('Error fetching rates:', error)
     return NextResponse.json(
@@ -53,73 +58,89 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session) {
+    if (!session || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user has permission to create rates
-    if (!['admin', 'staff'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
     const body = await request.json()
-    const { name, type, unit, rate, effectiveDate, warehouseId } = body
+    const { warehouseId, costCategory, costName, costValue, unitOfMeasure, effectiveDate, endDate, notes } = body
 
     // Validate required fields
-    if (!name || !type || !unit || rate === undefined || !effectiveDate) {
+    if (!warehouseId || !costCategory || !costName || costValue === undefined || !unitOfMeasure || !effectiveDate) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    // Get the first warehouse if none specified
-    let targetWarehouseId = warehouseId
-    if (!targetWarehouseId) {
-      const firstWarehouse = await prisma.warehouse.findFirst({
-        where: { isActive: true }
+    // Special validation for Storage category
+    if (costCategory === 'Storage') {
+      // Check for existing active storage rate
+      const existingStorageRate = await prisma.costRate.findFirst({
+        where: {
+          warehouseId,
+          costCategory: 'Storage',
+          effectiveDate: { lte: new Date(effectiveDate) },
+          OR: [
+            { endDate: null },
+            { endDate: { gte: new Date(effectiveDate) } }
+          ]
+        }
       })
-      targetWarehouseId = firstWarehouse?.id
-    }
 
-    if (!targetWarehouseId) {
-      return NextResponse.json(
-        { error: 'No active warehouse found' },
-        { status: 400 }
-      )
+      if (existingStorageRate) {
+        return NextResponse.json(
+          { error: 'An active storage rate already exists for this warehouse. Please end the existing rate first.' },
+          { status: 400 }
+        )
+      }
+
+      // Ensure correct unit for storage
+      if (unitOfMeasure !== 'pallet/week') {
+        return NextResponse.json(
+          { error: 'Storage rates must use "pallet/week" as the unit of measure' },
+          { status: 400 }
+        )
+      }
     }
 
     const newRate = await prisma.costRate.create({
       data: {
-        warehouseId: targetWarehouseId,
-        costCategory: type,
-        costName: name,
-        costValue: rate,
-        unitOfMeasure: unit,
+        warehouseId,
+        costCategory,
+        costName,
+        costValue,
+        unitOfMeasure,
         effectiveDate: new Date(effectiveDate),
+        endDate: endDate ? new Date(endDate) : null,
+        notes,
         createdById: session.user.id
       },
       include: {
         warehouse: {
           select: {
-            name: true
+            id: true,
+            name: true,
+            code: true
           }
         }
       }
     })
 
-    const transformedRate = {
+    const formattedRate = {
       id: newRate.id,
-      name: newRate.costName,
-      type: newRate.costCategory.toUpperCase(),
-      unit: newRate.unitOfMeasure,
-      rate: parseFloat(newRate.costValue.toString()),
-      effectiveDate: newRate.effectiveDate.toISOString(),
       warehouseId: newRate.warehouseId,
-      warehouse: newRate.warehouse
+      warehouse: newRate.warehouse,
+      costCategory: newRate.costCategory,
+      costName: newRate.costName,
+      costValue: parseFloat(newRate.costValue.toString()),
+      unitOfMeasure: newRate.unitOfMeasure,
+      effectiveDate: newRate.effectiveDate.toISOString(),
+      endDate: newRate.endDate?.toISOString() || null,
+      notes: newRate.notes
     }
 
-    return NextResponse.json(transformedRate)
+    return NextResponse.json(formattedRate)
   } catch (error) {
     console.error('Error creating rate:', error)
     return NextResponse.json(

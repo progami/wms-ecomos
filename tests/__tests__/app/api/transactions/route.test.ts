@@ -482,7 +482,7 @@ describe('Transactions API Route', () => {
       mockGetServerSession.mockResolvedValue({
         user: {
           id: 'admin-1',
-          role: 'system_admin',
+          role: 'admin',
           warehouseId: null,
         },
       })

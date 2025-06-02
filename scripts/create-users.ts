@@ -22,7 +22,7 @@ async function main() {
         email: 'admin@warehouse.com',
         passwordHash: adminPassword,
         fullName: 'System Administrator',
-        role: 'system_admin' as any, // Keep old role for now
+        role: 'admin' as any,
         isActive: true,
       },
     })

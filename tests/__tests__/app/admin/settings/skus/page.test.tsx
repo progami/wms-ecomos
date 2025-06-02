@@ -42,8 +42,8 @@ describe('Admin SKUs Page', () => {
       expect(prisma.sku.findMany).not.toHaveBeenCalled()
     })
 
-    it('should redirect to login if user is not system_admin', async () => {
-      const nonAdminRoles = ['finance_admin', 'warehouse_staff', 'manager', 'viewer']
+    it('should redirect to login if user is not admin', async () => {
+      const nonAdminRoles = ['staff']
 
       for (const role of nonAdminRoles) {
         mockGetServerSession.mockResolvedValue({
@@ -56,9 +56,9 @@ describe('Admin SKUs Page', () => {
       }
     })
 
-    it('should allow system_admin to access the page', async () => {
+    it('should allow admin to access the page', async () => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: 'admin-1', role: 'system_admin' },
+        user: { id: 'admin-1', role: 'admin' },
       })
       ;(prisma.sku.findMany as jest.Mock).mockResolvedValue([])
 
@@ -72,7 +72,7 @@ describe('Admin SKUs Page', () => {
   describe('Page Content', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: 'admin-1', role: 'system_admin' },
+        user: { id: 'admin-1', role: 'admin' },
       })
     })
 
@@ -112,7 +112,7 @@ describe('Admin SKUs Page', () => {
   describe('SKU Data Display', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: 'admin-1', role: 'system_admin' },
+        user: { id: 'admin-1', role: 'admin' },
       })
     })
 
@@ -195,7 +195,7 @@ describe('Admin SKUs Page', () => {
   describe('SKU Summary Section', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: 'admin-1', role: 'system_admin' },
+        user: { id: 'admin-1', role: 'admin' },
       })
     })
 
@@ -243,7 +243,7 @@ describe('Admin SKUs Page', () => {
   describe('Table Styling', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: 'admin-1', role: 'system_admin' },
+        user: { id: 'admin-1', role: 'admin' },
       })
     })
 
@@ -278,7 +278,7 @@ describe('Admin SKUs Page', () => {
   describe('Empty State', () => {
     beforeEach(() => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: 'admin-1', role: 'system_admin' },
+        user: { id: 'admin-1', role: 'admin' },
       })
     })
 

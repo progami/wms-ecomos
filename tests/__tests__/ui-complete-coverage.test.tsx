@@ -69,7 +69,7 @@ const renderWithProviders = (component: React.ReactElement, session?: any) => {
   ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
   
   return render(
-    <SessionProvider session={session || createMockSession('system_admin')}>
+    <SessionProvider session={session || createMockSession('admin')}>
       {component}
     </SessionProvider>
   )
@@ -175,7 +175,7 @@ describe('Complete UI Coverage Tests', () => {
     }
 
     it('should show all system admin navigation items', async () => {
-      await testNavigation('system_admin', [
+      await testNavigation('admin', [
         'Dashboard',
         'Inventory',
         'Users',

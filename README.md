@@ -1,212 +1,190 @@
 # Warehouse Management System
 
-A comprehensive warehouse management solution that tracks inventory, calculates storage costs, and manages billing across multiple 3PL warehouses. Built as a web-based replacement for complex Excel spreadsheets, maintaining the same business logic with improved scalability and real-time capabilities.
+A comprehensive warehouse management system with 3PL billing reconciliation, designed to replace complex Excel workflows with a modern web application.
 
-## 🚀 Quick Start
+## Features
 
+- **Inventory Management**: Track inventory movements with immutable transaction ledger
+- **3PL Billing**: Automated storage calculations and invoice reconciliation
+- **Amazon Integration**: Sync FBA inventory and product data
+- **Multi-Warehouse**: Support for multiple warehouse locations
+- **Role-Based Access**: Admin and staff user roles
+- **Real-Time Reporting**: Financial dashboards and inventory reports
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- PostgreSQL 12+
+- Git
+
+### Installation
+
+1. Clone the repository:
 ```bash
-# Install dependencies
+git clone [repository-url]
+cd warehouse_management
+```
+
+2. Install dependencies:
+```bash
 npm install
+```
 
-# Set up database
-cp .env.example .env
-# Edit .env with your database URL
+3. Set up the database:
 
-# Run database setup
-npm run db:push
-npm run db:seed
+**Option 1: Using PostgreSQL.app (Mac)**
+```bash
+# Create database
+createdb warehouse_management
 
-# Import existing Excel data (optional)
-npm run db:import
+# Update .env.local
+DATABASE_URL="postgresql://yourusername@localhost:5432/warehouse_management"
+```
 
-# Start the app
+**Option 2: Using standard PostgreSQL**
+```bash
+# Create database
+sudo -u postgres createdb warehouse_management
+
+# Update .env.local
+DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/warehouse_management"
+```
+
+4. Set up environment variables:
+```bash
+cp .env.example .env.local
+# Edit .env.local with your database credentials and generate NEXTAUTH_SECRET
+openssl rand -base64 32  # Use this output for NEXTAUTH_SECRET
+```
+
+5. Run database migrations:
+```bash
+npx prisma db push
+npx tsx prisma/seed.ts
+```
+
+6. Start the development server:
+```bash
 npm run dev
 ```
 
-Visit http://localhost:3000
+7. Open http://localhost:3000 and login with:
+- Email: `admin@warehouse.com`
+- Password: `admin123`
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 warehouse_management/
-├── src/                    # Application source code
-│   ├── app/               # Next.js app directory (pages & API routes)
-│   ├── components/        # React components
-│   ├── lib/              # Core business logic
-│   ├── hooks/            # Custom React hooks
-│   ├── types/            # TypeScript type definitions
-│   └── utils/            # Helper functions
-├── prisma/                # Database schema and migrations
-├── scripts/               # Utility scripts for data management
-├── docs/                  # Documentation
-│   ├── architecture/     # System architecture docs
-│   ├── setup/           # Setup guides
-│   └── excel-templates/ # Original Excel system docs
-├── tests/                 # Test suite
-├── public/               # Static assets
-└── data/                 # Excel data and import scripts
+├── src/
+│   ├── app/              # Next.js 14 app directory
+│   ├── components/       # React components
+│   ├── lib/             # Utilities and libraries
+│   └── types/           # TypeScript types
+├── prisma/              # Database schema and migrations
+├── docs/                # Documentation
+│   ├── architecture/    # System architecture
+│   ├── excel-templates/ # Excel system documentation
+│   └── setup/          # Setup guides
+├── scripts/            # Utility scripts
+└── data/              # Excel data files
 ```
 
-## 🔑 Login Credentials
+## Key Concepts
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@warehouse.com | admin123 |
-| Staff | staff@warehouse.com | admin123 |
-| Staff | finance@warehouse.com | admin123 |
+### Transaction-Based Ledger
+All inventory movements are recorded as immutable transactions:
+- RECEIVE: Goods coming in
+- SHIP: Goods going out
+- ADJUST_IN/OUT: Inventory adjustments
 
-## 📈 Current Data Status
+### Billing Periods
+- Run from 16th to 15th of the following month
+- Storage calculated every Monday at 23:59:59
+- Automated reconciliation with 3PL invoices
 
-✅ **Imported from Excel (May 2024 - May 2025):**
-- 174 inventory transactions (33 RECEIVE, 141 SHIP)
-- 8 SKUs with full specifications
-- 18 warehouse-SKU configurations  
-- 31 cost rates (inbound, storage, outbound)
-- Current inventory balances calculated
+### User Roles
+- **Admin**: Full system access, configuration, and reporting
+- **Staff**: Operational access for inventory and basic reports
 
-⏳ **Pending Implementation:**
-- Storage ledger calculations
-- Cost calculations and billing reports
-- Invoice reconciliation features
+## Core Functionality
 
-## 📱 Features by Role
+### Inventory Management
+- Real-time inventory tracking
+- Batch/lot tracking
+- Historical inventory views
+- Multi-warehouse support
 
-### Admin Features (Full System Access)
-- User management and permissions
-- System settings and configuration
-- SKU and warehouse management
-- Cost rate configuration
-- All reports and analytics
-- Import/export data
-- Run system calculations
+### Financial Management
+- Automated storage calculations
+- Cost rate management by category
+- Invoice reconciliation
+- Financial dashboards
 
-### Staff Features (Operational Access)
-- Inventory tracking and management
-- Receiving and shipping operations
-- Invoice processing and upload
-- Cost reconciliation
-- View and manage rates
-- Generate reports
-- Real-time stock monitoring
+### Amazon Integration
+- Sync FBA inventory levels
+- Import product details
+- Automatic SKU creation
 
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: NextAuth.js
-- **UI Components**: Radix UI, shadcn/ui
-- **Charts**: Recharts
-- **Excel Processing**: xlsx
-
-## 📊 Key Features
-
-- **Unified Inventory Ledger**: Single page with tabs for transaction history and current balances
-- **Transaction-Based System**: All inventory movements tracked as immutable transactions (RECEIVE, SHIP, ADJUST)
-- **Point-in-Time Views**: See inventory state at any historical date
-- **Real-time Balance Calculation**: Current inventory calculated from complete transaction history
-- **Weekly Storage Billing**: Automated Monday stock-takes for 3PL billing (industry standard)
-- **Multi-warehouse Management**: Track inventory across FMC, VGLOBAL, 4AS, and other locations
-- **Batch/Lot Tracking**: Full traceability with Warehouse + SKU + Batch/Lot identification
-- **Invoice Reconciliation**: Compare calculated vs actual costs with variance analysis
-- **Simplified Role System**: Two roles - Admin (full access) and Staff (operational access)
-- **Excel Import/Export**: Seamless data migration from existing Excel systems
-- **Audit Trail**: Complete history of all transactions and modifications
-
-## 🔧 Development
+## Scripts
 
 ```bash
-# Run tests
-npm test
+# Import data from Excel
+npm run script scripts/import-warehouse-excel.ts
 
-# Run tests with coverage
-npm run test:coverage
+# Add sample data
+npm run script scripts/add-sample-rates.ts
+npm run script scripts/add-sample-finance-data.ts
 
-# Open Prisma Studio
-npm run db:studio
-
-# Type checking
-npm run type-check
+# Create additional users
+npm run script scripts/create-staff-users.ts
 ```
 
-## 📦 Deployment
-
-```bash
-# Build for production
-npm run build
-
-# Start production server
-npm start
-```
-
-### Environment Variables
-
-Create a `.env` file with:
+## Environment Variables
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/warehouse_db"
+DATABASE_URL="postgresql://user:password@localhost:5432/warehouse_management"
 
 # Authentication
-NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
 NEXTAUTH_URL="http://localhost:3000"
 
-# Optional
-NODE_ENV="production"
+# Amazon Integration (optional)
+AMAZON_SP_APP_ID="your-app-id"
+AMAZON_REFRESH_TOKEN="your-refresh-token"
+AMAZON_MARKETPLACE_ID="A1F83G8C2ARO7P"  # UK
+AMAZON_REGION="eu-west-1"
 ```
 
-## 📚 Documentation
+## Development
 
-- [System Overview](./docs/SYSTEM_OVERVIEW.md) - Complete system guide
-- [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [Architecture Overview](./docs/architecture/web-app-architecture.md)
-- [Database Schema](./docs/architecture/database-schema-optimized.sql)
-- [Setup Guide](./docs/setup/quick-start.md)
-- [Excel Templates](./docs/excel-templates/) - Original Excel system documentation
-- [Test Coverage Report](./docs/test-coverage-report.md)
+```bash
+# Run development server
+npm run dev
 
-## 🏢 Business Rules
+# Build for production
+npm run build
 
-1. **Billing Periods**: 16th of previous month to 15th of current month
-2. **Stock-Take Day**: Monday 23:59:59 (3PL industry standard)
-3. **Inventory Tracking**: Every item tracked by Warehouse + SKU + Batch/Lot
-4. **No Negative Inventory**: System prevents shipping more than available
-5. **Audit Trail**: All transactions preserved, corrections added as new transactions
+# Run production build
+npm start
 
-## 🤝 Contributing
+# Run type checking
+npm run type-check
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+# Lint code
+npm run lint
+```
 
-## 📝 Changelog
+## Deployment
 
-### v2.1.0 - Bug Fixes and UI Improvements (June 2025)
-- 🐛 Fixed finance dashboard API calls (was calling non-existent -simple endpoints)
-- 🐛 Fixed admin dashboard data fetching
-- 🐛 Fixed SKU management page API endpoint
-- ✨ Removed redundant "Inventory Overview" from navigation
-- 📚 Added comprehensive system documentation
-- 📚 Added troubleshooting guide
+1. Set production environment variables
+2. Build the application: `npm run build`
+3. Run database migrations: `npx prisma migrate deploy`
+4. Start the server: `npm start`
 
-### v2.0.0 - Role System Simplification (June 2025)
-- ✅ Migrated from 5-role to 2-role system (admin/staff)
-- ✅ Updated all role checks throughout the application
-- ✅ Removed Receive/Ship from navigation (now buttons on inventory page)
-- ✅ Added Settings to staff navigation
-- ✅ Fixed all dashboard and page access controls
-- ✅ Improved navigation consistency
+## License
 
-### v1.0.0 - Initial Release
-- Excel data import functionality
-- Transaction-based inventory tracking
-- Point-in-time inventory views
-- Multi-warehouse support
-- Invoice reconciliation
-- Comprehensive reporting
-
-## 📄 License
-
-This project is licensed under the MIT License.
+MIT

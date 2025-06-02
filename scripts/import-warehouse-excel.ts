@@ -210,7 +210,7 @@ async function importExcelData() {
           email: 'system@warehouse.com',
           passwordHash: await bcrypt.hash('system123', 10),
           fullName: 'System Import',
-          role: 'system_admin',
+          role: 'admin',
           isActive: true
         }
       })

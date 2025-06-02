@@ -80,7 +80,7 @@ describe('Middleware', () => {
       const request = createRequest('/dashboard')
       ;(getToken as jest.Mock).mockResolvedValue({
         id: 'user-123',
-        role: 'system_admin',
+        role: 'admin',
       })
 
       await middleware(request)
@@ -162,7 +162,7 @@ describe('Middleware', () => {
       const request = createRequest('/auth/login')
       ;(getToken as jest.Mock).mockResolvedValue({
         id: 'user-123',
-        role: 'system_admin',
+        role: 'admin',
       })
 
       await middleware(request)
@@ -230,7 +230,7 @@ describe('Middleware', () => {
       const request = createRequest('/api/inventory')
       ;(getToken as jest.Mock).mockResolvedValue({
         id: 'user-123',
-        role: 'system_admin',
+        role: 'admin',
       })
 
       await middleware(request)

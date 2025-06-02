@@ -96,16 +96,10 @@ export default function AdminSettingsPage() {
 
         {/* Settings Categories */}
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Master Data */}
+          {/* Master Data & Configuration */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Master Data</h2>
+            <h2 className="text-xl font-semibold">Master Data & Configuration</h2>
             <div className="space-y-3">
-              <SettingCard
-                title="Warehouses"
-                description="Manage warehouse locations and configurations"
-                icon={Building2}
-                href="/admin/settings/warehouses"
-              />
               <SettingCard
                 title="SKU Master"
                 description="Product definitions and specifications"
@@ -113,24 +107,37 @@ export default function AdminSettingsPage() {
                 href="/admin/settings/skus"
               />
               <SettingCard
+                title="Warehouses"
+                description="Manage warehouse locations"
+                icon={Building2}
+                href="/admin/settings/warehouses"
+              />
+              <SettingCard
+                title="Warehouse Configurations"
+                description="Cartons per pallet settings for each SKU"
+                icon={Building2}
+                href="/admin/settings/warehouse-configs"
+                iconColor="text-purple-600"
+              />
+              <SettingCard
                 title="Cost Rates"
                 description="3PL pricing and rate structures"
                 icon={DollarSign}
                 href="/admin/settings/rates"
               />
+            </div>
+          </div>
+
+          {/* System Settings */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">System Settings</h2>
+            <div className="space-y-3">
               <SettingCard
                 title="User Management"
                 description="User accounts and permissions"
                 icon={Users}
                 href="/admin/users"
               />
-            </div>
-          </div>
-
-          {/* System Configuration */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">System Configuration</h2>
-            <div className="space-y-3">
               <SettingCard
                 title="General Settings"
                 description="Company info, timezone, and defaults"
@@ -213,16 +220,17 @@ interface SettingCardProps {
   description: string
   icon: React.ElementType
   href: string
+  iconColor?: string
 }
 
-function SettingCard({ title, description, icon: Icon, href }: SettingCardProps) {
+function SettingCard({ title, description, icon: Icon, href, iconColor = "text-primary" }: SettingCardProps) {
   return (
     <Link href={href} className="block">
       <div className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <Icon className="h-5 w-5 text-primary" />
+              <Icon className={`h-5 w-5 ${iconColor}`} />
             </div>
             <div>
               <h3 className="font-medium">{title}</h3>

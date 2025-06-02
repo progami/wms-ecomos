@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 
-export async function PUT(
+export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -14,18 +14,81 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user has permission to update rates
-    if (!['admin', 'staff'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const rate = await prisma.costRate.findUnique({
+      where: { id: params.id },
+      include: {
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        }
+      }
+    })
+
+    if (!rate) {
+      return NextResponse.json({ error: 'Rate not found' }, { status: 404 })
+    }
+
+    const formattedRate = {
+      id: rate.id,
+      warehouseId: rate.warehouseId,
+      warehouse: rate.warehouse,
+      costCategory: rate.costCategory,
+      costName: rate.costName,
+      costValue: parseFloat(rate.costValue.toString()),
+      unitOfMeasure: rate.unitOfMeasure,
+      effectiveDate: rate.effectiveDate.toISOString(),
+      endDate: rate.endDate?.toISOString() || null,
+      notes: rate.notes
+    }
+
+    return NextResponse.json(formattedRate)
+  } catch (error) {
+    console.error('Error fetching rate:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch rate' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { name, unit, rate } = body
+    const { costName, costValue, unitOfMeasure, endDate, notes } = body
 
     // Validate required fields
-    if (!name || !unit || rate === undefined) {
+    if (!costName || costValue === undefined || !unitOfMeasure) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Get existing rate to check category
+    const existingRate = await prisma.costRate.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!existingRate) {
+      return NextResponse.json({ error: 'Rate not found' }, { status: 404 })
+    }
+
+    // Special validation for Storage category
+    if (existingRate.costCategory === 'Storage' && unitOfMeasure !== 'pallet/week') {
+      return NextResponse.json(
+        { error: 'Storage rates must use "pallet/week" as the unit of measure' },
         { status: 400 }
       )
     }
@@ -33,32 +96,38 @@ export async function PUT(
     const updatedRate = await prisma.costRate.update({
       where: { id: params.id },
       data: {
-        costName: name,
-        unitOfMeasure: unit,
-        costValue: rate,
+        costName,
+        unitOfMeasure,
+        costValue,
+        endDate: endDate ? new Date(endDate) : null,
+        notes,
         updatedAt: new Date()
       },
       include: {
         warehouse: {
           select: {
-            name: true
+            id: true,
+            name: true,
+            code: true
           }
         }
       }
     })
 
-    const transformedRate = {
+    const formattedRate = {
       id: updatedRate.id,
-      name: updatedRate.costName,
-      type: updatedRate.costCategory.toUpperCase(),
-      unit: updatedRate.unitOfMeasure,
-      rate: parseFloat(updatedRate.costValue.toString()),
-      effectiveDate: updatedRate.effectiveDate.toISOString(),
       warehouseId: updatedRate.warehouseId,
-      warehouse: updatedRate.warehouse
+      warehouse: updatedRate.warehouse,
+      costCategory: updatedRate.costCategory,
+      costName: updatedRate.costName,
+      costValue: parseFloat(updatedRate.costValue.toString()),
+      unitOfMeasure: updatedRate.unitOfMeasure,
+      effectiveDate: updatedRate.effectiveDate.toISOString(),
+      endDate: updatedRate.endDate?.toISOString() || null,
+      notes: updatedRate.notes
     }
 
-    return NextResponse.json(transformedRate)
+    return NextResponse.json(formattedRate)
   } catch (error) {
     console.error('Error updating rate:', error)
     return NextResponse.json(

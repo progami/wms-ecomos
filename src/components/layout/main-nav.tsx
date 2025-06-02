@@ -20,6 +20,7 @@ import {
   Building,
   BookOpen,
   Calendar,
+  Cloud,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -27,33 +28,41 @@ import { cn } from '@/lib/utils'
 const navigation = {
   admin: [
     { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
-    // Inventory Management
+    
+    // Operations
     { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
-    // Calculations & Finance
     { name: 'Run Calculations', href: '/admin/calculations', icon: Calculator },
+    
+    // Finance
     { name: 'Finance Dashboard', href: '/finance/dashboard', icon: DollarSign },
-    // Finance & Reconciliation
     { name: 'Invoices', href: '/finance/invoices', icon: FileText },
     { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-    // Reports & Analytics
+    
+    // Reports
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-    // Configuration & Settings
+    
+    // Master Data
     { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
+    { name: 'Warehouse Configs', href: '/admin/settings/warehouse-configs', icon: Building },
     { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
-    { name: 'Warehouses', href: '/admin/settings/warehouses', icon: Warehouse },
+    
+    // System
     { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Amazon Integration', href: '/admin/amazon', icon: Cloud },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ],
   staff: [
     { name: 'Dashboard', href: '/warehouse/dashboard', icon: Home },
-    // Inventory Management
+    
+    // Operations
     { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
+    
     // Finance
     { name: 'Invoices', href: '/finance/invoices', icon: FileText },
     { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-    // Reports
+    
+    // Reports & Settings
     { name: 'Reports', href: '/warehouse/reports', icon: BarChart3 },
-    // Settings
     { name: 'Settings', href: '/warehouse/settings', icon: Settings },
   ],
 }

@@ -8,7 +8,7 @@ async function addSampleFinanceData() {
     // Get warehouses and a user
     const warehouses = await prisma.warehouse.findMany()
     const user = await prisma.user.findFirst({
-      where: { role: 'system_admin' }
+      where: { role: 'admin' }
     })
 
     if (!user) {

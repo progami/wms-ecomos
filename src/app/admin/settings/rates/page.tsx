@@ -1,45 +1,66 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DollarSign, Edit2, Save, X, Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { DollarSign, Plus, Edit2, Calendar, AlertCircle, Filter } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PageHeader } from '@/components/ui/page-header'
 import { toast } from 'react-hot-toast'
+import Link from 'next/link'
 
 interface CostRate {
   id: string
-  name: string
-  type: 'STORAGE' | 'HANDLING' | 'SHIPPING' | 'OTHER'
-  unit: string
-  rate: number
+  warehouseId: string
+  warehouse: { name: string; code: string }
+  costCategory: string
+  costName: string
+  costValue: number
+  unitOfMeasure: string
   effectiveDate: string
-  warehouseId?: string
-  warehouse?: { name: string }
+  endDate?: string
+  notes?: string
+}
+
+interface Warehouse {
+  id: string
+  name: string
+  code: string
 }
 
 export default function AdminRatesPage() {
+  const router = useRouter()
+  const { data: session, status } = useSession()
   const [rates, setRates] = useState<CostRate[]>([])
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editedRate, setEditedRate] = useState<Partial<CostRate>>({})
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newRate, setNewRate] = useState<Partial<CostRate>>({
-    name: '',
-    type: 'STORAGE',
-    unit: 'per pallet/week',
-    rate: 0,
-    effectiveDate: new Date().toISOString().split('T')[0],
-  })
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [showActiveOnly, setShowActiveOnly] = useState(true)
 
   useEffect(() => {
-    fetchRates()
-  }, [])
+    if (status === 'loading') return
+    if (!session || session.user.role !== 'admin') {
+      router.push('/auth/login')
+      return
+    }
+    fetchData()
+  }, [session, status, router])
 
-  const fetchRates = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch('/api/settings/rates')
-      if (response.ok) {
-        const data = await response.json()
+      // Fetch rates
+      const ratesResponse = await fetch('/api/settings/rates')
+      if (ratesResponse.ok) {
+        const data = await ratesResponse.json()
         setRates(data)
+      }
+
+      // Fetch warehouses
+      const warehouseResponse = await fetch('/api/warehouses')
+      if (warehouseResponse.ok) {
+        const data = await warehouseResponse.json()
+        setWarehouses(data)
       }
     } catch (error) {
       toast.error('Failed to load rates')
@@ -48,53 +69,83 @@ export default function AdminRatesPage() {
     }
   }
 
-  const handleEdit = (rate: CostRate) => {
-    setEditingId(rate.id)
-    setEditedRate(rate)
-  }
-
-  const handleSave = async () => {
-    try {
-      const response = await fetch(`/api/settings/rates/${editingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editedRate),
-      })
-
-      if (response.ok) {
-        toast.success('Rate updated successfully')
-        fetchRates()
-        setEditingId(null)
-      }
-    } catch (error) {
-      toast.error('Failed to update rate')
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: string } = {
+      Storage: 'bg-blue-100 text-blue-800',
+      Container: 'bg-purple-100 text-purple-800',
+      Carton: 'bg-green-100 text-green-800',
+      Pallet: 'bg-yellow-100 text-yellow-800',
+      Unit: 'bg-pink-100 text-pink-800',
+      Shipment: 'bg-indigo-100 text-indigo-800',
+      Accessorial: 'bg-gray-100 text-gray-800'
     }
+    return colors[category] || 'bg-gray-100 text-gray-800'
   }
 
-  const handleAdd = async () => {
-    try {
-      const response = await fetch('/api/settings/rates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRate),
-      })
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value)
+  }
 
-      if (response.ok) {
-        toast.success('Rate added successfully')
-        fetchRates()
-        setShowAddForm(false)
-        setNewRate({
-          name: '',
-          type: 'STORAGE',
-          unit: 'per pallet/week',
-          rate: 0,
-          effectiveDate: new Date().toISOString().split('T')[0],
-        })
-      }
-    } catch (error) {
-      toast.error('Failed to add rate')
+  // Filter rates
+  const filteredRates = rates.filter(rate => {
+    if (selectedWarehouse !== 'all' && rate.warehouseId !== selectedWarehouse) return false
+    if (selectedCategory !== 'all' && rate.costCategory !== selectedCategory) return false
+    if (showActiveOnly) {
+      const now = new Date()
+      const effectiveDate = new Date(rate.effectiveDate)
+      const endDate = rate.endDate ? new Date(rate.endDate) : null
+      const isActive = effectiveDate <= now && (!endDate || endDate >= now)
+      if (!isActive) return false
     }
-  }
+    return true
+  })
+
+  // Group rates by category
+  const groupedRates = filteredRates.reduce((acc, rate) => {
+    if (!acc[rate.costCategory]) {
+      acc[rate.costCategory] = []
+    }
+    acc[rate.costCategory].push(rate)
+    return acc
+  }, {} as { [key: string]: CostRate[] })
+
+  // Sort rates within each category by warehouse name and effective date
+  Object.keys(groupedRates).forEach(category => {
+    groupedRates[category].sort((a, b) => {
+      const warehouseCompare = a.warehouse.name.localeCompare(b.warehouse.name)
+      if (warehouseCompare !== 0) return warehouseCompare
+      return new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
+    })
+  })
+
+  // Get unique categories in logical order
+  const categoryOrder = ['Storage', 'Container', 'Carton', 'Pallet', 'Unit', 'Shipment', 'Accessorial']
+  const categories = [...new Set(rates.map(r => r.costCategory))].sort((a, b) => {
+    const aIndex = categoryOrder.indexOf(a)
+    const bIndex = categoryOrder.indexOf(b)
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    return aIndex - bIndex
+  })
+
+  // Count active storage rates per warehouse
+  const storageRateCount = rates
+    .filter(r => r.costCategory === 'Storage' && (!r.endDate || new Date(r.endDate) >= new Date()))
+    .reduce((acc, rate) => {
+      acc[rate.warehouseId] = (acc[rate.warehouseId] || 0) + 1
+      return acc
+    }, {} as { [key: string]: number })
+
+  // Check for warehouses with multiple active storage rates
+  const warehousesWithMultipleStorageRates = Object.entries(storageRateCount)
+    .filter(([_, count]) => count > 1)
+    .map(([warehouseId]) => warehouses.find(w => w.id === warehouseId)?.name)
+    .filter(Boolean)
 
   if (loading) {
     return (
@@ -109,261 +160,294 @@ export default function AdminRatesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Page Header with Description */}
-        <div className="bg-white border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Cost Rates Management</h1>
-              <p className="text-muted-foreground">
-                Configure pricing and rate structures for 3PL services
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddForm(true)}
+        {/* Page Header */}
+        <PageHeader
+          title="Cost Rates Master"
+          subtitle="3PL pricing and rate structures"
+          description="Manage cost rates for all warehouses. Rates are organized by category (Storage, Container, Carton, etc.) as defined in the Excel system. Each warehouse must have exactly one active storage rate."
+          icon={DollarSign}
+          iconColor="text-green-600"
+          bgColor="bg-green-50"
+          borderColor="border-green-200"
+          textColor="text-green-800"
+          actions={
+            <Link
+              href="/admin/settings/rates/new"
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Rate
-            </button>
-          </div>
-          
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <DollarSign className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
-              <div className="text-sm text-amber-800">
-                <p className="font-semibold mb-1">About This Page:</p>
-                <p>Manage cost rates for warehouse services including storage, handling, shipping, and other charges. Rates can be set globally or per warehouse, with effective dates for scheduling future changes. These rates are used to calculate customer invoices.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+            </Link>
+          }
+        />
 
-        {/* Add Rate Form */}
-        {showAddForm && (
-          <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-            <h3 className="text-lg font-semibold mb-4">Add New Rate</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Warnings */}
+        {warehousesWithMultipleStorageRates.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
               <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
-                <input
-                  type="text"
-                  value={newRate.name}
-                  onChange={(e) => setNewRate({ ...newRate, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., Weekly Storage"
-                />
+                <h3 className="font-semibold text-red-900">Multiple Storage Rates Detected</h3>
+                <p className="text-sm text-red-800 mt-1">
+                  The following warehouses have multiple active storage rates: {warehousesWithMultipleStorageRates.join(', ')}.
+                  Each warehouse should have only one active storage rate at a time.
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Type *</label>
-                <select
-                  value={newRate.type}
-                  onChange={(e) => setNewRate({ ...newRate, type: e.target.value as any })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="STORAGE">Storage</option>
-                  <option value="HANDLING">Handling</option>
-                  <option value="SHIPPING">Shipping</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Unit *</label>
-                <input
-                  type="text"
-                  value={newRate.unit}
-                  onChange={(e) => setNewRate({ ...newRate, unit: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., per pallet/week"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Rate (£) *</label>
-                <input
-                  type="number"
-                  value={newRate.rate}
-                  onChange={(e) => setNewRate({ ...newRate, rate: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Effective Date *</label>
-                <input
-                  type="date"
-                  value={newRate.effectiveDate}
-                  onChange={(e) => setNewRate({ ...newRate, effectiveDate: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Warehouse</label>
-                <select
-                  value={newRate.warehouseId || ''}
-                  onChange={(e) => setNewRate({ ...newRate, warehouseId: e.target.value || undefined })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">All Warehouses</option>
-                  <option value="warehouse-1">FMC Warehouse</option>
-                  <option value="warehouse-2">Vglobal Warehouse</option>
-                  <option value="warehouse-3">4AS Warehouse</option>
-                </select>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAdd}
-                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-primary hover:bg-primary/90"
-              >
-                Add Rate
-              </button>
             </div>
           </div>
         )}
 
-        {/* Rates by Type */}
-        <div className="space-y-6">
-          {['STORAGE', 'HANDLING', 'SHIPPING', 'OTHER'].map((type) => {
-            const typeRates = rates.filter(r => r.type === type)
-            if (typeRates.length === 0) return null
-
-            return (
-              <div key={type} className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-3">
-                  <h3 className="text-lg font-semibold">
-                    {type.charAt(0) + type.slice(1).toLowerCase()} Rates
-                  </h3>
-                </div>
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Unit
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rate
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Warehouse
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Effective Date
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {typeRates.map((rate) => (
-                      <tr key={rate.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {editingId === rate.id ? (
-                            <input
-                              type="text"
-                              value={editedRate.name}
-                              onChange={(e) => setEditedRate({ ...editedRate, name: e.target.value })}
-                              className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                          ) : (
-                            rate.name
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {editingId === rate.id ? (
-                            <input
-                              type="text"
-                              value={editedRate.unit}
-                              onChange={(e) => setEditedRate({ ...editedRate, unit: e.target.value })}
-                              className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                          ) : (
-                            rate.unit
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {editingId === rate.id ? (
-                            <input
-                              type="number"
-                              value={editedRate.rate}
-                              onChange={(e) => setEditedRate({ ...editedRate, rate: parseFloat(e.target.value) || 0 })}
-                              className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                              step="0.01"
-                            />
-                          ) : (
-                            `£${rate.rate.toFixed(2)}`
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {rate.warehouse?.name || 'All Warehouses'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(rate.effectiveDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          {editingId === rate.id ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={handleSave}
-                                className="text-green-600 hover:text-green-900"
-                              >
-                                <Save className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingId(null)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleEdit(rate)}
-                              className="text-primary hover:text-primary/80"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          })}
+        {/* Filters */}
+        <div className="bg-white border rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Filter className="h-4 w-4 text-gray-500" />
+            <span className="font-medium text-gray-700">Filters</span>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Warehouse
+              </label>
+              <select
+                value={selectedWarehouse}
+                onChange={(e) => setSelectedWarehouse(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">All Warehouses</option>
+                {warehouses.map(warehouse => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name} ({warehouse.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showActiveOnly}
+                  onChange={(e) => setShowActiveOnly(e.target.checked)}
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm font-medium text-gray-700">Active rates only</span>
+              </label>
+            </div>
+          </div>
         </div>
 
-        {/* Standard Rates Info */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg p-6">
-          <div className="flex items-start gap-3">
-            <DollarSign className="h-6 w-6 text-blue-600 mt-1" />
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Rate Configuration Guide</h3>
-              <div className="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <p className="font-medium">Configure rates for different services:</p>
-                <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li><strong>Storage Rates:</strong> Weekly charges per pallet stored in the warehouse</li>
-                  <li><strong>Handling Rates:</strong> Fees for receiving, shipping, and labor services</li>
-                  <li><strong>Shipping Rates:</strong> Transportation and delivery costs per unit/carton</li>
-                  <li><strong>Other Rates:</strong> Additional services like labeling, repackaging, special handling</li>
-                </ul>
-                <p className="mt-3 font-medium">Tips for effective rate management:</p>
-                <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li>Set competitive rates that cover your operational costs</li>
-                  <li>Use effective dates to plan rate changes in advance</li>
-                  <li>Configure warehouse-specific rates for different service levels</li>
-                  <li>Regularly review and update rates based on market conditions</li>
-                </ul>
+        {/* Rates Display */}
+        {Object.keys(groupedRates).length === 0 ? (
+          <div className="bg-white border rounded-lg p-12 text-center">
+            <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Rates Found</h3>
+            <p className="text-gray-600 mb-4">
+              {showActiveOnly ? 'No active rates match your filters.' : 'No rates match your filters.'}
+            </p>
+            <Link
+              href="/admin/settings/rates/new"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add First Rate
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {categoryOrder
+              .filter(category => groupedRates[category])
+              .map((category) => {
+                const categoryRates = groupedRates[category]
+                return (
+                <div key={category} className="bg-white border rounded-lg overflow-hidden">
+                  <div className={`px-6 py-3 border-b ${getCategoryColor(category).replace('text-', 'bg-').replace('-800', '-50')}`}>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold flex items-center gap-3">
+                        <span className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryColor(category)}`}>
+                          {category}
+                        </span>
+                        <span className="text-gray-600">
+                          {category === 'Storage' ? 'Weekly pallet storage charges' :
+                           category === 'Container' ? 'Container handling charges' :
+                           category === 'Carton' ? 'Per carton handling' :
+                           category === 'Pallet' ? 'Pallet movement charges' :
+                           category === 'Unit' ? 'Individual unit handling' :
+                           category === 'Shipment' ? 'Per shipment/order charges' :
+                           'Additional services'}
+                        </span>
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        {categoryRates.length} rate{categoryRates.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Warehouse
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cost Name
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Rate
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unit
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Effective Period
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {categoryRates.map((rate) => {
+                          const now = new Date()
+                          const effectiveDate = new Date(rate.effectiveDate)
+                          const endDate = rate.endDate ? new Date(rate.endDate) : null
+                          const isActive = effectiveDate <= now && (!endDate || endDate >= now)
+                          const isFuture = effectiveDate > now
+                          
+                          return (
+                            <tr key={rate.id} className={!isActive ? 'bg-gray-50' : ''}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {rate.warehouse.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {rate.warehouse.code}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {rate.costName}
+                                </div>
+                                {rate.notes && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {rate.notes}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <span className="text-lg font-semibold text-gray-900">
+                                  {formatCurrency(rate.costValue)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {rate.unitOfMeasure}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-1 text-sm text-gray-500">
+                                  <Calendar className="h-4 w-4" />
+                                  {new Date(rate.effectiveDate).toLocaleDateString()}
+                                  {rate.endDate && (
+                                    <>
+                                      <span className="mx-1">→</span>
+                                      {new Date(rate.endDate).toLocaleDateString()}
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {isActive ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Active
+                                  </span>
+                                ) : isFuture ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Future
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Expired
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <Link
+                                  href={`/admin/settings/rates/${rate.id}/edit`}
+                                  className="text-primary hover:text-primary/80"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Link>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Information Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-900 mb-4">Cost Categories Reference</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-medium text-blue-900">Storage</h4>
+                <p className="text-sm text-blue-800">Weekly pallet storage charges. Only one active rate per warehouse.</p>
+                <p className="text-xs text-blue-700 mt-1">Required unit: pallet/week</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900">Container</h4>
+                <p className="text-sm text-blue-800">Container handling and devanning charges.</p>
+                <p className="text-xs text-blue-700 mt-1">Units: container, 20ft, 40ft, hc</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900">Carton</h4>
+                <p className="text-sm text-blue-800">Per carton handling charges.</p>
+                <p className="text-xs text-blue-700 mt-1">Units: carton, case</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900">Pallet</h4>
+                <p className="text-sm text-blue-800">Pallet in/out movement charges.</p>
+                <p className="text-xs text-blue-700 mt-1">Units: pallet, pallet/in, pallet/out</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <h4 className="font-medium text-blue-900">Unit</h4>
+                <p className="text-sm text-blue-800">Individual unit handling charges.</p>
+                <p className="text-xs text-blue-700 mt-1">Units: unit, piece, item</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900">Shipment</h4>
+                <p className="text-sm text-blue-800">Per shipment/order processing charges.</p>
+                <p className="text-xs text-blue-700 mt-1">Units: shipment, order, delivery</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900">Accessorial</h4>
+                <p className="text-sm text-blue-800">Additional services and special handling.</p>
+                <p className="text-xs text-blue-700 mt-1">Units: hour, service, fee, charge</p>
               </div>
             </div>
           </div>
