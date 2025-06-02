@@ -29,10 +29,12 @@ interface ShipItem {
   batchLot: string
   cartons: number
   pallets: number
+  calculatedPallets?: number
   units: number
   available: number
   shippingCartonsPerPallet?: number | null
   unitsPerCarton?: number
+  palletVariance?: boolean
 }
 
 export default function WarehouseShipPage() {
@@ -69,9 +71,12 @@ export default function WarehouseShipPage() {
             updated.available = inventoryItem.currentCartons
             updated.shippingCartonsPerPallet = inventoryItem.shippingCartonsPerPallet
             updated.unitsPerCarton = inventoryItem.sku.unitsPerCarton
-            // Auto-calculate pallets based on batch-specific config
+            // Calculate pallets based on batch-specific config
             if (updated.cartons > 0 && updated.shippingCartonsPerPallet) {
-              updated.pallets = Math.ceil(updated.cartons / updated.shippingCartonsPerPallet)
+              const calculated = Math.ceil(updated.cartons / updated.shippingCartonsPerPallet)
+              updated.calculatedPallets = calculated
+              updated.pallets = calculated // Auto-set initially
+              updated.palletVariance = false
             }
           } else {
             updated.available = 0
@@ -83,9 +88,17 @@ export default function WarehouseShipPage() {
         // Update cartons and recalculate pallets
         if (field === 'cartons') {
           updated.cartons = updated.available > 0 ? Math.min(value, updated.available) : value
-          // Auto-calculate pallets based on batch-specific config
+          // Calculate pallets based on batch-specific config
           if (updated.shippingCartonsPerPallet && updated.shippingCartonsPerPallet > 0) {
-            updated.pallets = Math.ceil(updated.cartons / updated.shippingCartonsPerPallet)
+            const calculated = Math.ceil(updated.cartons / updated.shippingCartonsPerPallet)
+            updated.calculatedPallets = calculated
+            // Only auto-update actual if no variance
+            if (!updated.palletVariance) {
+              updated.pallets = calculated
+            } else {
+              // Recalculate variance
+              updated.palletVariance = updated.pallets !== calculated
+            }
           }
         }
         
@@ -431,7 +444,16 @@ export default function WarehouseShipPage() {
                         <input
                           type="number"
                           value={item.pallets}
-                          onChange={(e) => updateItem(item.id, 'pallets', parseInt(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const newPallets = parseInt(e.target.value) || 0
+                            updateItem(item.id, 'pallets', newPallets)
+                            // Calculate variance if we have config
+                            if (item.shippingCartonsPerPallet && item.shippingCartonsPerPallet > 0) {
+                              const calculated = Math.ceil(item.cartons / item.shippingCartonsPerPallet)
+                              updateItem(item.id, 'calculatedPallets', calculated)
+                              updateItem(item.id, 'palletVariance', newPallets !== calculated)
+                            }
+                          }}
                           onKeyDown={(e) => {
                             // Prevent decimal point and negative sign
                             if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
@@ -439,13 +461,22 @@ export default function WarehouseShipPage() {
                             }
                           }}
                           className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
-                            item.shippingCartonsPerPallet ? 'bg-gray-50' : ''
+                            item.palletVariance ? 'border-yellow-500 bg-yellow-50' : ''
                           }`}
                           min="0"
                           step="1"
-                          readOnly={!!item.shippingCartonsPerPallet}
-                          title={item.shippingCartonsPerPallet ? 'Auto-calculated based on cartons and batch config' : 'Enter pallets manually'}
+                          title="Actual pallets shipped"
                         />
+                        {item.shippingCartonsPerPallet && item.calculatedPallets !== undefined && (
+                          <div className="text-xs text-gray-500 text-right mt-1">
+                            Calc: {item.calculatedPallets}
+                            {item.palletVariance && (
+                              <span className="text-yellow-600 ml-1" title="Variance between actual and calculated">
+                                (Δ {Math.abs(item.pallets - (item.calculatedPallets || 0))})
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <input

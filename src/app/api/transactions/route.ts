@@ -175,6 +175,36 @@ export async function POST(request: NextRequest) {
 
       const transactionId = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       
+      // Calculate pallet values
+      let calculatedStoragePalletsIn = null
+      let calculatedShippingPalletsOut = null
+      let palletVarianceNotes = null
+      let shippingCartonsPerPallet = item.shippingCartonsPerPallet
+      
+      if (type === 'RECEIVE' && item.storageCartonsPerPallet > 0) {
+        calculatedStoragePalletsIn = Math.ceil(item.cartons / item.storageCartonsPerPallet)
+        if (item.pallets !== calculatedStoragePalletsIn) {
+          palletVarianceNotes = `Storage pallet variance: Actual ${item.pallets}, Calculated ${calculatedStoragePalletsIn} (${item.cartons} cartons @ ${item.storageCartonsPerPallet}/pallet)`
+        }
+      } else if (type === 'SHIP') {
+        // For SHIP, get the batch-specific config from inventory balance
+        const balance = await prisma.inventoryBalance.findFirst({
+          where: {
+            warehouseId,
+            skuId: sku.id,
+            batchLot: item.batchLot,
+          }
+        })
+        
+        if (balance?.shippingCartonsPerPallet) {
+          shippingCartonsPerPallet = balance.shippingCartonsPerPallet
+          calculatedShippingPalletsOut = Math.ceil(item.cartons / shippingCartonsPerPallet)
+          if (item.pallets !== calculatedShippingPalletsOut) {
+            palletVarianceNotes = `Shipping pallet variance: Actual ${item.pallets}, Calculated ${calculatedShippingPalletsOut} (${item.cartons} cartons @ ${shippingCartonsPerPallet}/pallet)`
+          }
+        }
+      }
+      
       const transaction = await prisma.inventoryTransaction.create({
         data: {
           transactionId,
@@ -187,8 +217,11 @@ export async function POST(request: NextRequest) {
           cartonsOut: type === 'SHIP' ? item.cartons : 0,
           storagePalletsIn: type === 'RECEIVE' ? (item.pallets || 0) : 0,
           shippingPalletsOut: type === 'SHIP' ? (item.pallets || 0) : 0,
+          calculatedStoragePalletsIn,
+          calculatedShippingPalletsOut,
           storageCartonsPerPallet: type === 'RECEIVE' ? item.storageCartonsPerPallet : null,
-          shippingCartonsPerPallet: type === 'RECEIVE' ? item.shippingCartonsPerPallet : null,
+          shippingCartonsPerPallet: type === 'RECEIVE' ? item.shippingCartonsPerPallet : (type === 'SHIP' ? shippingCartonsPerPallet : null),
+          palletVarianceNotes,
           notes,
           transactionDate: new Date(date),
           createdById: session.user.id,

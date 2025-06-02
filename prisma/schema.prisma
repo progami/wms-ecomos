@@ -230,10 +230,13 @@ model InventoryTransaction {
   referenceId         String?         @map("reference_id")
   cartonsIn           Int             @default(0) @map("cartons_in")
   cartonsOut          Int             @default(0) @map("cartons_out")
-  storagePalletsIn    Int             @default(0) @map("storage_pallets_in")
-  shippingPalletsOut  Int             @default(0) @map("shipping_pallets_out")
+  storagePalletsIn    Int             @default(0) @map("storage_pallets_in") // User-entered actual value
+  shippingPalletsOut  Int             @default(0) @map("shipping_pallets_out") // User-entered actual value
+  calculatedStoragePalletsIn   Int?   @map("calculated_storage_pallets_in") // System calculated value
+  calculatedShippingPalletsOut Int?   @map("calculated_shipping_pallets_out") // System calculated value
   storageCartonsPerPallet   Int?      @map("storage_cartons_per_pallet") // Batch-specific config
   shippingCartonsPerPallet  Int?      @map("shipping_cartons_per_pallet") // Batch-specific config
+  palletVarianceNotes String?         @map("pallet_variance_notes") // Notes about pallet count discrepancies
   notes               String?
   transactionDate     DateTime        @map("transaction_date")
   createdAt           DateTime        @default(now()) @map("created_at")

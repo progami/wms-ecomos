@@ -18,10 +18,12 @@ export default function WarehouseReceivePage() {
       batchLot: '', 
       cartons: 0, 
       pallets: 0, 
+      calculatedPallets: 0,
       units: 0,
       storageCartonsPerPallet: 0,
       shippingCartonsPerPallet: 0,
-      configLoaded: false
+      configLoaded: false,
+      palletVariance: false
     }
   ])
 
@@ -34,10 +36,12 @@ export default function WarehouseReceivePage() {
         batchLot: '', 
         cartons: 0, 
         pallets: 0, 
+        calculatedPallets: 0,
         units: 0,
         storageCartonsPerPallet: 0,
         shippingCartonsPerPallet: 0,
-        configLoaded: false
+        configLoaded: false,
+        palletVariance: false
       }
     ])
   }
@@ -77,18 +81,25 @@ export default function WarehouseReceivePage() {
       const configs = await configResponse.json()
       if (configs.length > 0) {
         const config = configs[0] // Get the most recent config
-        setItems(items.map(item => 
-          item.id === itemId 
-            ? { 
-                ...item, 
-                storageCartonsPerPallet: config.storageCartonsPerPallet || 0,
-                shippingCartonsPerPallet: config.shippingCartonsPerPallet || 0,
-                configLoaded: true,
-                // Auto-calculate pallets based on cartons
-                pallets: item.cartons > 0 ? Math.ceil(item.cartons / (config.storageCartonsPerPallet || 1)) : 0
-              } 
-            : item
-        ))
+        setItems(items.map(item => {
+          if (item.id === itemId) {
+            const calculatedPallets = item.cartons > 0 && config.storageCartonsPerPallet > 0
+              ? Math.ceil(item.cartons / config.storageCartonsPerPallet)
+              : 0
+            
+            return { 
+              ...item, 
+              storageCartonsPerPallet: config.storageCartonsPerPallet || 0,
+              shippingCartonsPerPallet: config.shippingCartonsPerPallet || 0,
+              configLoaded: true,
+              calculatedPallets,
+              // Only auto-update pallets if user hasn't manually entered a value
+              pallets: item.pallets > 0 ? item.pallets : calculatedPallets,
+              palletVariance: item.pallets > 0 && item.pallets !== calculatedPallets
+            }
+          }
+          return item
+        }))
       }
     } catch (error) {
       console.error('Error fetching warehouse config:', error)
@@ -337,10 +348,17 @@ export default function WarehouseReceivePage() {
                           onChange={(e) => {
                             const newCartons = parseInt(e.target.value) || 0
                             updateItem(item.id, 'cartons', newCartons)
-                            // Auto-calculate pallets if config is loaded
+                            // Calculate pallets if config is loaded
                             if (item.configLoaded && item.storageCartonsPerPallet > 0) {
-                              const newPallets = Math.ceil(newCartons / item.storageCartonsPerPallet)
-                              updateItem(item.id, 'pallets', newPallets)
+                              const calculatedPallets = Math.ceil(newCartons / item.storageCartonsPerPallet)
+                              updateItem(item.id, 'calculatedPallets', calculatedPallets)
+                              // Only auto-update actual pallets if user hasn't manually entered
+                              if (!item.palletVariance) {
+                                updateItem(item.id, 'pallets', calculatedPallets)
+                              } else {
+                                // Recalculate variance
+                                updateItem(item.id, 'palletVariance', item.pallets !== calculatedPallets)
+                              }
                             }
                           }}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
@@ -357,8 +375,14 @@ export default function WarehouseReceivePage() {
                             updateItem(item.id, 'storageCartonsPerPallet', newValue)
                             // Recalculate pallets
                             if (newValue > 0 && item.cartons > 0) {
-                              const newPallets = Math.ceil(item.cartons / newValue)
-                              updateItem(item.id, 'pallets', newPallets)
+                              const calculatedPallets = Math.ceil(item.cartons / newValue)
+                              updateItem(item.id, 'calculatedPallets', calculatedPallets)
+                              // Check if we should update actual pallets
+                              if (!item.palletVariance) {
+                                updateItem(item.id, 'pallets', calculatedPallets)
+                              } else {
+                                updateItem(item.id, 'palletVariance', item.pallets !== calculatedPallets)
+                              }
                             }
                           }}
                           className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
@@ -383,15 +407,36 @@ export default function WarehouseReceivePage() {
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          value={item.pallets}
-                          onChange={(e) => updateItem(item.id, 'pallets', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary bg-gray-50"
-                          min="0"
-                          readOnly={item.configLoaded && item.storageCartonsPerPallet > 0}
-                          title={item.configLoaded && item.storageCartonsPerPallet > 0 ? 'Auto-calculated from cartons and config' : 'Enter value'}
-                        />
+                        <div className="space-y-1">
+                          <input
+                            type="number"
+                            value={item.pallets}
+                            onChange={(e) => {
+                              const newPallets = parseInt(e.target.value) || 0
+                              const calculatedPallets = item.cartons > 0 && item.storageCartonsPerPallet > 0
+                                ? Math.ceil(item.cartons / item.storageCartonsPerPallet)
+                                : 0
+                              updateItem(item.id, 'pallets', newPallets)
+                              updateItem(item.id, 'calculatedPallets', calculatedPallets)
+                              updateItem(item.id, 'palletVariance', newPallets !== calculatedPallets)
+                            }}
+                            className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
+                              item.palletVariance ? 'border-yellow-500 bg-yellow-50' : ''
+                            }`}
+                            min="0"
+                            title="Actual pallets (editable)"
+                          />
+                          {item.configLoaded && item.calculatedPallets > 0 && (
+                            <div className="text-xs text-gray-500 text-right">
+                              Calc: {item.calculatedPallets}
+                              {item.palletVariance && (
+                                <span className="text-yellow-600 ml-1" title="Variance between actual and calculated">
+                                  (Δ {Math.abs(item.pallets - item.calculatedPallets)})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <input
