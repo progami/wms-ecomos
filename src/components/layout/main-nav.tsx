@@ -27,8 +27,7 @@ import { cn } from '@/lib/utils'
 const navigation = {
   admin: [
     { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
-    // Inventory Management (matching Excel)
-    { name: 'Inventory Overview', href: '/admin/inventory', icon: BookOpen },
+    // Inventory Management
     { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
     // Calculations & Finance
     { name: 'Run Calculations', href: '/admin/calculations', icon: Calculator },

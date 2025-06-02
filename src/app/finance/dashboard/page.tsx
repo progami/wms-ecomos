@@ -58,7 +58,7 @@ export default function FinanceDashboardPage() {
 
   const fetchFinancialData = async () => {
     try {
-      const response = await fetch('/api/finance/dashboard-simple')
+      const response = await fetch('/api/finance/dashboard')
       if (response.ok) {
         const data = await response.json()
         setFinancialData(data)

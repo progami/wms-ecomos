@@ -11,8 +11,8 @@ async function testFinanceDashboard() {
   
   try {
     // Test the finance dashboard API endpoint
-    console.log('\n1. Testing /api/finance/dashboard-simple endpoint...')
-    const response = await fetch(`${baseUrl}/api/finance/dashboard-simple`, {
+    console.log('\n1. Testing /api/finance/dashboard endpoint...')
+    const response = await fetch(`${baseUrl}/api/finance/dashboard`, {
       headers: {
         'Cookie': 'next-auth.session-token=test-session' // This won't work without a real session
       }

@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
   const fetchDashboardStats = async () => {
     try {
       console.log('Fetching dashboard stats...')
-      const response = await fetch('/api/admin/dashboard-simple')
+      const response = await fetch('/api/admin/dashboard')
       console.log('Response status:', response.status)
       console.log('Response headers:', response.headers)
       

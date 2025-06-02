@@ -47,7 +47,7 @@ export default function AdminSkusPage() {
       if (searchTerm) params.append('search', searchTerm)
       if (showInactive) params.append('includeInactive', 'true')
       
-      const response = await fetch(`/api/skus-simple?${params}`)
+      const response = await fetch(`/api/skus?${params}`)
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to fetch SKUs' }))
         throw new Error(errorData.details || errorData.error || 'Failed to fetch SKUs')

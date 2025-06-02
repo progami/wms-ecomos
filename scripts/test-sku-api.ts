@@ -3,8 +3,8 @@ async function testSkuApi() {
 
   try {
     // Test getting all SKUs
-    console.log('\n1. Testing GET /api/skus-simple')
-    const skusResponse = await fetch('http://localhost:3001/api/skus-simple')
+    console.log('\n1. Testing GET /api/skus')
+    const skusResponse = await fetch('http://localhost:3001/api/skus')
     if (!skusResponse.ok) {
       throw new Error(`Failed to get SKUs: ${skusResponse.status}`)
     }

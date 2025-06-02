@@ -157,6 +157,8 @@ NODE_ENV="production"
 
 ## 📚 Documentation
 
+- [System Overview](./docs/SYSTEM_OVERVIEW.md) - Complete system guide
+- [Troubleshooting Guide](./docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [Architecture Overview](./docs/architecture/web-app-architecture.md)
 - [Database Schema](./docs/architecture/database-schema-optimized.sql)
 - [Setup Guide](./docs/setup/quick-start.md)
@@ -180,6 +182,14 @@ NODE_ENV="production"
 5. Open a Pull Request
 
 ## 📝 Changelog
+
+### v2.1.0 - Bug Fixes and UI Improvements (June 2025)
+- 🐛 Fixed finance dashboard API calls (was calling non-existent -simple endpoints)
+- 🐛 Fixed admin dashboard data fetching
+- 🐛 Fixed SKU management page API endpoint
+- ✨ Removed redundant "Inventory Overview" from navigation
+- 📚 Added comprehensive system documentation
+- 📚 Added troubleshooting guide
 
 ### v2.0.0 - Role System Simplification (June 2025)
 - ✅ Migrated from 5-role to 2-role system (admin/staff)
