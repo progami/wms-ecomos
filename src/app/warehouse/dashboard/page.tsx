@@ -13,13 +13,13 @@ export default async function WarehouseDashboardPage() {
   }
 
   // Only warehouse staff and admins can access this page
-  if (!['warehouse_staff', 'system_admin', 'manager'].includes(session.user.role)) {
+  if (!['staff', 'admin'].includes(session.user.role)) {
     redirect('/dashboard')
   }
 
   // Get the user's warehouse
   const warehouseId = session.user.warehouseId
-  if (!warehouseId && session.user.role === 'warehouse_staff') {
+  if (!warehouseId && session.user.role === 'staff') {
     redirect('/dashboard')
   }
 

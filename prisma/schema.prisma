@@ -15,11 +15,8 @@ datasource db {
 // =====================================================
 
 enum UserRole {
-  warehouse_staff
-  finance_admin
-  system_admin
-  manager
-  viewer
+  admin
+  staff
 }
 
 enum TransactionType {

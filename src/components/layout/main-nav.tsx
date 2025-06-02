@@ -18,6 +18,8 @@ import {
   Warehouse,
   Calculator,
   Building,
+  BookOpen,
+  Calendar,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -25,38 +27,35 @@ import { cn } from '@/lib/utils'
 const navigation = {
   admin: [
     { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
-    // Admin Functions
-    { name: 'Inventory', href: '/admin/inventory', icon: Package },
-    { name: 'Calculations', href: '/admin/calculations', icon: Calculator },
-    // Finance Functions
-    { name: 'Finance', href: '/finance/dashboard', icon: DollarSign },
+    // Inventory Management (matching Excel)
+    { name: 'Inventory Overview', href: '/admin/inventory', icon: BookOpen },
+    { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
+    // Calculations & Finance
+    { name: 'Run Calculations', href: '/admin/calculations', icon: Calculator },
+    { name: 'Finance Dashboard', href: '/finance/dashboard', icon: DollarSign },
+    // Finance & Reconciliation
     { name: 'Invoices', href: '/finance/invoices', icon: FileText },
-    { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
     { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-    // Warehouse Functions
-    { name: 'Warehouse Ops', href: '/warehouse/dashboard', icon: Warehouse },
-    // Reports & Settings
+    // Reports & Analytics
     { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-    { name: 'SKUs', href: '/admin/settings/skus', icon: Package },
+    // Configuration & Settings
+    { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
+    { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
+    { name: 'Warehouses', href: '/admin/settings/warehouses', icon: Warehouse },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ],
   staff: [
     { name: 'Dashboard', href: '/warehouse/dashboard', icon: Home },
-    // Warehouse Operations
-    { name: 'Inventory', href: '/warehouse/inventory', icon: Package },
-    { name: 'Receive', href: '/warehouse/receive', icon: Package2 },
-    { name: 'Ship', href: '/warehouse/ship', icon: Package2 },
-    // Finance Functions
-    { name: 'Finance', href: '/finance/dashboard', icon: DollarSign },
+    // Inventory Management
+    { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
+    // Finance
     { name: 'Invoices', href: '/finance/invoices', icon: FileText },
     { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-    // Analytics & Reports
-    { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-    { name: 'Calculations', href: '/admin/calculations', icon: Calculator },
-    // Configuration
-    { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
-    { name: 'SKUs', href: '/admin/settings/skus', icon: Package },
+    // Reports
+    { name: 'Reports', href: '/warehouse/reports', icon: BarChart3 },
+    // Settings
+    { name: 'Settings', href: '/warehouse/settings', icon: Settings },
   ],
 }
 
@@ -67,8 +66,8 @@ export function MainNav() {
 
   if (!session) return null
 
-  // Simplify: admin role sees admin nav, everyone else sees staff nav
-  const isAdmin = session.user.role === 'system_admin'
+  // Check if user has admin role (system_admin in database)
+  const isAdmin = session.user.role === 'admin'
   const userNavigation = isAdmin ? navigation.admin : navigation.staff
 
   return (

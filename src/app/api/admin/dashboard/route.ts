@@ -22,7 +22,7 @@ export async function GET() {
     const session = await getServerSession(authOptions)
     console.log('Session:', session)
     
-    if (!session || session.user.role !== 'system_admin') {
+    if (!session || session.user.role !== 'admin') {
       console.log('Unauthorized access attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

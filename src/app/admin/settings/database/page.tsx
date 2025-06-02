@@ -53,7 +53,7 @@ export default function DatabaseSettingsPage() {
   const [slowQueryThreshold, setSlowQueryThreshold] = useState(1000)
 
   useEffect(() => {
-    if (session?.user.role === 'system_admin') {
+    if (session?.user.role === 'admin') {
       fetchDatabaseInfo()
     }
   }, [session])
@@ -152,7 +152,7 @@ export default function DatabaseSettingsPage() {
     )
   }
 
-  if (!session || session.user.role !== 'system_admin') {
+  if (!session || session.user.role !== 'admin') {
     router.push('/auth/login')
     return null
   }

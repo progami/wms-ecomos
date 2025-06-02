@@ -33,7 +33,7 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
   if (dismissedPermanently) return null
 
   const guideSteps: Record<string, GuideStep[]> = {
-    system_admin: [
+    admin: [
       {
         title: 'Set Up Warehouses',
         description: 'Configure your warehouse locations and storage settings',
@@ -59,27 +59,7 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
         link: '/admin/import'
       }
     ],
-    finance_admin: [
-      {
-        title: 'Review Cost Rates',
-        description: 'Check and update warehouse storage and handling rates',
-        icon: DollarSign,
-        link: '/finance/rates'
-      },
-      {
-        title: 'Process Invoices',
-        description: 'Upload and reconcile warehouse invoices',
-        icon: FileText,
-        link: '/finance/invoices'
-      },
-      {
-        title: 'Run Reconciliation',
-        description: 'Compare system calculations with warehouse invoices',
-        icon: BarChart3,
-        link: '/finance/reconciliation'
-      }
-    ],
-    warehouse_staff: [
+    staff: [
       {
         title: 'Check Inventory',
         description: 'Review current stock levels and locations',
@@ -87,24 +67,16 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
         link: '/warehouse/inventory'
       },
       {
-        title: 'Receive Shipments',
-        description: 'Process incoming inventory and update records',
+        title: 'Process Transactions',
+        description: 'Receive shipments and ship orders',
         icon: Package,
         link: '/warehouse/receive'
       },
       {
-        title: 'Ship Orders',
-        description: 'Process outbound shipments and update inventory',
-        icon: Package,
-        link: '/warehouse/ship'
-      }
-    ],
-    manager: [
-      {
-        title: 'View Analytics',
-        description: 'Monitor key performance metrics and trends',
-        icon: BarChart3,
-        link: '/analytics'
+        title: 'Process Invoices',
+        description: 'Upload and reconcile warehouse invoices',
+        icon: FileText,
+        link: '/finance/invoices'
       },
       {
         title: 'Generate Reports',
@@ -115,7 +87,7 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
     ]
   }
 
-  const steps = guideSteps[userRole] || guideSteps.manager
+  const steps = guideSteps[userRole] || guideSteps.staff
 
   const handleDismiss = () => {
     setIsOpen(false)

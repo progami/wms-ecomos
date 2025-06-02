@@ -37,7 +37,7 @@ export default function AdminSettingsPage() {
     )
   }
 
-  if (!session || session.user.role !== 'system_admin') {
+  if (!session || session.user.role !== 'admin') {
     router.push('/auth/login')
     return null
   }

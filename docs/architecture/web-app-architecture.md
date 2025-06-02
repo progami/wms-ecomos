@@ -39,15 +39,39 @@ After careful analysis of your requirements, I'm proposing a modern, scalable ar
 ### Additional Services
 - **Redis**: Caching and job queues for background calculations
 - **BullMQ**: Process weekly storage calculations and monthly reconciliations
-- **NextAuth.js**: Secure authentication with role-based access
+- **NextAuth.js**: Secure authentication with simplified two-role access (Admin/Staff)
 
 ## User Roles & Interfaces
 
-### 1. Warehouse Staff (Mobile-First Interface)
-**Daily Tasks:**
-- Quick inventory entry (RECEIVE/SHIP/ADJUST)
-- Barcode scanning support
-- Offline capability with sync
+### Simplified Two-Role System
+
+#### 1. Admin Role
+**Full System Access:**
+- All warehouse operations (receive, ship, inventory management)
+- Financial management (invoices, reconciliation, cost calculations)
+- System configuration (users, SKUs, warehouses, cost rates)
+- All reports and analytics
+- User management and security settings
+
+#### 2. Staff Role
+**Operational Access:**
+- Inventory ledger (view transactions and balances)
+- Receive and ship goods
+- View and upload invoices
+- Access reconciliation tools
+- View operational reports
+
+### Key Interface: Unified Inventory Ledger
+**Single Page with Two Tabs:**
+1. **Transaction Ledger Tab**
+   - Shows all inventory movements (RECEIVE, SHIP, ADJUST)
+   - Filterable by date, warehouse, SKU, transaction type
+   - Exportable to Excel
+   
+2. **Current Balances Tab**
+   - Real-time inventory levels by Warehouse + SKU + Batch
+   - Low stock alerts
+   - Point-in-time historical views
 - Simple, large-button interface
 
 **Features:**

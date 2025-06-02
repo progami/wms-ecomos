@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get warehouse filter based on user role
-    const warehouseFilter = session.user.role === 'warehouse_staff' && session.user.warehouseId
+    const warehouseFilter = session.user.role === 'staff' && session.user.warehouseId
       ? { warehouseId: session.user.warehouseId }
       : {}
 

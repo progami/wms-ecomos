@@ -15,14 +15,14 @@ async function main() {
       update: {
         passwordHash: staffPassword,
         fullName: 'Hashar (Finance Manager)',
-        role: 'finance_admin',
+        role: 'staff',
         isActive: true,
       },
       create: {
         email: 'hashar@warehouse.com',
         passwordHash: staffPassword,
         fullName: 'Hashar (Finance Manager)',
-        role: 'finance_admin',
+        role: 'staff',
         isActive: true,
       },
     })
@@ -39,7 +39,7 @@ async function main() {
       update: {
         passwordHash: staffPassword,
         fullName: 'Umair (Operations Manager)',
-        role: 'warehouse_staff',
+        role: 'staff',
         warehouseId: warehouse?.id,
         isActive: true,
       },
@@ -47,7 +47,7 @@ async function main() {
         email: 'umair@warehouse.com',
         passwordHash: staffPassword,
         fullName: 'Umair (Operations Manager)',
-        role: 'warehouse_staff',
+        role: 'staff',
         warehouseId: warehouse?.id,
         isActive: true,
       },

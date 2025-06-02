@@ -52,8 +52,8 @@ warehouse_management/
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@warehouse.com | admin123 |
-| Finance | finance@warehouse.com | admin123 |
-| Warehouse Staff | staff@warehouse.com | admin123 |
+| Staff | staff@warehouse.com | admin123 |
+| Staff | finance@warehouse.com | admin123 |
 
 ## 📈 Current Data Status
 
@@ -71,23 +71,23 @@ warehouse_management/
 
 ## 📱 Features by Role
 
-### Admin Features
+### Admin Features (Full System Access)
 - User management and permissions
 - System settings and configuration
 - SKU and warehouse management
-- View all reports and analytics
+- Cost rate configuration
+- All reports and analytics
+- Import/export data
+- Run system calculations
 
-### Finance Features
+### Staff Features (Operational Access)
+- Inventory tracking and management
+- Receiving and shipping operations
 - Invoice processing and upload
 - Cost reconciliation
-- Storage rate management
-- Financial reports and analytics
-
-### Warehouse Staff Features
-- Inventory tracking
-- Receiving and shipping
-- Real-time stock levels
-- Operational reports
+- View and manage rates
+- Generate reports
+- Real-time stock monitoring
 
 ## 🛠️ Tech Stack
 
@@ -101,13 +101,15 @@ warehouse_management/
 
 ## 📊 Key Features
 
-- **Transaction-Based Ledger**: All inventory movements tracked as immutable transactions (RECEIVE, SHIP, ADJUST)
+- **Unified Inventory Ledger**: Single page with tabs for transaction history and current balances
+- **Transaction-Based System**: All inventory movements tracked as immutable transactions (RECEIVE, SHIP, ADJUST)
+- **Point-in-Time Views**: See inventory state at any historical date
 - **Real-time Balance Calculation**: Current inventory calculated from complete transaction history
 - **Weekly Storage Billing**: Automated Monday stock-takes for 3PL billing (industry standard)
 - **Multi-warehouse Management**: Track inventory across FMC, VGLOBAL, 4AS, and other locations
 - **Batch/Lot Tracking**: Full traceability with Warehouse + SKU + Batch/Lot identification
-- **Invoice Reconciliation**: Compare actual vs calculated costs with variance analysis
-- **Role-based Access**: Secure access control for Admin, Finance, and Warehouse Staff
+- **Invoice Reconciliation**: Compare calculated vs actual costs with variance analysis
+- **Simplified Role System**: Two roles - Admin (full access) and Staff (operational access)
 - **Excel Import/Export**: Seamless data migration from existing Excel systems
 - **Audit Trail**: Complete history of all transactions and modifications
 
@@ -176,6 +178,24 @@ NODE_ENV="production"
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## 📝 Changelog
+
+### v2.0.0 - Role System Simplification (June 2025)
+- ✅ Migrated from 5-role to 2-role system (admin/staff)
+- ✅ Updated all role checks throughout the application
+- ✅ Removed Receive/Ship from navigation (now buttons on inventory page)
+- ✅ Added Settings to staff navigation
+- ✅ Fixed all dashboard and page access controls
+- ✅ Improved navigation consistency
+
+### v1.0.0 - Initial Release
+- Excel data import functionality
+- Transaction-based inventory tracking
+- Point-in-time inventory views
+- Multi-warehouse support
+- Invoice reconciliation
+- Comprehensive reporting
 
 ## 📄 License
 

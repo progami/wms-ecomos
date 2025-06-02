@@ -46,7 +46,7 @@ export default function SecuritySettingsPage() {
   const [ipInput, setIpInput] = useState('')
 
   useEffect(() => {
-    if (session?.user.role === 'system_admin') {
+    if (session?.user.role === 'admin') {
       fetchSettings()
     }
   }, [session])
@@ -127,7 +127,7 @@ export default function SecuritySettingsPage() {
     )
   }
 
-  if (!session || session.user.role !== 'system_admin') {
+  if (!session || session.user.role !== 'admin') {
     router.push('/auth/login')
     return null
   }

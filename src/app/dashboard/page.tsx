@@ -260,13 +260,10 @@ function getQuickActions(role: string) {
   }
 
   const roleActions: Record<string, string[]> = {
-    system_admin: ['inventory', 'invoices', 'rates', 'reports', 'settings', 'users'],
-    finance_admin: ['invoices', 'rates', 'reconciliation', 'reports'],
-    warehouse_staff: ['inventory', 'receive', 'ship', 'reports'],
-    manager: ['reports', 'inventory', 'invoices'],
-    viewer: ['reports']
+    admin: ['inventory', 'invoices', 'rates', 'reports', 'settings', 'users'],
+    staff: ['inventory', 'receive', 'ship', 'invoices', 'rates', 'reconciliation', 'reports']
   }
 
-  const actions = roleActions[role] || roleActions.viewer
+  const actions = roleActions[role] || roleActions.staff
   return actions.map(key => allActions[key as keyof typeof allActions]).filter(Boolean)
 }

@@ -54,7 +54,7 @@ async function main() {
       email: 'admin@warehouse.com',
       passwordHash: adminPassword,
       fullName: 'System Administrator',
-      role: UserRole.system_admin,
+      role: UserRole.admin,
     },
   })
 
@@ -65,7 +65,7 @@ async function main() {
       email: 'hashar@warehouse.com',
       passwordHash: staffPassword,
       fullName: 'Hashar (Finance Manager)',
-      role: UserRole.finance_admin,
+      role: UserRole.staff,
     },
   })
 
@@ -76,7 +76,7 @@ async function main() {
       email: 'umair@warehouse.com',
       passwordHash: staffPassword,
       fullName: 'Umair (Operations Manager)',
-      role: UserRole.manager,
+      role: UserRole.staff,
       warehouseId: warehouse1.id,
     },
   })

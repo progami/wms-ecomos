@@ -41,7 +41,7 @@ export default function NotificationSettingsPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (session?.user.role === 'system_admin') {
+    if (session?.user.role === 'admin') {
       fetchSettings()
     }
   }, [session])
@@ -132,7 +132,7 @@ export default function NotificationSettingsPage() {
     )
   }
 
-  if (!session || session.user.role !== 'system_admin') {
+  if (!session || session.user.role !== 'admin') {
     router.push('/auth/login')
     return null
   }

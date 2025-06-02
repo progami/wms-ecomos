@@ -98,11 +98,11 @@ export default function AdminDashboardPage() {
     )
   }
 
-  // Temporarily disable role check for debugging
-  // if (!session || session.user.role !== 'system_admin') {
-  //   router.push('/auth/login')
-  //   return null
-  // }
+  // Check if user has admin access
+  if (!session || session.user.role !== 'admin') {
+    router.push('/dashboard')
+    return null
+  }
 
   const handleImportData = async () => {
     setLoading('import')

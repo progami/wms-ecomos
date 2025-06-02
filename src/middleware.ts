@@ -26,9 +26,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Role-based access control - simplified
+  // Role-based access control - simplified to 2 roles
   const userRole = token.role as string
-  const isAdmin = userRole === 'system_admin'
+  const isAdmin = userRole === 'admin'
 
   // Only restrict truly admin-only routes
   const adminOnlyRoutes = [

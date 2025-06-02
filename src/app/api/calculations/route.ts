@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // Only admins and finance users can trigger calculations
-    if (!['system_admin', 'finance_admin'].includes(session.user.role)) {
+    // Only admins and staff can trigger calculations
+    if (!['admin', 'staff'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     

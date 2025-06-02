@@ -8,7 +8,7 @@ import { InventoryClient } from './client-page'
 export default async function AdminInventoryPage() {
   const session = await getServerSession(authOptions)
 
-  if (!session || session.user.role !== 'system_admin') {
+  if (!session || session.user.role !== 'admin') {
     redirect('/auth/login')
   }
 

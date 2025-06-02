@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate warehouse assignment for staff
-    if (session.user.role === 'warehouse_staff' && !session.user.warehouseId) {
+    if (session.user.role === 'staff' && !session.user.warehouseId) {
       return NextResponse.json({ error: 'No warehouse assigned' }, { status: 400 })
     }
 

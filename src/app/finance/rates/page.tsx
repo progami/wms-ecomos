@@ -13,7 +13,8 @@ export default async function FinanceRatesPage() {
     redirect('/auth/login')
   }
 
-  if (session.user.role !== 'finance_admin') {
+  // Both admin and staff can access rates
+  if (!['admin', 'staff'].includes(session.user.role)) {
     redirect('/dashboard')
   }
 

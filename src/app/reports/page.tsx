@@ -12,8 +12,8 @@ export default async function ReportsPage() {
     redirect('/auth/login')
   }
 
-  // This page is for managers and viewers
-  if (!['manager', 'viewer'].includes(session.user.role)) {
+  // Both admin and staff can access reports
+  if (!['admin', 'staff'].includes(session.user.role)) {
     redirect('/dashboard')
   }
 
@@ -37,35 +37,35 @@ export default async function ReportsPage() {
       description: 'High-level overview of operations',
       icon: FileText,
       category: 'Executive',
-      access: ['manager', 'viewer'],
+      access: ['admin', 'staff'],
     },
     {
       name: 'Inventory Status Report',
       description: 'Current stock levels across warehouses',
       icon: Package2,
       category: 'Operations',
-      access: ['manager', 'viewer'],
+      access: ['admin', 'staff'],
     },
     {
       name: 'Monthly Activity Report',
       description: 'Transaction summary and trends',
       icon: TrendingUp,
       category: 'Operations',
-      access: ['manager', 'viewer'],
+      access: ['admin', 'staff'],
     },
     {
       name: 'Warehouse Performance',
       description: 'Efficiency metrics by location',
       icon: Users,
       category: 'Analytics',
-      access: ['manager'],
+      access: ['admin', 'staff'],
     },
     {
       name: 'Cost Summary',
       description: 'High-level cost overview',
       icon: Calendar,
       category: 'Financial',
-      access: ['manager'],
+      access: ['admin', 'staff'],
     },
   ]
 
@@ -175,13 +175,6 @@ export default async function ReportsPage() {
           </div>
         </div>
 
-        {session.user.role === 'viewer' && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-sm text-amber-800">
-              ℹ️ As a viewer, you have access to read-only reports. Contact your manager for additional access.
-            </p>
-          </div>
-        )}
       </div>
     </DashboardLayout>
   )

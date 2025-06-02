@@ -11,14 +11,10 @@ export default async function HomePage() {
 
   // Redirect based on user role
   switch (session.user.role) {
-    case 'warehouse_staff':
-      redirect('/warehouse/inventory')
-    case 'finance_admin':
-      redirect('/finance/dashboard')
-    case 'system_admin':
+    case 'staff':
+      redirect('/warehouse/dashboard')
+    case 'admin':
       redirect('/admin/dashboard')
-    case 'manager':
-      redirect('/dashboard')
     default:
       redirect('/dashboard')
   }

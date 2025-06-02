@@ -12,7 +12,8 @@ export default async function AnalyticsPage() {
     redirect('/auth/login')
   }
 
-  if (session.user.role !== 'manager') {
+  // Both admin and staff can access analytics
+  if (!['admin', 'staff'].includes(session.user.role)) {
     redirect('/dashboard')
   }
 

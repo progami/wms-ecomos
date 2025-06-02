@@ -12,16 +12,110 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams
     const warehouseId = searchParams.get('warehouseId') || session.user.warehouseId
+    const date = searchParams.get('date')
+    const showZeroStock = searchParams.get('showZeroStock') === 'true'
 
-    // Build query conditions
+    // If point-in-time date is provided, calculate balances from transactions
+    if (date) {
+      const pointInTime = new Date(date)
+      pointInTime.setHours(23, 59, 59, 999)
+      
+      // Build where clause for transactions
+      const transactionWhere: any = {
+        transactionDate: { lte: pointInTime }
+      }
+      
+      if (session.user.role === 'staff' && session.user.warehouseId) {
+        transactionWhere.warehouseId = session.user.warehouseId
+      } else if (warehouseId) {
+        transactionWhere.warehouseId = warehouseId
+      }
+      
+      // Fetch all transactions up to the date
+      const transactions = await prisma.inventoryTransaction.findMany({
+        where: transactionWhere,
+        include: {
+          warehouse: true,
+          sku: true
+        },
+        orderBy: [
+          { transactionDate: 'asc' },
+          { createdAt: 'asc' }
+        ]
+      })
+      
+      // Calculate balances from transactions
+      const balances = new Map<string, any>()
+      
+      for (const transaction of transactions) {
+        const key = `${transaction.warehouseId}-${transaction.skuId}-${transaction.batchLot}`
+        const current = balances.get(key) || {
+          id: key,
+          warehouse: transaction.warehouse,
+          sku: transaction.sku,
+          batchLot: transaction.batchLot,
+          currentCartons: 0,
+          currentPallets: 0,
+          currentUnits: 0,
+          lastTransactionDate: null
+        }
+        
+        current.currentCartons += transaction.cartonsIn - transaction.cartonsOut
+        current.currentUnits = current.currentCartons * transaction.sku.unitsPerCarton
+        current.lastTransactionDate = transaction.transactionDate
+        
+        balances.set(key, current)
+      }
+      
+      // Calculate pallets for each balance
+      for (const [key, balance] of balances.entries()) {
+        if (balance.currentCartons > 0) {
+          const config = await prisma.warehouseSkuConfig.findFirst({
+            where: {
+              warehouseId: balance.warehouse.id,
+              skuId: balance.sku.id,
+              effectiveDate: { lte: pointInTime },
+              OR: [
+                { endDate: null },
+                { endDate: { gte: pointInTime } }
+              ]
+            },
+            orderBy: { effectiveDate: 'desc' }
+          })
+          
+          if (config) {
+            balance.currentPallets = Math.ceil(balance.currentCartons / config.storageCartonsPerPallet)
+          }
+        }
+      }
+      
+      // Convert to array and filter
+      let results = Array.from(balances.values())
+      
+      if (!showZeroStock) {
+        results = results.filter(b => b.currentCartons > 0)
+      }
+      
+      // Sort results
+      results.sort((a, b) => {
+        if (a.sku.skuCode !== b.sku.skuCode) return a.sku.skuCode.localeCompare(b.sku.skuCode)
+        return a.batchLot.localeCompare(b.batchLot)
+      })
+      
+      return NextResponse.json(results)
+    }
+
+    // Regular current balance query
     const where: any = {}
     
     if (warehouseId) {
       where.warehouseId = warehouseId
     }
 
-    // Only show items with positive inventory
-    where.currentCartons = { gt: 0 }
+    // Only show items with positive inventory unless explicitly requested
+    if (!showZeroStock) {
+      where.currentCartons = { gt: 0 }
+    }
 
     const balances = await prisma.inventoryBalance.findMany({
       where,

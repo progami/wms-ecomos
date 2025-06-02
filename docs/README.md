@@ -11,6 +11,8 @@ This warehouse management system replaces a complex Excel-based solution with a 
 2. **Real-time Balances**: Current inventory calculated from transaction history
 3. **Weekly Billing Cycles**: Monday stock-takes align with 3PL industry standards
 4. **Complete Audit Trail**: All changes tracked, never deleted
+5. **Unified Interface**: Single inventory page with tabs for ledger and balances
+6. **Simplified Roles**: Two-role system (Admin and Staff) for clearer permissions
 
 ## Structure
 
@@ -47,13 +49,17 @@ Documentation from the original Excel-based system that defines the business log
 ## Data Import Status
 
 ### Completed
-- ✅ Inventory transactions (174 records)
+- ✅ Inventory transactions (174 records from May 2024 - May 2025)
 - ✅ SKU master data (8 products)
 - ✅ Warehouse configurations (18 records)
 - ✅ Cost rates (31 rates)
 - ✅ Current inventory balances
+- ✅ User roles simplified to Admin and Staff
+- ✅ Unified inventory ledger page with tabs
+- ✅ Point-in-time inventory views
+- ✅ Comprehensive data validation
 
-### Pending
-- ⏳ Storage ledger calculations
-- ⏳ Cost calculations
-- ⏳ Invoice reconciliation
+### In Progress
+- 🔄 Storage ledger calculations
+- 🔄 Cost calculations
+- 🔄 Invoice reconciliation features

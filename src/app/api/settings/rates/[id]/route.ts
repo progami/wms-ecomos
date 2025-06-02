@@ -80,7 +80,7 @@ export async function DELETE(
     }
 
     // Check if user has permission to delete rates
-    if (session.user.role !== 'system_admin') {
+    if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

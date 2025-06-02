@@ -11,7 +11,8 @@ export default async function FinanceReportsPage() {
     redirect('/auth/login')
   }
 
-  if (session.user.role !== 'finance_admin') {
+  // Both admin and staff can access finance reports
+  if (!['admin', 'staff'].includes(session.user.role)) {
     redirect('/dashboard')
   }
 
