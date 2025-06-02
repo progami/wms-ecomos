@@ -17,12 +17,13 @@ import {
   BarChart3,
   Warehouse,
   Calculator,
+  Building,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const navigation = {
-  system_admin: [
+  admin: [
     { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
     // Admin Functions
     { name: 'Inventory', href: '/admin/inventory', icon: Package },
@@ -40,29 +41,22 @@ const navigation = {
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ],
-  finance_admin: [
-    { name: 'Dashboard', href: '/finance/dashboard', icon: Home },
-    { name: 'Invoices', href: '/finance/invoices', icon: FileText },
-    { name: 'Reconciliation', href: '/finance/reconciliation', icon: DollarSign },
-    { name: 'Reports', href: '/finance/reports', icon: BarChart3 },
-    { name: 'Cost Rates', href: '/admin/settings/rates', icon: Settings },
-  ],
-  warehouse_staff: [
+  staff: [
     { name: 'Dashboard', href: '/warehouse/dashboard', icon: Home },
+    // Warehouse Operations
     { name: 'Inventory', href: '/warehouse/inventory', icon: Package },
     { name: 'Receive', href: '/warehouse/receive', icon: Package2 },
     { name: 'Ship', href: '/warehouse/ship', icon: Package2 },
-    { name: 'Reports', href: '/warehouse/reports', icon: FileText },
-    { name: 'Settings', href: '/warehouse/settings', icon: Settings },
-  ],
-  manager: [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Reports', href: '/reports', icon: FileText },
-  ],
-  viewer: [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Reports', href: '/reports', icon: FileText },
+    // Finance Functions
+    { name: 'Finance', href: '/finance/dashboard', icon: DollarSign },
+    { name: 'Invoices', href: '/finance/invoices', icon: FileText },
+    { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
+    // Analytics & Reports
+    { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+    { name: 'Calculations', href: '/admin/calculations', icon: Calculator },
+    // Configuration
+    { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
+    { name: 'SKUs', href: '/admin/settings/skus', icon: Package },
   ],
 }
 
@@ -73,7 +67,9 @@ export function MainNav() {
 
   if (!session) return null
 
-  const userNavigation = navigation[session.user.role] || navigation.viewer
+  // Simplify: admin role sees admin nav, everyone else sees staff nav
+  const isAdmin = session.user.role === 'system_admin'
+  const userNavigation = isAdmin ? navigation.admin : navigation.staff
 
   return (
     <>

@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const sku = await prisma.sKU.findUnique({
+    const sku = await prisma.sku.findUnique({
       where: { id: params.id },
       include: {
         inventoryBalances: true,
@@ -64,7 +64,7 @@ export async function PUT(
     }
 
     // Check if SKU code is being changed and if new code already exists
-    const existingSku = await prisma.sKU.findFirst({
+    const existingSku = await prisma.sku.findFirst({
       where: {
         skuCode: body.skuCode,
         NOT: { id: params.id }
@@ -79,7 +79,7 @@ export async function PUT(
     }
 
     // Update the SKU
-    const updatedSku = await prisma.sKU.update({
+    const updatedSku = await prisma.sku.update({
       where: { id: params.id },
       data: {
         skuCode: body.skuCode,
@@ -120,7 +120,7 @@ export async function DELETE(
     }
 
     // Check if SKU has related data
-    const sku = await prisma.sKU.findUnique({
+    const sku = await prisma.sku.findUnique({
       where: { id: params.id },
       include: {
         _count: {
@@ -138,7 +138,7 @@ export async function DELETE(
 
     // If SKU has related data, deactivate instead of delete
     if (sku._count.inventoryBalances > 0 || sku._count.warehouseConfigs > 0) {
-      const deactivatedSku = await prisma.sKU.update({
+      const deactivatedSku = await prisma.sku.update({
         where: { id: params.id },
         data: { isActive: false }
       })
@@ -150,7 +150,7 @@ export async function DELETE(
     }
 
     // Otherwise, delete the SKU
-    await prisma.sKU.delete({
+    await prisma.sku.delete({
       where: { id: params.id }
     })
 

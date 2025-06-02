@@ -8,7 +8,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 export default async function AdminUsersPage() {
   const session = await getServerSession(authOptions)
 
-  if (!session || session.user.role !== 'system_admin') {
+  if (!session || session.user.role !== 'admin') {
     redirect('/auth/login')
   }
 
@@ -61,42 +61,26 @@ export default async function AdminUsersPage() {
           <UserCard
             name="System Administrator"
             email="admin@warehouse.com"
-            role="system_admin"
+            role="admin"
             warehouse="All Warehouses"
             lastLogin="2 hours ago"
             isActive={true}
           />
           <UserCard
-            name="Warehouse Staff"
-            email="staff@warehouse.com"
-            role="warehouse_staff"
-            warehouse="FMC Warehouse"
+            name="Hashar (Finance Manager)"
+            email="hashar@warehouse.com"
+            role="staff"
+            warehouse="All Warehouses"
             lastLogin="1 day ago"
             isActive={true}
           />
           <UserCard
-            name="Finance Admin"
-            email="finance@warehouse.com"
-            role="finance_admin"
-            warehouse="All Warehouses"
+            name="Umair (Operations Manager)"
+            email="umair@warehouse.com"
+            role="staff"
+            warehouse="FMC Warehouse"
             lastLogin="3 hours ago"
             isActive={true}
-          />
-          <UserCard
-            name="John Doe"
-            email="john.doe@warehouse.com"
-            role="manager"
-            warehouse="Vglobal Warehouse"
-            lastLogin="1 week ago"
-            isActive={true}
-          />
-          <UserCard
-            name="Jane Smith"
-            email="jane.smith@warehouse.com"
-            role="warehouse_staff"
-            warehouse="FMC Warehouse"
-            lastLogin="Never"
-            isActive={false}
           />
         </div>
       </div>
@@ -116,19 +100,13 @@ interface UserCardProps {
 function UserCard({ name, email, role, warehouse, lastLogin, isActive }: UserCardProps) {
   const getRoleBadge = (role: string) => {
     const roleStyles: Record<string, string> = {
-      system_admin: 'bg-purple-100 text-purple-800',
-      finance_admin: 'bg-green-100 text-green-800',
-      warehouse_staff: 'bg-blue-100 text-blue-800',
-      manager: 'bg-orange-100 text-orange-800',
-      viewer: 'bg-gray-100 text-gray-800',
+      admin: 'bg-purple-100 text-purple-800',
+      staff: 'bg-blue-100 text-blue-800',
     }
     
     const roleLabels: Record<string, string> = {
-      system_admin: 'System Admin',
-      finance_admin: 'Finance Admin',
-      warehouse_staff: 'Warehouse Staff',
-      manager: 'Manager',
-      viewer: 'Viewer',
+      admin: 'System Admin',
+      staff: 'Staff',
     }
 
     return (

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has permission to view rates
-    if (!['system_admin', 'finance_admin'].includes(session.user.role)) {
+    if (!['admin', 'staff'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

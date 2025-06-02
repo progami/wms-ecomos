@@ -26,35 +26,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Role-based access control
+  // Role-based access control - simplified
   const userRole = token.role as string
+  const isAdmin = userRole === 'system_admin'
 
-  // Admin routes
-  if (pathname.startsWith('/admin') && userRole !== 'system_admin') {
+  // Only restrict truly admin-only routes
+  const adminOnlyRoutes = [
+    '/admin/users',
+    '/admin/settings/security',
+    '/admin/settings/database',
+    '/admin/settings/general',
+    '/admin/settings/notifications'
+  ]
+  
+  if (adminOnlyRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) && !isAdmin) {
     const url = request.nextUrl.clone()
     url.pathname = '/unauthorized'
     return NextResponse.redirect(url)
   }
 
-  // Finance routes
-  if (
-    pathname.startsWith('/finance') &&
-    !['system_admin', 'finance_admin'].includes(userRole)
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/unauthorized'
-    return NextResponse.redirect(url)
-  }
-
-  // Warehouse routes
-  if (
-    pathname.startsWith('/warehouse') &&
-    !['system_admin', 'warehouse_staff'].includes(userRole)
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/unauthorized'
-    return NextResponse.redirect(url)
-  }
+  // All other routes (finance, warehouse, reports, etc) are accessible by everyone
 
   // Redirect authenticated users from login page
   if (pathname === '/auth/login' && token) {
@@ -66,18 +57,10 @@ export async function middleware(request: NextRequest) {
   // Redirect root to appropriate dashboard based on role
   if (pathname === '/') {
     const url = request.nextUrl.clone()
-    switch (userRole) {
-      case 'system_admin':
-        url.pathname = '/admin/dashboard'
-        break
-      case 'finance_admin':
-        url.pathname = '/finance/dashboard'
-        break
-      case 'warehouse_staff':
-        url.pathname = '/warehouse/dashboard'
-        break
-      default:
-        url.pathname = '/dashboard'
+    if (isAdmin) {
+      url.pathname = '/admin/dashboard'
+    } else {
+      url.pathname = '/warehouse/dashboard'
     }
     return NextResponse.redirect(url)
   }

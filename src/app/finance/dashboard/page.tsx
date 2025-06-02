@@ -51,7 +51,7 @@ export default function FinanceDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (session && ['finance_admin', 'system_admin'].includes(session.user.role)) {
+    if (session && ['admin', 'staff'].includes(session.user.role)) {
       fetchFinancialData()
     }
   }, [session])
@@ -85,7 +85,7 @@ export default function FinanceDashboardPage() {
     )
   }
 
-  if (!session || !['finance_admin', 'system_admin'].includes(session.user.role)) {
+  if (!session || !['admin', 'staff'].includes(session.user.role)) {
     router.push('/auth/login')
     return null
   }

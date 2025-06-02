@@ -46,7 +46,6 @@ async function main() {
   // Create users
   const adminPassword = await bcrypt.hash('admin123', 10)
   const staffPassword = await bcrypt.hash('staff123', 10)
-  const financePassword = await bcrypt.hash('finance123', 10)
 
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@warehouse.com' },
@@ -55,30 +54,30 @@ async function main() {
       email: 'admin@warehouse.com',
       passwordHash: adminPassword,
       fullName: 'System Administrator',
-      role: UserRole.system_admin,
+      role: UserRole.admin,
     },
   })
 
-  const staffUser = await prisma.user.upsert({
-    where: { email: 'staff@warehouse.com' },
+  const hasharUser = await prisma.user.upsert({
+    where: { email: 'hashar@warehouse.com' },
     update: {},
     create: {
-      email: 'staff@warehouse.com',
+      email: 'hashar@warehouse.com',
       passwordHash: staffPassword,
-      fullName: 'Warehouse Staff',
-      role: UserRole.warehouse_staff,
-      warehouseId: warehouse1.id,
+      fullName: 'Hashar (Finance Manager)',
+      role: UserRole.staff,
     },
   })
 
-  const financeUser = await prisma.user.upsert({
-    where: { email: 'finance@warehouse.com' },
+  const umairUser = await prisma.user.upsert({
+    where: { email: 'umair@warehouse.com' },
     update: {},
     create: {
-      email: 'finance@warehouse.com',
-      passwordHash: financePassword,
-      fullName: 'Finance Admin',
-      role: UserRole.finance_admin,
+      email: 'umair@warehouse.com',
+      passwordHash: staffPassword,
+      fullName: 'Umair (Operations Manager)',
+      role: UserRole.staff,
+      warehouseId: warehouse1.id,
     },
   })
 
