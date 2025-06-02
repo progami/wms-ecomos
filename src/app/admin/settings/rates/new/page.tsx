@@ -15,7 +15,7 @@ interface Warehouse {
 }
 
 const costCategories = [
-  { value: 'Storage', label: 'Storage', description: 'Weekly pallet storage charges' },
+  { value: 'Storage', label: 'Storage', description: 'Storage charges (pallet/week or cubic foot/month)' },
   { value: 'Container', label: 'Container', description: 'Container handling charges' },
   { value: 'Carton', label: 'Carton', description: 'Per carton handling' },
   { value: 'Pallet', label: 'Pallet', description: 'Pallet movement charges' },
@@ -25,7 +25,7 @@ const costCategories = [
 ]
 
 const unitsByCategory: { [key: string]: string[] } = {
-  Storage: ['pallet/week'],
+  Storage: ['pallet/week', 'cubic foot/month'],
   Container: ['container', '20ft', '40ft', 'hc'],
   Carton: ['carton', 'case'],
   Pallet: ['pallet', 'pallet/in', 'pallet/out'],
@@ -35,7 +35,7 @@ const unitsByCategory: { [key: string]: string[] } = {
 }
 
 const commonRateNames: { [key: string]: string[] } = {
-  Storage: ['Storage cost per pallet / week'],
+  Storage: ['Storage cost per pallet / week', 'Amazon storage per cubic foot / month'],
   Container: ['20 feet container unloading', '40 feet container unloading', 'Container Unloading', 'Container devanning'],
   Carton: ['Carton handling', 'Case handling', 'Unloading/Scanning'],
   Pallet: ['Pallet handling', 'Pallets wooden platform/Wrapping/Labor', 'Pallet in', 'Pallet out'],
@@ -169,8 +169,8 @@ export default function NewRatePage() {
     setFormData({
       ...formData,
       costCategory: category,
-      unitOfMeasure: category === 'Storage' ? 'pallet/week' : '',
-      costName: category === 'Storage' ? 'Storage cost per pallet / week' : ''
+      unitOfMeasure: '',
+      costName: ''
     })
   }
 
@@ -242,7 +242,6 @@ export default function NewRatePage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="e.g., Container Unloading"
                 required
-                disabled={formData.costCategory === 'Storage'}
                 list="cost-names"
               />
               {formData.costCategory && commonRateNames[formData.costCategory] && (
@@ -251,11 +250,6 @@ export default function NewRatePage() {
                     <option key={name} value={name} />
                   ))}
                 </datalist>
-              )}
-              {formData.costCategory === 'Storage' && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Storage category requires this specific name
-                </p>
               )}
             </div>
 
@@ -269,7 +263,6 @@ export default function NewRatePage() {
                 onChange={(e) => setFormData({ ...formData, unitOfMeasure: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 required
-                disabled={formData.costCategory === 'Storage'}
               >
                 <option value="">Select unit</option>
                 {formData.costCategory && unitsByCategory[formData.costCategory]?.map(unit => (
@@ -278,11 +271,6 @@ export default function NewRatePage() {
                   </option>
                 ))}
               </select>
-              {formData.costCategory === 'Storage' && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Storage must use pallet/week
-                </p>
-              )}
             </div>
 
             {/* Cost Value */}
@@ -356,10 +344,10 @@ export default function NewRatePage() {
                 <div className="text-sm text-yellow-800">
                   <p className="font-semibold">Storage Rate Requirements</p>
                   <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>Only one active storage rate per warehouse is allowed</li>
-                    <li>Must use "Storage cost per pallet / week" as the name</li>
-                    <li>Must use "pallet/week" as the unit</li>
-                    <li>Used for weekly storage calculations</li>
+                    <li>Only one active storage rate per warehouse per unit type</li>
+                    <li>Standard warehouses: Use "pallet/week" for weekly storage</li>
+                    <li>Amazon warehouses: Use "cubic foot/month" for monthly storage</li>
+                    <li>Name must clearly indicate the storage type and billing period</li>
                   </ul>
                 </div>
               </div>

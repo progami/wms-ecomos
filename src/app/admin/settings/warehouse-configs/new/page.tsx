@@ -287,7 +287,7 @@ export default function NewWarehouseConfigPage() {
           <h3 className="font-semibold text-blue-900 mb-2">Important Information</h3>
           <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
             <li>Cartons per pallet values directly impact billing calculations</li>
-            <li>Storage configuration is used for weekly storage charges</li>
+            <li>Storage configuration is used for storage charges (weekly for standard warehouses, monthly for Amazon)</li>
             <li>Shipping configuration is used when goods are shipped out</li>
             <li>Values should reflect actual physical constraints</li>
             <li>Changes take effect from the specified date forward</li>

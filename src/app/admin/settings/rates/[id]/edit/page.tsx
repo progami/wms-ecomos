@@ -26,7 +26,7 @@ interface CostRate {
 }
 
 const unitsByCategory: { [key: string]: string[] } = {
-  Storage: ['pallet/week'],
+  Storage: ['pallet/week', 'cubic foot/month'],
   Container: ['container', '20ft', '40ft', 'hc'],
   Carton: ['carton', 'case'],
   Pallet: ['pallet', 'pallet/in', 'pallet/out'],

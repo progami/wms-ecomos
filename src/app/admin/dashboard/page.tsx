@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
               />
               <DashboardCard
                 title="Storage Cost"
-                value={`$${parseFloat(stats.storageCost).toLocaleString()}`}
+                value={`£${parseFloat(stats.storageCost).toLocaleString()}`}
                 description="Current month estimate"
                 icon={DollarSign}
                 trend={`${stats.costTrend === 'up' ? '+' : ''}${stats.costChange}% from last month`}

@@ -79,7 +79,7 @@ export async function calculateStorageLedger(
           1.5 // Default cubic feet per carton
         
         quantityCharged = Math.ceil(balanceAsOfMonday * cartonVolumeCubicFeet)
-        storageUnit = 'cubic foot'
+        storageUnit = 'cubic foot/month'
       } else {
         // Get batch-specific pallet configuration for non-Amazon warehouses
         const { storageCartonsPerPallet } = await getBatchPalletConfig(
@@ -100,18 +100,52 @@ export async function calculateStorageLedger(
       }
       
       // Get applicable storage rate
-      const storageRate = await prisma.costRate.findFirst({
-        where: {
-          warehouseId: combo.warehouseId,
-          costCategory: 'Storage',
-          costName: { contains: storageUnit },
-          effectiveDate: { lte: monday },
-          OR: [
-            { endDate: null },
-            { endDate: { gte: monday } }
-          ]
+      let storageRate = null
+      let weeklyRate = 0
+      
+      if (isAmazonWarehouse) {
+        // For Amazon, find the appropriate monthly rate based on the date
+        const month = monday.getMonth() // 0-11
+        const isPeakSeason = month >= 9 // October (9) through December (11)
+        const sizeType = 'Standard Size' // TODO: Determine from SKU attributes
+        const seasonText = isPeakSeason ? 'Oct-Dec' : 'Jan-Sep'
+        
+        storageRate = await prisma.costRate.findFirst({
+          where: {
+            warehouseId: combo.warehouseId,
+            costCategory: 'Storage',
+            costName: { contains: `${sizeType} (${seasonText})` },
+            effectiveDate: { lte: monday },
+            OR: [
+              { endDate: null },
+              { endDate: { gte: monday } }
+            ]
+          }
+        })
+        
+        if (storageRate) {
+          // Convert monthly rate to weekly (divide by 4.33 weeks per month)
+          weeklyRate = storageRate.costValue.toNumber() / 4.33
         }
-      })
+      } else {
+        // Regular warehouse - weekly rates
+        storageRate = await prisma.costRate.findFirst({
+          where: {
+            warehouseId: combo.warehouseId,
+            costCategory: 'Storage',
+            costName: { contains: storageUnit },
+            effectiveDate: { lte: monday },
+            OR: [
+              { endDate: null },
+              { endDate: { gte: monday } }
+            ]
+          }
+        })
+        
+        if (storageRate) {
+          weeklyRate = storageRate.costValue.toNumber()
+        }
+      }
       
       if (!storageRate) {
         console.warn(`No storage rate found for ${combo.warehouse.name} (${storageUnit})`)
@@ -127,8 +161,8 @@ export async function calculateStorageLedger(
           update: {
             cartonsEndOfMonday: balanceAsOfMonday,
             storagePalletsCharged: isAmazonWarehouse ? 0 : quantityCharged, // For Amazon, store as 0 pallets
-            applicableWeeklyRate: storageRate.costValue.toNumber(),
-            calculatedWeeklyCost: quantityCharged * storageRate.costValue.toNumber(),
+            applicableWeeklyRate: weeklyRate,
+            calculatedWeeklyCost: quantityCharged * weeklyRate,
           },
           create: {
             slId,
@@ -138,8 +172,8 @@ export async function calculateStorageLedger(
             batchLot: combo.batchLot,
             cartonsEndOfMonday: balanceAsOfMonday,
             storagePalletsCharged: isAmazonWarehouse ? 0 : quantityCharged, // For Amazon, store as 0 pallets
-            applicableWeeklyRate: storageRate.costValue.toNumber(),
-            calculatedWeeklyCost: quantityCharged * storageRate.costValue.toNumber(),
+            applicableWeeklyRate: weeklyRate,
+            calculatedWeeklyCost: quantityCharged * weeklyRate,
             billingPeriodStart,
             billingPeriodEnd,
           }

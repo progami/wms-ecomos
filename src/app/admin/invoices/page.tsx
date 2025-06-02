@@ -85,7 +85,7 @@ export default async function AdminInvoicesPage() {
           />
           <InvoiceStatusCard
             title="Total Amount"
-            count="$45,678"
+            count="£45,678"
             icon={FileText}
             color="text-blue-600 bg-blue-100"
           />
@@ -131,7 +131,7 @@ export default async function AdminInvoicesPage() {
                   Dec 16 - Jan 15
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  $12,456.78
+                  £12,456.78
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -158,7 +158,7 @@ export default async function AdminInvoicesPage() {
                   Nov 16 - Dec 15
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  $8,234.50
+                  £8,234.50
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -185,7 +185,7 @@ export default async function AdminInvoicesPage() {
                   Nov 16 - Dec 15
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                  $10,123.45
+                  £10,123.45
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">

@@ -51,7 +51,7 @@ export default async function DashboardPage() {
           />
           <DashboardCard
             title="Storage Cost"
-            value="$5,432"
+            value="£5,432"
             description="Current month estimate"
             icon={DollarSign}
             trend="+8% from last month"

@@ -65,7 +65,7 @@ export default async function AdminReportsPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard
             title="Total Storage Cost"
-            value={`$${(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`}
+            value={`£${(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`}
             period="This Month"
             change="+12%"
             icon={DollarSign}

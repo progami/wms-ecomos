@@ -264,7 +264,7 @@ export default async function WarehouseConfigsPage() {
               <h4 className="font-medium text-gray-900 mb-2">Storage Cartons per Pallet</h4>
               <p className="text-sm text-gray-700">
                 Used for calculating storage charges. The system divides total cartons by this value 
-                (rounded up) to determine pallets used for weekly storage billing.
+                (rounded up) to determine pallets used for storage billing. Amazon warehouses use cubic feet for monthly billing instead.
               </p>
             </div>
             <div>

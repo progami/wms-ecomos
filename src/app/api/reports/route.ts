@@ -259,9 +259,9 @@ async function generateReconciliationReport(period: string, warehouseId?: string
     'Invoice Number': invoice.invoiceNumber,
     'Invoice Date': invoice.invoiceDate.toLocaleDateString(),
     'Warehouse': invoice.warehouse.name,
-    'Invoiced Amount': `$${invoice.totalAmount.toFixed(2)}`,
-    'Calculated Amount': `$${(costMap.get(invoice.warehouseId) || 0).toFixed(2)}`,
-    'Variance': `$${(invoice.totalAmount - (costMap.get(invoice.warehouseId) || 0)).toFixed(2)}`,
+    'Invoiced Amount': `£${invoice.totalAmount.toFixed(2)}`,
+    'Calculated Amount': `£${(costMap.get(invoice.warehouseId) || 0).toFixed(2)}`,
+    'Variance': `£${(invoice.totalAmount - (costMap.get(invoice.warehouseId) || 0)).toFixed(2)}`,
     'Status': Math.abs(invoice.totalAmount - (costMap.get(invoice.warehouseId) || 0)) < 0.01 ? 'Matched' : 'Variance',
   }))
 }
@@ -371,8 +371,8 @@ async function generateCostAnalysisReport(period: string, warehouseId?: string) 
     'SKU Code': item.sku,
     'Description': item.description,
     'Average Cartons': Math.round(item.totalCartons / item.weeks),
-    'Total Storage Cost': `$${item.totalCost.toFixed(2)}`,
-    'Average Weekly Cost': `$${(item.totalCost / item.weeks).toFixed(2)}`,
+    'Total Storage Cost': `£${item.totalCost.toFixed(2)}`,
+    'Average Weekly Cost': `£${(item.totalCost / item.weeks).toFixed(2)}`,
     'Period': `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
   }))
 }
@@ -419,11 +419,11 @@ async function generateMonthlyBillingReport(period: string, warehouseId?: string
 
       return {
         'Warehouse': warehouse.name,
-        'Storage Costs': `$${(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`,
+        'Storage Costs': `£${(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`,
         'Receiving Transactions': receiveCount,
         'Shipping Transactions': shipCount,
-        'Handling Fees': `$${((receiveCount + shipCount) * 25).toFixed(2)}`, // $25 per transaction
-        'Total Charges': `$${((storageCost._sum.calculatedWeeklyCost || 0) + ((receiveCount + shipCount) * 25)).toFixed(2)}`,
+        'Handling Fees': `£${((receiveCount + shipCount) * 25).toFixed(2)}`, // £25 per transaction
+        'Total Charges': `£${((storageCost._sum.calculatedWeeklyCost || 0) + ((receiveCount + shipCount) * 25)).toFixed(2)}`,
         'Billing Period': `${billingStart.toLocaleDateString()} - ${billingEnd.toLocaleDateString()}`,
       }
     })

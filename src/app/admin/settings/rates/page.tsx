@@ -90,7 +90,7 @@ export default function AdminRatesPage() {
   }
 
   const formatCurrency = (value: number) => {
-    return `$${value.toFixed(2)}`
+    return `£${value.toFixed(2)}`
   }
 
   // Filter rates
@@ -129,7 +129,7 @@ export default function AdminRatesPage() {
 
   const getCategoryDescription = (category: string) => {
     const descriptions: { [key: string]: string } = {
-      Storage: 'Weekly storage charges per pallet',
+      Storage: 'Storage charges (pallet/week or cubic foot/month)',
       Container: 'Container handling and unloading fees',
       Carton: 'Per carton charges for special handling',
       Pallet: 'Pallet movement and handling fees',
@@ -453,7 +453,7 @@ export default function AdminRatesPage() {
           <h3 className="text-lg font-semibold mb-4">Cost Category Reference</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries({
-              Storage: 'Weekly storage charges per pallet',
+              Storage: 'Storage charges (pallet/week or cubic foot/month)',
               Container: 'Container handling and unloading fees',
               Carton: 'Per carton charges for special handling',
               Pallet: 'Pallet movement and handling fees',
