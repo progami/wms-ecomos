@@ -58,17 +58,17 @@ const navigation = {
       ]
     },
     {
-      title: 'Reports',
-      items: [
-        { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-      ]
-    },
-    {
       title: 'Master Data',
       items: [
         { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
         { name: 'Warehouse Configs', href: '/admin/settings/warehouse-configs', icon: Building },
         { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
+      ]
+    },
+    {
+      title: 'Reports',
+      items: [
+        { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
       ]
     },
     {
@@ -98,6 +98,14 @@ const navigation = {
       items: [
         { name: 'Invoices', href: '/finance/invoices', icon: FileText },
         { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
+      ]
+    },
+    {
+      title: 'Master Data',
+      items: [
+        { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
+        { name: 'Warehouse Configs', href: '/admin/settings/warehouse-configs', icon: Building },
+        { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
       ]
     },
     {
