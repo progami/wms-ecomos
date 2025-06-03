@@ -83,9 +83,9 @@ export default function AmazonIntegrationPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Amazon FBA Inventory Overview"
-          subtitle="View warehouse and Amazon FBA inventory"
-          description="Overview of inventory levels across your warehouses and Amazon FBA UK. Shows all SKUs including those with zero stock."
+          title="Amazon Integration"
+          subtitle="Inventory overview by location"
+          description="Overview of inventory levels across all warehouse locations. Shows all SKUs including those with zero stock."
           icon={Package2}
           iconColor="text-orange-600"
           bgColor="bg-orange-50"
@@ -144,17 +144,11 @@ export default function AmazonIntegrationPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white border rounded-lg p-4">
             <h3 className="text-sm font-medium text-gray-600">Total Warehouse Stock</h3>
             <p className="text-2xl font-bold text-gray-900 mt-1">
               {totalWarehouse.toLocaleString()} units
-            </p>
-          </div>
-          <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-600">Total Amazon FBA Stock</h3>
-            <p className="text-2xl font-bold text-orange-600 mt-1">
-              {totalAmazon.toLocaleString()} units
             </p>
           </div>
           <div className="bg-white border rounded-lg p-4">
@@ -187,7 +181,7 @@ export default function AmazonIntegrationPage() {
                     Warehouse Units
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amazon FBA Units
+                    Other Locations
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Total (Units)
@@ -245,8 +239,8 @@ export default function AmazonIntegrationPage() {
         {/* Info Note */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Note:</strong> This page displays inventory levels across all locations. Showing {skusWithStock} of {totalSkus} SKUs with stock.
-            Warehouse quantities exclude Amazon FBA UK. The total column shows the combined inventory across all locations.
+            <strong>Note:</strong> This page displays inventory levels across all warehouse locations. Showing {skusWithStock} of {totalSkus} SKUs with stock.
+            The total column shows the combined inventory across all locations.
           </p>
         </div>
       </div>
