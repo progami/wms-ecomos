@@ -60,6 +60,7 @@ Only essential user management scripts remain:
 3. **USE** adjustment transactions for corrections
 4. **ALWAYS** use GBP (£) for monetary values
 5. **FOLLOW** the immutable ledger pattern
+6. **SKU Selection** - Both Receive and Ship pages use dropdown based on SKU master
 
 ## 📁 Documentation Structure
 

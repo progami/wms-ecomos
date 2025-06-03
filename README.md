@@ -17,6 +17,8 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 #### 📦 Inventory Management
 - Real-time inventory tracking by SKU, warehouse, and batch
 - Receive and ship inventory with carton and pallet tracking
+  - SKU selection via dropdown from master data
+  - Automatic units calculation (cartons × units per carton)
 - Point-in-time inventory views with running balances
 - Low stock alerts and inventory balances
 - Immutable inventory ledger with audit trail
