@@ -40,28 +40,28 @@ export default function AmazonIntegrationPage() {
     return null
   }
 
-  const fetchInventoryComparison = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/amazon/inventory-comparison')
-      if (response.ok) {
-        const data = await response.json()
-        setInventory(data)
-        setLastRefresh(new Date())
-      } else {
-        const errorData = await response.json()
-        console.error('API Error:', errorData)
-        toast.error(errorData.details || 'Failed to fetch inventory comparison')
-      }
-    } catch (error) {
-      toast.error('Error fetching inventory data')
-      console.error('Error:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
+    const fetchInventoryComparison = async () => {
+      setLoading(true)
+      try {
+        const response = await fetch('/api/amazon/inventory-comparison')
+        if (response.ok) {
+          const data = await response.json()
+          setInventory(data)
+          setLastRefresh(new Date())
+        } else {
+          const errorData = await response.json()
+          console.error('API Error:', errorData)
+          toast.error(errorData.details || 'Failed to fetch inventory comparison')
+        }
+      } catch (error) {
+        toast.error('Error fetching inventory data')
+        console.error('Error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchInventoryComparison()
   }, [])
 
@@ -103,7 +103,26 @@ export default function AmazonIntegrationPage() {
             />
           </div>
           <button
-            onClick={fetchInventoryComparison}
+            onClick={async () => {
+              setLoading(true)
+              try {
+                const response = await fetch('/api/amazon/inventory-comparison')
+                if (response.ok) {
+                  const data = await response.json()
+                  setInventory(data)
+                  setLastRefresh(new Date())
+                } else {
+                  const errorData = await response.json()
+                  console.error('API Error:', errorData)
+                  toast.error(errorData.details || 'Failed to fetch inventory comparison')
+                }
+              } catch (error) {
+                toast.error('Error fetching inventory data')
+                console.error('Error:', error)
+              } finally {
+                setLoading(false)
+              }
+            }}
             disabled={loading}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
           >
