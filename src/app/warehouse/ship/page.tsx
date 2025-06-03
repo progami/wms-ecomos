@@ -50,6 +50,8 @@ export default function WarehouseShipPage() {
   const [loading, setLoading] = useState(false)
   const [skus, setSkus] = useState<Sku[]>([])
   const [skuLoading, setSkuLoading] = useState(true)
+  const [warehouses, setWarehouses] = useState<{id: string; name: string; code: string}[]>([])
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('')
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [items, setItems] = useState<ShipItem[]>([
     { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }
@@ -133,9 +135,17 @@ export default function WarehouseShipPage() {
   }
 
   useEffect(() => {
-    fetchInventory()
     fetchSkus()
+    fetchWarehouses()
   }, [])
+
+  useEffect(() => {
+    if (selectedWarehouseId) {
+      fetchInventory(selectedWarehouseId)
+    } else {
+      setInventory([])
+    }
+  }, [selectedWarehouseId])
 
   const fetchSkus = async () => {
     try {
@@ -153,15 +163,30 @@ export default function WarehouseShipPage() {
     }
   }
 
-  const fetchInventory = async () => {
+  const fetchInventory = async (warehouseId?: string) => {
     try {
-      const response = await fetch('/api/inventory/balances')
+      const url = warehouseId 
+        ? `/api/inventory/balances?warehouse=${warehouseId}`
+        : '/api/inventory/balances'
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setInventory(data)
       }
     } catch (error) {
       console.error('Failed to fetch inventory:', error)
+    }
+  }
+
+  const fetchWarehouses = async () => {
+    try {
+      const response = await fetch('/api/warehouses')
+      if (response.ok) {
+        const data = await response.json()
+        setWarehouses(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch warehouses:', error)
     }
   }
 
@@ -187,6 +212,23 @@ export default function WarehouseShipPage() {
     if (shipDateObj < oneYearAgo) {
       toast.error('Ship date is too far in the past (max 1 year)')
       return
+    }
+    
+    // Check for backdated transactions
+    try {
+      const response = await fetch(`/api/transactions/ledger?warehouse=${session?.user.warehouseId}&limit=1`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.transactions && data.transactions.length > 0) {
+          const lastTransactionDate = new Date(data.transactions[0].transactionDate)
+          if (shipDateObj < lastTransactionDate) {
+            toast.error(`Cannot create backdated transactions. The last transaction was on ${lastTransactionDate.toLocaleDateString()}. Please use a date on or after this date.`)
+            return
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not validate transaction date order:', error)
     }
     
     // Validate items
@@ -237,11 +279,13 @@ export default function WarehouseShipPage() {
     
     const referenceNumber = formData.get('orderNumber') as string
     const date = shipDate
-    const customer = formData.get('customer') as string
+    const sourceWarehouseId = formData.get('sourceWarehouse') as string
     const carrier = formData.get('carrier') as string
     const tracking = formData.get('tracking') as string
-    const destination = formData.get('destination') as string
     const notes = formData.get('notes') as string
+    
+    // Get source warehouse name
+    const sourceWarehouse = warehouses.find(w => w.id === sourceWarehouseId)
     
     try {
       const response = await fetch('/api/transactions', {
@@ -252,8 +296,8 @@ export default function WarehouseShipPage() {
           referenceNumber,
           date,
           items: validItems,
-          notes: `Customer: ${customer}. Carrier: ${carrier}. Tracking: ${tracking}. Destination: ${destination}. ${notes}`,
-          warehouseId: session?.user.warehouseId,
+          notes: `Source: ${sourceWarehouse?.name || 'Unknown'}. Carrier: ${carrier}. FBA Tracking: ${tracking}. Total Cartons: ${items.reduce((sum, item) => sum + item.cartons, 0)}. ${notes}`,
+          warehouseId: sourceWarehouseId || session?.user.warehouseId,
         }),
       })
       
@@ -313,15 +357,26 @@ export default function WarehouseShipPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Customer
+                  Source Warehouse
                 </label>
-                <input
-                  type="text"
-                  name="customer"
+                <select
+                  name="sourceWarehouse"
+                  value={selectedWarehouseId}
+                  onChange={(e) => {
+                    setSelectedWarehouseId(e.target.value)
+                    // Reset items when warehouse changes
+                    setItems([{ id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }])
+                  }}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Customer name"
                   required
-                />
+                >
+                  <option value="">Select Warehouse...</option>
+                  {warehouses.map(warehouse => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -343,33 +398,38 @@ export default function WarehouseShipPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Carrier
                 </label>
-                <input
-                  type="text"
+                <select
                   name="carrier"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., FedEx, UPS"
-                />
+                  required
+                >
+                  <option value="">Select Carrier...</option>
+                  <option value="Amazon Partnered Carrier UPS">Amazon Partnered Carrier UPS</option>
+                  <option value="Amazon Freight">Amazon Freight</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tracking Number
+                  FBA Tracking ID
                 </label>
                 <input
                   type="text"
                   name="tracking"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Tracking number"
+                  placeholder="e.g., FBA15K7TRCBF"
+                  required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Destination
+                  Total Cartons #
                 </label>
                 <input
-                  type="text"
-                  name="destination"
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="City, Country"
+                  type="number"
+                  value={items.reduce((sum, item) => sum + item.cartons, 0)}
+                  className="w-full px-3 py-2 border rounded-md bg-gray-100 font-medium text-gray-900"
+                  readOnly
+                  title="Total cartons from all items"
                 />
               </div>
             </div>

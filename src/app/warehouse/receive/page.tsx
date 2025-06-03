@@ -19,6 +19,7 @@ interface Attachment {
   type: string
   size: number
   data?: string
+  category: 'packing_list' | 'commercial_invoice' | 'delivery_note' | 'cube_master' | 'other'
 }
 
 export default function WarehouseReceivePage() {
@@ -30,6 +31,10 @@ export default function WarehouseReceivePage() {
   const [shipName, setShipName] = useState('')
   const [containerNumber, setContainerNumber] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [packingListAttachment, setPackingListAttachment] = useState<Attachment | null>(null)
+  const [commercialInvoiceAttachment, setCommercialInvoiceAttachment] = useState<Attachment | null>(null)
+  const [deliveryNoteAttachment, setDeliveryNoteAttachment] = useState<Attachment | null>(null)
+  const [cubeMasterAttachment, setCubeMasterAttachment] = useState<Attachment | null>(null)
   const [items, setItems] = useState([
     { 
       id: 1, 
@@ -112,36 +117,74 @@ export default function WarehouseReceivePage() {
     setItems(items.filter(item => item.id !== id))
   }
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files) return
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, category: Attachment['category']) => {
+    const file = event.target.files?.[0]
+    if (!file) return
 
-    const newAttachments: Attachment[] = []
+    // Limit file size to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(`${file.name} is too large. Maximum size is 5MB.`)
+      return
+    }
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      // Limit file size to 5MB
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} is too large. Maximum size is 5MB.`)
-        continue
+    // Convert to base64
+    const reader = new FileReader()
+    reader.onload = () => {
+      const attachment: Attachment = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data: reader.result as string,
+        category
       }
       
-      // Convert to base64
-      const reader = new FileReader()
-      reader.onload = () => {
-        newAttachments.push({
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          data: reader.result as string
-        })
-        
-        if (newAttachments.length === files.length) {
-          setAttachments([...attachments, ...newAttachments])
-          toast.success(`${newAttachments.length} file(s) uploaded`)
-        }
+      // Update specific attachment state
+      switch (category) {
+        case 'packing_list':
+          setPackingListAttachment(attachment)
+          break
+        case 'commercial_invoice':
+          setCommercialInvoiceAttachment(attachment)
+          break
+        case 'delivery_note':
+          setDeliveryNoteAttachment(attachment)
+          break
+        case 'cube_master':
+          setCubeMasterAttachment(attachment)
+          break
+        default:
+          setAttachments([...attachments, attachment])
       }
-      reader.readAsDataURL(file)
+      
+      toast.success(`${getCategoryLabel(category)} uploaded`)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const getCategoryLabel = (category: Attachment['category']): string => {
+    switch (category) {
+      case 'packing_list': return 'Packing List'
+      case 'commercial_invoice': return 'Commercial Invoice'
+      case 'delivery_note': return 'Delivery Note'
+      case 'cube_master': return 'Cube Master Stacking Style'
+      case 'other': return 'Other Document'
+    }
+  }
+
+  const removeSpecificAttachment = (category: Attachment['category']) => {
+    switch (category) {
+      case 'packing_list':
+        setPackingListAttachment(null)
+        break
+      case 'commercial_invoice':
+        setCommercialInvoiceAttachment(null)
+        break
+      case 'delivery_note':
+        setDeliveryNoteAttachment(null)
+        break
+      case 'cube_master':
+        setCubeMasterAttachment(null)
+        break
     }
   }
 
@@ -255,6 +298,23 @@ export default function WarehouseReceivePage() {
       return
     }
     
+    // Check for backdated transactions
+    try {
+      const response = await fetch(`/api/transactions/ledger?warehouse=${session?.user.warehouseId}&limit=1`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.transactions && data.transactions.length > 0) {
+          const lastTransactionDate = new Date(data.transactions[0].transactionDate)
+          if (receiptDateObj < lastTransactionDate) {
+            toast.error(`Cannot create backdated transactions. The last transaction was on ${lastTransactionDate.toLocaleDateString()}. Please use a date on or after this date.`)
+            return
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not validate transaction date order:', error)
+    }
+    
     // Validate items
     const validItems = items.filter(item => item.skuCode && item.cartons > 0)
     if (validItems.length === 0) {
@@ -314,6 +374,14 @@ export default function WarehouseReceivePage() {
     if (containerNumber) fullNotes += `Container: ${containerNumber}. `
     if (notes) fullNotes += notes
     
+    // Combine all attachments
+    const allAttachments: Attachment[] = []
+    if (packingListAttachment) allAttachments.push(packingListAttachment)
+    if (commercialInvoiceAttachment) allAttachments.push(commercialInvoiceAttachment)
+    if (deliveryNoteAttachment) allAttachments.push(deliveryNoteAttachment)
+    if (cubeMasterAttachment) allAttachments.push(cubeMasterAttachment)
+    allAttachments.push(...attachments)
+    
     try {
       const response = await fetch('/api/transactions', {
         method: 'POST',
@@ -326,7 +394,7 @@ export default function WarehouseReceivePage() {
           notes: fullNotes,
           shipName,
           containerNumber,
-          attachments: attachments.length > 0 ? attachments : null,
+          attachments: allAttachments.length > 0 ? allAttachments : null,
           warehouseId: session?.user.warehouseId, // Include warehouse ID if not staff
         }),
       })
@@ -662,51 +730,230 @@ export default function WarehouseReceivePage() {
 
           {/* Attachments */}
           <div className="border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Attachments</h3>
+            <h3 className="text-lg font-semibold mb-4">Required Documents</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Upload packing lists, commercial invoices, delivery notes, and other documents (Max 5MB per file)
+              Upload the following documents for this shipment (Max 5MB per file)
             </p>
             
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                    <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, DOC, DOCX, XLS, XLSX</p>
+            <div className="space-y-6">
+              {/* Packing List */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Packing List</h4>
+                    <p className="text-xs text-gray-600">List of items, quantities, and packaging details</p>
                   </div>
-                  <input
-                    id="file-upload"
-                    type="file"
-                    multiple
-                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              
-              {attachments.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Uploaded files:</p>
-                  {attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-700">{file.name}</span>
-                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeAttachment(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                  {packingListAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
                 </div>
-              )}
+                {packingListAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{packingListAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(packingListAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('packing_list')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'packing_list')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Commercial Invoice */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Commercial Invoice</h4>
+                    <p className="text-xs text-gray-600">Invoice from supplier with pricing details</p>
+                  </div>
+                  {commercialInvoiceAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {commercialInvoiceAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{commercialInvoiceAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(commercialInvoiceAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('commercial_invoice')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'commercial_invoice')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Delivery Note */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Delivery Note</h4>
+                    <p className="text-xs text-gray-600">Proof of delivery from carrier</p>
+                  </div>
+                  {deliveryNoteAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {deliveryNoteAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{deliveryNoteAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(deliveryNoteAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('delivery_note')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'delivery_note')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Cube Master Stacking Style */}
+              <div className="border rounded-lg p-4 bg-blue-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Cube Master Stacking Style for Storage Pallets</h4>
+                    <p className="text-xs text-gray-600">Document showing optimal pallet stacking configuration</p>
+                  </div>
+                  {cubeMasterAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {cubeMasterAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{cubeMasterAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(cubeMasterAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('cube_master')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'cube_master')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Other Attachments */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-sm mb-2">Additional Documents (Optional)</h4>
+                <div className="space-y-2">
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-3 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                      <p className="text-sm text-gray-600">Click to upload additional documents</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, DOC, DOCX, XLS, XLSX</p>
+                    </div>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => {
+                        const files = e.target.files
+                        if (files) {
+                          Array.from(files).forEach(file => {
+                            const event = new Event('change') as any
+                            event.target = { files: [file] }
+                            handleFileUpload(event as React.ChangeEvent<HTMLInputElement>, 'other')
+                          })
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  
+                  {attachments.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

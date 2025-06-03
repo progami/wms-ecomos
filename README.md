@@ -5,7 +5,7 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 ## 🚀 Features
 
 ### Core Functionality
-- **Multi-Warehouse Support**: Manage inventory across multiple warehouses (FMC, VGlobal, 4AS, Amazon FBA UK)
+- **Multi-Warehouse Support**: Manage inventory across multiple warehouses (FMC, VGlobal, 4AS)
 - **Inventory Management**: Track inventory movements, balances, and transactions in real-time
 - **Amazon FBA Integration**: Compare and sync inventory between warehouses and Amazon FBA (displays in units)
 - **Financial Management**: Invoice creation, reconciliation, and cost calculations
@@ -21,12 +21,24 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
   - Automatic units calculation (cartons × units per carton)
   - Auto-incremented batch numbers based on SKU history
   - Ship name and container number tracking
-  - Document attachments (packing lists, invoices, etc.)
+  - Document attachments with explicit categories:
+    - Packing List
+    - Commercial Invoice
+    - Delivery Note
+    - Cube Master Stacking Style for Storage Pallets
+    - Additional documents
+- Ship Goods features:
+  - Source warehouse selection
+  - Amazon carrier options (Amazon Partnered Carrier UPS, Amazon Freight)
+  - FBA Tracking ID
+  - Automatic total cartons calculation
 - Point-in-time inventory views with running balances
 - Low stock alerts and inventory balances
 - Immutable inventory ledger with audit trail
 - Pallet variance tracking for data accuracy
 - Sortable transaction history with date filtering
+- Pickup date tracking with reconciliation status
+- Chronological transaction enforcement (no backdating)
 
 #### 💰 Financial Management
 - Create and manage invoices
@@ -225,6 +237,8 @@ The inventory ledger follows accounting best practices:
 - **No Deletes**: All records are permanent for audit trail
 - **Corrections**: Use ADJUST_IN/ADJUST_OUT transactions to fix errors
 - **Database Triggers**: PostgreSQL triggers enforce immutability
+- **Chronological Order**: Transactions must be entered in date order (no backdating)
+- **Pickup Date Tracking**: Separate tracking for transaction and pickup dates with reconciliation status
 
 ### Data Import
 - Initial data should be imported from Excel using dedicated import scripts

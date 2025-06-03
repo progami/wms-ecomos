@@ -97,6 +97,8 @@ export async function GET(request: NextRequest) {
         
         return {
           ...transaction,
+          pickupDate: transaction.pickupDate,
+          isReconciled: transaction.isReconciled,
           runningBalance: newBalance
         }
       })

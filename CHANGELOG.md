@@ -2,7 +2,40 @@
 
 All notable changes to the Warehouse Management System will be documented in this file.
 
-## [Unreleased] - 2025-06-03
+## [1.2.0] - 2025-06-03
+
+### Added
+- **Inventory Ledger Enhancements**
+  - Pickup date tracking for all transactions
+  - Reconciliation status to track unconfirmed pickup dates
+  - Chronological transaction enforcement (prevents backdating)
+  - Database triggers to maintain ledger integrity
+
+- **Ship Goods Page Updates**
+  - Source warehouse selection dropdown
+  - Amazon carrier options (Amazon Partnered Carrier UPS, Amazon Freight)
+  - FBA Tracking ID field
+  - Automatic total cartons calculation display
+
+- **Receive Goods Page Updates**  
+  - Explicit document attachment categories:
+    - Packing List
+    - Commercial Invoice
+    - Delivery Note
+    - Cube Master Stacking Style (highlighted in blue)
+    - Additional documents section
+  - Changed "Reference Number" to "PI / CI / PO Number"
+
+### Changed
+- Amazon FBA UK warehouse excluded from all operational pages
+- Warehouse dropdowns now show only operational warehouses (FMC, VGlobal, 4AS)
+- Amazon integration limited to admin Amazon page and cost rates only
+
+### Security
+- Added database-level enforcement of chronological transaction order
+- Immutable ledger triggers prevent transaction manipulation
+
+## [1.1.0] - 2025-06-02
 
 ### Storage Ledger Features
 - **Full Storage Ledger Implementation**

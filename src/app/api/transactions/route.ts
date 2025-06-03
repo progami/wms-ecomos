@@ -82,6 +82,24 @@ export async function POST(request: NextRequest) {
       }, { status: 409 })
     }
 
+    // Check for backdated transactions - prevent inserting transactions before the last transaction
+    const lastTransaction = await prisma.inventoryTransaction.findFirst({
+      where: { warehouseId },
+      orderBy: { transactionDate: 'desc' },
+      select: { transactionDate: true, transactionId: true }
+    })
+
+    if (lastTransaction && transactionDate < lastTransaction.transactionDate) {
+      return NextResponse.json({ 
+        error: `Cannot create backdated transactions. The last transaction in this warehouse was on ${lastTransaction.transactionDate.toLocaleDateString()}. New transactions must have a date on or after this date.`,
+        details: {
+          lastTransactionDate: lastTransaction.transactionDate,
+          attemptedDate: transactionDate,
+          lastTransactionId: lastTransaction.transactionId
+        }
+      }, { status: 400 })
+    }
+
     // Validate all items before processing
     for (const item of items) {
       // Validate item structure

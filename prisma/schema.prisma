@@ -159,6 +159,8 @@ model InventoryTransaction {
   shippingPalletsOut       Int             @default(0) @map("shipping_pallets_out")
   notes                    String?
   transactionDate          DateTime        @map("transaction_date")
+  pickupDate               DateTime?       @map("pickup_date")
+  isReconciled             Boolean         @default(false) @map("is_reconciled")
   createdAt                DateTime        @default(now()) @map("created_at")
   createdById              String          @map("created_by")
   shippingCartonsPerPallet Int?            @map("shipping_cartons_per_pallet")

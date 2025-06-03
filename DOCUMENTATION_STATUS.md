@@ -59,12 +59,21 @@ Only essential user management scripts remain:
 
 1. **DO NOT** modify existing inventory transactions
 2. **DO NOT** create test data in production
-3. **USE** adjustment transactions for corrections
-4. **ALWAYS** use GBP (£) for monetary values
-5. **FOLLOW** the immutable ledger pattern
-6. **SKU Selection** - Both Receive and Ship pages use dropdown based on SKU master
-7. **Batch Numbers** - Automatically incremented based on last batch for each SKU
-8. **Attachments** - Receive Goods supports document uploads (packing lists, invoices, etc.)
+3. **DO NOT** create backdated transactions (enforced by database triggers)
+4. **USE** adjustment transactions for corrections
+5. **ALWAYS** use GBP (£) for monetary values
+6. **FOLLOW** the immutable ledger pattern
+7. **SKU Selection** - Both Receive and Ship pages use dropdown based on SKU master
+8. **Batch Numbers** - Automatically incremented based on last batch for each SKU
+9. **Attachments** - Receive Goods supports explicit document categories:
+   - Packing List
+   - Commercial Invoice
+   - Delivery Note
+   - Cube Master Stacking Style for Storage Pallets (highlighted)
+   - Additional documents
+10. **Ship Goods** - Uses source warehouse selection, Amazon carriers, FBA Tracking ID
+11. **Ledger Features** - Pickup date tracking, reconciliation status, chronological enforcement
+12. **Amazon FBA UK** - Excluded from operational pages, only visible in Amazon integration and cost rates
 
 ## 📁 Documentation Structure
 
