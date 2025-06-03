@@ -25,21 +25,6 @@ export default function AmazonIntegrationPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
-  if (status === 'loading') {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  if (!session || session.user.role !== 'admin') {
-    router.push('/auth/login')
-    return null
-  }
-
   useEffect(() => {
     const fetchInventoryComparison = async () => {
       setLoading(true)
@@ -62,8 +47,11 @@ export default function AmazonIntegrationPage() {
       }
     }
 
-    fetchInventoryComparison()
-  }, [])
+    // Only fetch if authenticated
+    if (status === 'authenticated' && session?.user?.role === 'admin') {
+      fetchInventoryComparison()
+    }
+  }, [status, session])
 
   const filteredInventory = inventory.filter(item =>
     item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -75,6 +63,21 @@ export default function AmazonIntegrationPage() {
   const totalCombined = totalWarehouse + totalAmazon
   const skusWithStock = inventory.filter(item => item.total > 0).length
   const totalSkus = inventory.length
+
+  if (status === 'loading') {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!session || session.user.role !== 'admin') {
+    router.push('/auth/login')
+    return null
+  }
 
   return (
     <DashboardLayout>
