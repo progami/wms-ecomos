@@ -208,7 +208,6 @@ describe('Middleware', () => {
         '/api/inventory',
         '/api/calculations/storage-ledger',
         '/api/reports',
-        '/api/import',
       ]
 
       for (const route of apiRoutes) {

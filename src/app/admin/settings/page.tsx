@@ -42,9 +42,6 @@ export default function AdminSettingsPage() {
     return null
   }
 
-  const handleImportData = async () => {
-    toast.error('Import functionality is currently unavailable. Please contact support.')
-  }
 
   const handleExportData = async () => {
     setLoading('export')
@@ -81,7 +78,7 @@ export default function AdminSettingsPage() {
         {/* Header */}
         <PageHeader
           title="System Settings"
-          description="Configure system-wide settings and master data. Manage warehouses, SKUs, cost rates, users, and system configurations. Use quick actions to import/export data or access advanced settings."
+          description="Configure system-wide settings and master data. Manage warehouses, SKUs, cost rates, users, and system configurations. Use quick actions to export data or access advanced settings."
           icon={SettingsIcon}
           iconColor="text-gray-600"
           bgColor="bg-gray-50"
@@ -164,14 +161,7 @@ export default function AdminSettingsPage() {
         {/* Quick Actions */}
         <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <QuickAction
-              title="Import Data"
-              description="Bulk import from Excel"
-              icon={Upload}
-              onClick={handleImportData}
-              loading={loading === 'import'}
-            />
+          <div className="grid gap-4">
             <QuickAction
               title="Export All Data"
               description="Download complete backup"

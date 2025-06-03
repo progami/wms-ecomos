@@ -108,13 +108,6 @@ export default function AdminDashboardPage() {
     return null
   }
 
-  const handleImportData = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    toast.error('Import functionality is currently unavailable. Please contact support.')
-  }
 
   const handleExportData = async (e?: React.MouseEvent) => {
     if (e) {
@@ -247,14 +240,7 @@ export default function AdminDashboardPage() {
         {/* System Actions */}
         <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-4">System Actions</h3>
-          <div className="grid gap-4 md:grid-cols-2">
-            <SystemAction
-              title="Import Data"
-              description="Bulk import from Excel"
-              icon={Upload}
-              onClick={handleImportData}
-              loading={loading === 'import'}
-            />
+          <div className="grid gap-4">
             <SystemAction
               title="Export All Data"
               description="Download complete backup"

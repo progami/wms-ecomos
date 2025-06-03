@@ -52,13 +52,6 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
         icon: DollarSign,
         link: '/admin/settings/rates'
       },
-      {
-        title: 'Initial Data Import',
-        description: 'Contact support for assistance with data import',
-        icon: FileText,
-        link: '#',
-        disabled: true
-      }
     ],
     staff: [
       {

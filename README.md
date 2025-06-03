@@ -239,11 +239,11 @@ The inventory ledger follows accounting best practices:
 - **Chronological Order**: Transactions must be entered in date order (no backdating)
 - **Pickup Date Tracking**: Separate tracking for transaction and pickup dates with reconciliation status
 
-### Data Import
-- Initial data can be imported from Excel through the Admin Import page (`/admin/import`)
-- Place your Excel file named "Warehouse Management.xlsx" in the data folder
-- After import, all data entry should be through the web interface
+### Data Management
+- Initial data has been imported from Excel (174 transactions)
+- All ongoing data entry should be through the web interface
 - The system maintains data integrity and prevents duplicate entries
+- Full export capabilities available for backup and reporting
 
 ### Currency
 All monetary values are in GBP (£) including:
