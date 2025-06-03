@@ -115,9 +115,9 @@ describe('Reports Client Page', () => {
   describe('Available Reports Section', () => {
     const expectedReports = [
       { name: 'Monthly Inventory Summary', category: 'Inventory', reportType: 'monthly-inventory' },
-      { name: 'Transaction History', category: 'Operations', reportType: 'transaction-history' },
+      { name: 'Inventory Ledger', category: 'Operations', reportType: 'inventory-ledger' },
       { name: 'Storage Utilization', category: 'Storage', reportType: 'storage-charges' },
-      { name: 'Weekly Activity Report', category: 'Operations', reportType: 'transaction-history' },
+      { name: 'Weekly Activity Report', category: 'Operations', reportType: 'inventory-ledger' },
       { name: 'Stock Aging Report', category: 'Inventory', reportType: 'monthly-inventory' },
     ]
 

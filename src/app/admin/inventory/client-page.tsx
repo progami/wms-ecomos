@@ -145,7 +145,7 @@ export function InventoryClient({
         <div>
           <h1 className="text-3xl font-bold">Inventory Management</h1>
           <p className="text-muted-foreground">
-            View current balances and transaction history across all warehouses
+            View current balances and inventory ledger across all warehouses
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -294,7 +294,7 @@ export function InventoryClient({
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-gray-50 px-6 py-3 border-b">
           <h3 className="text-lg font-semibold">Current Inventory Balances</h3>
-          <p className="text-sm text-gray-600 mt-1">Real-time stock levels calculated from transaction ledger</p>
+          <p className="text-sm text-gray-600 mt-1">Real-time stock levels calculated from inventory ledger</p>
         </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -400,8 +400,8 @@ export function InventoryClient({
       {/* Recent Transactions */}
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-gray-50 px-6 py-3 border-b">
-          <h3 className="text-lg font-semibold">Recent Inventory Transactions</h3>
-          <p className="text-sm text-gray-600 mt-1">Transaction ledger showing all inventory movements (RECEIVE, SHIP, ADJUST)</p>
+          <h3 className="text-lg font-semibold">Recent Inventory Movements</h3>
+          <p className="text-sm text-gray-600 mt-1">Inventory ledger showing all movements (RECEIVE, SHIP, ADJUST)</p>
         </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">

@@ -19,7 +19,7 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 - Receive and ship inventory with pallet tracking
 - Point-in-time inventory views
 - Low stock alerts and inventory balances
-- Immutable transaction ledger
+- Immutable inventory ledger
 
 #### 💰 Financial Management
 - Create and manage invoices
@@ -103,7 +103,12 @@ npx prisma db push
 
 # Seed the database with initial data
 npx tsx prisma/seed.ts
+
+# Apply immutable ledger constraints (recommended)
+npx tsx scripts/make-ledger-immutable.ts
 ```
+
+**Note**: The inventory ledger is designed to be immutable for audit compliance. Once applied, transactions cannot be edited or deleted - only adjustment entries can be made.
 
 ### 5. Start the development server
 ```bash
@@ -130,7 +135,7 @@ warehouse_management/
 ├── prisma/
 │   ├── schema.prisma      # Database schema
 │   └── seed.ts           # Database seeding script
-├── scripts/              # Utility scripts
+├── scripts/              # User management scripts
 ├── tests/               # Test files
 └── docs/                # Documentation
 ```
@@ -197,8 +202,28 @@ After seeding the database, you can login with:
 ### Master Data Management
 - **SKUs**: Product master with dimensions and packaging info
 - **Warehouses**: Multiple warehouse locations
-- **Warehouse Configs**: SKU-specific pallet configurations
-- **Cost Rates**: Time-based rate management with categories
+- **Cost Rates**: Time-based rate management with overlap prevention
+- **Warehouse Configurations**: SKU-specific pallet configurations
+
+## 📚 Important Notes
+
+### Immutable Inventory Ledger
+The inventory ledger follows accounting best practices:
+- **No Edits**: Once created, transactions cannot be modified
+- **No Deletes**: All records are permanent for audit trail
+- **Corrections**: Use ADJUST_IN/ADJUST_OUT transactions to fix errors
+- **Database Triggers**: PostgreSQL triggers enforce immutability
+
+### Data Import
+- Initial data should be imported from Excel using dedicated import scripts
+- After import, all data entry should be through the web interface
+- The system maintains data integrity and prevents duplicate entries
+
+### Currency
+All monetary values are in GBP (£) including:
+- Storage rates (per pallet per week)
+- Amazon FBA rates (per cubic foot per month)
+- Invoice amounts and calculations
 
 ## 🧪 Testing
 

@@ -12,8 +12,8 @@ Before starting, ensure you have:
 
 ```bash
 # Clone the repository
-git clone git@github.com:progami/warehouse-management.git
-cd warehouse-management
+git clone [repository-url]
+cd warehouse_management
 
 # Install dependencies
 npm install
@@ -59,7 +59,12 @@ npm run db:generate
 
 # Seed with demo data
 npm run db:seed
+
+# (Optional) Apply immutable ledger constraints
+npx tsx scripts/make-ledger-immutable.ts
 ```
+
+**Note**: The immutable ledger prevents editing/deleting transactions for audit compliance.
 
 ## 5. Start Development Server
 
@@ -71,9 +76,11 @@ Visit http://localhost:3000
 
 ## 6. Login Credentials
 
+After seeding, use these credentials:
+
 - **Admin**: admin@warehouse.com / admin123
-- **Staff**: staff@warehouse.com / staff123
-- **Finance**: finance@warehouse.com / finance123
+- **Staff (Finance)**: hashar@warehouse.com / staff123
+- **Staff (Operations)**: umair@warehouse.com / staff123
 
 ## Common Issues
 

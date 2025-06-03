@@ -32,12 +32,12 @@ export default function ReportsClientPage({
       reportType: 'monthly-inventory',
     },
     {
-      name: 'Transaction History',
+      name: 'Inventory Ledger',
       description: 'All inbound and outbound movements',
       icon: TrendingUp,
       lastGenerated: 'Yesterday',
       category: 'Operations',
-      reportType: 'transaction-history',
+      reportType: 'inventory-ledger',
     },
     {
       name: 'Storage Utilization',
@@ -53,7 +53,7 @@ export default function ReportsClientPage({
       icon: Calendar,
       lastGenerated: 'Monday',
       category: 'Operations',
-      reportType: 'transaction-history',
+      reportType: 'inventory-ledger',
     },
     {
       name: 'Stock Aging Report',

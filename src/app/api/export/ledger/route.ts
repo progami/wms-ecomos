@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     // Create workbook
     const wb = XLSX.utils.book_new()
 
-    // Transaction Ledger Sheet
+    // Inventory Ledger Sheet
     const ledgerData = transactions.map(t => ({
       'Transaction Date': new Date(t.transactionDate).toLocaleString('en-US', { timeZone: 'America/Chicago' }),
       'Transaction ID': t.transactionId,
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     }))
 
     const ledgerSheet = XLSX.utils.json_to_sheet(ledgerData)
-    XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Transaction Ledger')
+    XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Inventory Ledger')
 
     // If point-in-time, add inventory summary sheet
     if (viewMode === 'point-in-time' && date) {

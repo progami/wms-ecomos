@@ -63,7 +63,7 @@ After careful analysis of your requirements, I'm proposing a modern, scalable ar
 
 ### Key Interface: Unified Inventory Ledger
 **Single Page with Two Tabs:**
-1. **Transaction Ledger Tab**
+1. **Inventory Ledger Tab**
    - Shows all inventory movements (RECEIVE, SHIP, ADJUST)
    - Filterable by date, warehouse, SKU, transaction type
    - Exportable to Excel

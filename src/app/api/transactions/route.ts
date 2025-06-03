@@ -164,6 +164,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Get warehouse for transaction ID generation
+    const warehouse = await prisma.warehouse.findUnique({
+      where: { id: warehouseId }
+    })
+    
+    if (!warehouse) {
+      return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 })
+    }
+
     // Create transactions for each item
     const transactions = []
     
@@ -173,13 +182,16 @@ export async function POST(request: NextRequest) {
         where: { skuCode: item.skuCode }
       })!
 
-      const transactionId = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      // Generate transaction ID in format similar to Excel data
+      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+      const sequence = transactions.length + 1
+      const transactionId = `${warehouse.code}-${type.slice(0, 3)}-${timestamp}-${sequence.toString().padStart(3, '0')}`
       
       // Calculate pallet values
       let calculatedStoragePalletsIn = null
       let calculatedShippingPalletsOut = null
       let palletVarianceNotes = null
-      let shippingCartonsPerPallet = item.shippingCartonsPerPallet
+      let batchShippingCartonsPerPallet = item.shippingCartonsPerPallet
       
       if (type === 'RECEIVE' && item.storageCartonsPerPallet > 0) {
         calculatedStoragePalletsIn = Math.ceil(item.cartons / item.storageCartonsPerPallet)
@@ -197,10 +209,10 @@ export async function POST(request: NextRequest) {
         })
         
         if (balance?.shippingCartonsPerPallet) {
-          shippingCartonsPerPallet = balance.shippingCartonsPerPallet
-          calculatedShippingPalletsOut = Math.ceil(item.cartons / shippingCartonsPerPallet)
+          batchShippingCartonsPerPallet = balance.shippingCartonsPerPallet
+          calculatedShippingPalletsOut = Math.ceil(item.cartons / batchShippingCartonsPerPallet)
           if (item.pallets !== calculatedShippingPalletsOut) {
-            palletVarianceNotes = `Shipping pallet variance: Actual ${item.pallets}, Calculated ${calculatedShippingPalletsOut} (${item.cartons} cartons @ ${shippingCartonsPerPallet}/pallet)`
+            palletVarianceNotes = `Shipping pallet variance: Actual ${item.pallets}, Calculated ${calculatedShippingPalletsOut} (${item.cartons} cartons @ ${batchShippingCartonsPerPallet}/pallet)`
           }
         }
       }
@@ -220,7 +232,7 @@ export async function POST(request: NextRequest) {
           calculatedStoragePalletsIn,
           calculatedShippingPalletsOut,
           storageCartonsPerPallet: type === 'RECEIVE' ? item.storageCartonsPerPallet : null,
-          shippingCartonsPerPallet: type === 'RECEIVE' ? item.shippingCartonsPerPallet : (type === 'SHIP' ? shippingCartonsPerPallet : null),
+          shippingCartonsPerPallet: type === 'RECEIVE' ? item.shippingCartonsPerPallet : (type === 'SHIP' ? batchShippingCartonsPerPallet : null),
           palletVarianceNotes,
           notes,
           transactionDate: new Date(date),
@@ -309,4 +321,20 @@ export async function POST(request: NextRequest) {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
+}
+
+// Prevent updates to maintain immutability
+export async function PUT(request: NextRequest) {
+  return NextResponse.json({ 
+    error: 'Inventory transactions are immutable and cannot be modified',
+    message: 'To correct errors, please create an adjustment transaction (ADJUST_IN or ADJUST_OUT)'
+  }, { status: 405 })
+}
+
+// Prevent deletes to maintain immutability
+export async function DELETE(request: NextRequest) {
+  return NextResponse.json({ 
+    error: 'Inventory transactions are immutable and cannot be deleted',
+    message: 'The inventory ledger maintains a permanent audit trail. To correct errors, please create an adjustment transaction'
+  }, { status: 405 })
 }

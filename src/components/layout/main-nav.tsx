@@ -46,7 +46,6 @@ const navigation = {
       title: 'Operations',
       items: [
         { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
-        { name: 'Run Calculations', href: '/admin/calculations', icon: Calculator },
       ]
     },
     {

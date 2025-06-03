@@ -22,7 +22,8 @@ function calculateCubicFeetFromCm(dimensionsCm: string): number {
 
 /**
  * Calculate storage ledger entries based on inventory snapshots
- * Storage is calculated weekly, with snapshots taken every Monday
+ * - Regular warehouses: Weekly snapshots taken every Monday
+ * - Amazon FBA: Monthly fees fetched from API
  */
 export async function calculateStorageLedger(
   billingPeriodStart: Date,
@@ -31,7 +32,7 @@ export async function calculateStorageLedger(
 ) {
   console.log('📊 Calculating storage ledger entries...')
   
-  // Get all Mondays in the billing period
+  // For regular warehouses, get all Mondays in the billing period
   const mondays = getMondays(billingPeriodStart, billingPeriodEnd)
   
   // Get warehouse filter

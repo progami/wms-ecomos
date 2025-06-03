@@ -120,3 +120,48 @@ export async function getProductFees(asin: string, price: number) {
     throw error
   }
 }
+
+export async function getMonthlyStorageFees(startDate?: Date, endDate?: Date) {
+  try {
+    const client = getAmazonClient()
+    // This would fetch financial events including storage fees
+    const response = await client.callAPI({
+      operation: 'listFinancialEvents',
+      endpoint: 'finances',
+      query: {
+        PostedAfter: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Default last 30 days
+        PostedBefore: endDate || new Date()
+      }
+    })
+    
+    // Filter for storage fee events
+    const storageFees = response.FinancialEvents?.ServiceFeeEventList?.filter(
+      (fee: any) => fee.FeeDescription?.toLowerCase().includes('storage')
+    ) || []
+    
+    return storageFees
+  } catch (error) {
+    console.error('Error fetching storage fees:', error)
+    throw error
+  }
+}
+
+export async function getInventoryAgedData() {
+  try {
+    const client = getAmazonClient()
+    // Get aged inventory data which includes storage fee preview
+    const response = await client.callAPI({
+      operation: 'getInventorySummaries',
+      endpoint: 'fbaInventory',
+      query: {
+        marketplaceIds: [process.env.AMAZON_MARKETPLACE_ID],
+        granularityType: 'Marketplace',
+        granularityId: process.env.AMAZON_MARKETPLACE_ID
+      }
+    })
+    return response
+  } catch (error) {
+    console.error('Error fetching inventory aged data:', error)
+    throw error
+  }
+}

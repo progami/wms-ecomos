@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
         fileName = `monthly_inventory_${period}`
         break
         
-      case 'transaction-history':
-        data = await generateTransactionHistory(period, warehouseId)
-        fileName = `transactions_${period}`
+      case 'inventory-ledger':
+        data = await generateInventoryLedger(period, warehouseId)
+        fileName = `inventory_ledger_${period}`
         break
         
       case 'storage-charges':
@@ -115,7 +115,7 @@ async function generateMonthlyInventoryReport(period: string, warehouseId?: stri
   }))
 }
 
-async function generateTransactionHistory(period: string, warehouseId?: string) {
+async function generateInventoryLedger(period: string, warehouseId?: string) {
   const [year, month] = period.split('-').map(Number)
   const startDate = startOfMonth(new Date(year, month - 1))
   const endDate = endOfMonth(new Date(year, month - 1))

@@ -201,10 +201,10 @@ export function AdminReportsClient() {
             loading: generatingReport === 'inventory-balance',
           },
           {
-            name: 'Movement History',
-            description: 'All inventory transactions for the period',
-            action: () => generateReport('transaction-history', 'Movement History'),
-            loading: generatingReport === 'transaction-history',
+            name: 'Inventory Ledger',
+            description: 'All inventory movements for the period',
+            action: () => generateReport('inventory-ledger', 'Inventory Ledger'),
+            loading: generatingReport === 'inventory-ledger',
           },
           {
             name: 'Low Stock Alert',
@@ -231,7 +231,7 @@ export function AdminReportsClient() {
                 onChange={(e) => setCustomReportType(e.target.value)}
               >
                 <option value="monthly-inventory">Monthly Inventory</option>
-                <option value="transaction-history">Transaction History</option>
+                <option value="inventory-ledger">Inventory Ledger</option>
                 <option value="storage-charges">Storage Charges</option>
                 <option value="cost-summary">Cost Summary</option>
                 <option value="inventory-balance">Current Inventory Balance</option>

@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package } from 'lucide-react'
+import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ImmutableLedgerNotice } from '@/components/ui/immutable-ledger-notice'
 import { toast } from 'react-hot-toast'
 
 interface InventoryBalance {
@@ -45,9 +46,10 @@ interface Transaction {
 export default function UnifiedInventoryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'balances' | 'transactions'>('balances')
+  const [activeTab, setActiveTab] = useState<'balances' | 'transactions' | 'storage'>('balances')
   const [viewMode, setViewMode] = useState<'live' | 'point-in-time'>('live')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // Default: latest first
   
   // Data states
   const [inventoryData, setInventoryData] = useState<InventoryBalance[]>([])
@@ -105,7 +107,7 @@ export default function UnifiedInventoryPage() {
           const data = await response.json()
           setInventoryData(data)
         }
-      } else {
+      } else if (activeTab === 'transactions') {
         // Fetch transactions
         const url = viewMode === 'point-in-time'
           ? `/api/transactions/ledger?date=${selectedDate}`
@@ -146,36 +148,42 @@ export default function UnifiedInventoryPage() {
     }
 
     if (filters.warehouse && item.warehouse.id !== filters.warehouse) return false
-    if (filters.minCartons && item.currentCartons < parseInt(filters.minCartons)) return false
-    if (filters.maxCartons && item.currentCartons > parseInt(filters.maxCartons)) return false
+    if (filters.minCartons && item.currentCartons < Number.parseInt(filters.minCartons)) return false
+    if (filters.maxCartons && item.currentCartons > Number.parseInt(filters.maxCartons)) return false
     if (filters.showLowStock && (item.currentCartons >= 10 || item.currentCartons === 0)) return false
     if (filters.showZeroStock && item.currentCartons !== 0) return false
 
     return true
   })
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter(transaction => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      if (!transaction.sku.skuCode.toLowerCase().includes(query) &&
-          !transaction.sku.description.toLowerCase().includes(query) &&
-          !transaction.batchLot.toLowerCase().includes(query) &&
-          !transaction.referenceId.toLowerCase().includes(query) &&
-          !transaction.warehouse.name.toLowerCase().includes(query)) {
-        return false
+  // Filter and sort transactions
+  const filteredAndSortedTransactions = transactions
+    .filter(transaction => {
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        if (!transaction.sku.skuCode.toLowerCase().includes(query) &&
+            !transaction.sku.description.toLowerCase().includes(query) &&
+            !transaction.batchLot.toLowerCase().includes(query) &&
+            !transaction.referenceId.toLowerCase().includes(query) &&
+            !transaction.warehouse.name.toLowerCase().includes(query)) {
+          return false
+        }
       }
-    }
 
-    if (filters.warehouse && transaction.warehouse.id !== filters.warehouse) return false
-    if (filters.transactionType && transaction.transactionType !== filters.transactionType) return false
-    
-    const transactionDate = new Date(transaction.transactionDate)
-    if (filters.startDate && transactionDate < new Date(filters.startDate)) return false
-    if (filters.endDate && transactionDate > new Date(filters.endDate)) return false
+      if (filters.warehouse && transaction.warehouse.id !== filters.warehouse) return false
+      if (filters.transactionType && transaction.transactionType !== filters.transactionType) return false
+      
+      const transactionDate = new Date(transaction.transactionDate)
+      if (filters.startDate && transactionDate < new Date(filters.startDate)) return false
+      if (filters.endDate && transactionDate > new Date(filters.endDate)) return false
 
-    return true
-  })
+      return true
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.transactionDate).getTime()
+      const dateB = new Date(b.transactionDate).getTime()
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
+    })
 
   const handleExport = () => {
     if (activeTab === 'balances') {
@@ -195,16 +203,6 @@ export default function UnifiedInventoryPage() {
     setSelectedDate(date)
   }
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
   const getTransactionColor = (type: string) => {
     switch (type) {
       case 'RECEIVE': return 'bg-green-100 text-green-800'
@@ -221,14 +219,24 @@ export default function UnifiedInventoryPage() {
   const uniqueSkus = new Set(filteredInventory.map(item => item.sku.id)).size
   const lowStockItems = filteredInventory.filter(item => item.currentCartons < 10 && item.currentCartons > 0).length
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <PageHeader
           title="Inventory Ledger & Balances"
-          subtitle="Transaction history and current stock levels"
-          description="This combines the Excel Inventory Ledger (all transactions) and calculated balances. Use the tabs to switch between the full transaction ledger and current inventory balances. Point-in-time view lets you see historical stock levels."
+          subtitle="Inventory movements and current stock levels"
+          description="This combines the Excel Inventory Ledger (all movements) and calculated balances. Use the tabs to switch between the full inventory ledger and current inventory balances. Point-in-time view lets you see historical stock levels."
           icon={BookOpen}
           iconColor="text-green-600"
           bgColor="bg-green-50"
@@ -251,6 +259,7 @@ export default function UnifiedInventoryPage() {
                 Ship Goods
               </Link>
               <button 
+                type="button"
                 onClick={handleExport}
                 className="secondary-button"
               >
@@ -266,6 +275,7 @@ export default function UnifiedInventoryPage() {
           <div className="border-b">
             <nav className="-mb-px flex">
               <button
+                type="button"
                 onClick={() => setActiveTab('balances')}
                 className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'balances'
@@ -277,6 +287,7 @@ export default function UnifiedInventoryPage() {
                 Current Balances
               </button>
               <button
+                type="button"
                 onClick={() => setActiveTab('transactions')}
                 className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'transactions'
@@ -285,7 +296,19 @@ export default function UnifiedInventoryPage() {
                 }`}
               >
                 <BookOpen className="h-4 w-4 inline mr-2" />
-                Transaction Ledger
+                Inventory Ledger
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('storage')}
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'storage'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Calendar className="h-4 w-4 inline mr-2" />
+                Storage Ledger
               </button>
             </nav>
           </div>
@@ -351,7 +374,7 @@ export default function UnifiedInventoryPage() {
                             month: 'long',
                             day: 'numeric'
                           })} 11:59:59 PM CT.`
-                        : `Showing all transactions up to ${new Date(selectedDate).toLocaleDateString('en-US', { 
+                        : `Showing all inventory movements up to ${new Date(selectedDate).toLocaleDateString('en-US', { 
                             timeZone: 'America/Chicago',
                             year: 'numeric',
                             month: 'long',
@@ -384,6 +407,7 @@ export default function UnifiedInventoryPage() {
               </div>
             </div>
             <button 
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
               className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
                 showFilters 
@@ -502,6 +526,7 @@ export default function UnifiedInventoryPage() {
               </div>
               <div className="mt-4 flex justify-end">
                 <button
+                  type="button"
                   onClick={() => setFilters({
                     warehouse: '',
                     transactionType: '',
@@ -521,8 +546,13 @@ export default function UnifiedInventoryPage() {
           )}
         </div>
 
+        {/* Show immutable notice for ledger tab */}
+        {activeTab === 'transactions' && (
+          <ImmutableLedgerNotice />
+        )}
+
         {/* Content based on active tab */}
-        {activeTab === 'balances' ? (
+        {activeTab === 'balances' && (
           <>
             {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-4">
@@ -686,50 +716,70 @@ export default function UnifiedInventoryPage() {
               </table>
             </div>
           </>
-        ) : (
+        )}
+
+        {activeTab === 'transactions' && (
           <>
             {/* Transaction Summary Stats */}
             <div className="grid gap-4 md:grid-cols-4">
               <div className="border rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">Total Transactions</p>
-                <p className="text-2xl font-bold">{filteredTransactions.length.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{filteredAndSortedTransactions.length.toLocaleString()}</p>
               </div>
               <div className="border rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">Receipts</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {filteredTransactions.filter(t => t.transactionType === 'RECEIVE').length.toLocaleString()}
+                  {filteredAndSortedTransactions.filter(t => t.transactionType === 'RECEIVE').length.toLocaleString()}
                 </p>
               </div>
               <div className="border rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">Shipments</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {filteredTransactions.filter(t => t.transactionType === 'SHIP').length.toLocaleString()}
+                  {filteredAndSortedTransactions.filter(t => t.transactionType === 'SHIP').length.toLocaleString()}
                 </p>
               </div>
               <div className="border rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">Adjustments</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {filteredTransactions.filter(t => t.transactionType.startsWith('ADJUST')).length.toLocaleString()}
+                  {filteredAndSortedTransactions.filter(t => t.transactionType.startsWith('ADJUST')).length.toLocaleString()}
                 </p>
               </div>
             </div>
 
-            {/* Transaction Ledger Table */}
+            {/* Inventory Ledger Table */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-6 py-3 border-b">
-                <h3 className="text-lg font-semibold">Transaction Details</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {viewMode === 'live' 
-                    ? 'All inventory movements in chronological order' 
-                    : `Transactions up to ${new Date(selectedDate).toLocaleDateString()}`}
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Inventory Ledger Details</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {viewMode === 'live' 
+                        ? 'All inventory movements in chronological order' 
+                        : `Inventory movements up to ${new Date(selectedDate).toLocaleDateString()}`}
+                    </p>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Sorted: <span className="font-medium">{sortOrder === 'desc' ? 'Latest → Oldest' : 'Oldest → Latest'}</span>
+                  </div>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date/Time
+                        <button
+                          type="button"
+                          onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        >
+                          Date/Time
+                          {sortOrder === 'desc' ? (
+                            <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUp className="h-3 w-3" />
+                          )}
+                        </button>
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Transaction ID
@@ -750,10 +800,16 @@ export default function UnifiedInventoryPage() {
                         Reference
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        In
+                        Cartons In
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Out
+                        Cartons Out
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pallets In
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pallets Out
                       </th>
                       {viewMode === 'point-in-time' && (
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -766,7 +822,7 @@ export default function UnifiedInventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredTransactions.map((transaction) => (
+                    {filteredAndSortedTransactions.map((transaction) => (
                       <tr key={transaction.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {new Date(transaction.transactionDate).toLocaleString('en-US', {
@@ -817,6 +873,20 @@ export default function UnifiedInventoryPage() {
                             </span>
                           )}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                          {transaction.storagePalletsIn > 0 && (
+                            <span className="text-green-600 font-medium">
+                              +{transaction.storagePalletsIn}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                          {transaction.shippingPalletsOut > 0 && (
+                            <span className="text-red-600 font-medium">
+                              -{transaction.shippingPalletsOut}
+                            </span>
+                          )}
+                        </td>
                         {viewMode === 'point-in-time' && (
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
                             {transaction.runningBalance?.toLocaleString() || '-'}
@@ -827,9 +897,9 @@ export default function UnifiedInventoryPage() {
                         </td>
                       </tr>
                     ))}
-                    {filteredTransactions.length === 0 && (
+                    {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={viewMode === 'point-in-time' ? 11 : 10} className="px-6 py-12">
+                        <td colSpan={viewMode === 'point-in-time' ? 13 : 12} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"
@@ -847,34 +917,82 @@ export default function UnifiedInventoryPage() {
           </>
         )}
 
-        {/* Results Summary */}
-        <div className="text-sm text-gray-700">
-          {activeTab === 'balances' ? (
-            <div className="flex items-center justify-between">
-              <div>
-                Showing <span className="font-medium">{filteredInventory.length}</span> of{' '}
-                <span className="font-medium">{inventoryData.length}</span> inventory items
-              </div>
-              {filteredInventory.length > 0 && (
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-red-100 rounded"></div>
-                    Out of Stock
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-orange-100 rounded"></div>
-                    Low Stock (&lt;10)
-                  </span>
+        {activeTab === 'storage' && (
+          <>
+            {/* Storage Ledger Content */}
+            <div className="space-y-6">
+              {/* Information Panel */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-900">Storage Billing Information</p>
+                    <ul className="mt-2 space-y-1 text-blue-800">
+                      <li>• <strong>Regular Warehouses:</strong> Charged weekly based on Monday inventory counts (23:59:59)</li>
+                      <li>• <strong>Amazon FBA:</strong> Charged monthly based on average daily inventory volume</li>
+                      <li>• <strong>Billing Period:</strong> 16th of one month to 15th of the next</li>
+                    </ul>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Coming Soon Notice */}
+              <div className="border rounded-lg p-12 text-center">
+                <div className="max-w-md mx-auto">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Storage Ledger Coming Soon</h3>
+                  <p className="text-gray-600 mb-6">
+                    The storage ledger will show weekly storage charges for regular warehouses 
+                    and monthly charges for Amazon FBA, helping you track and reconcile storage costs.
+                  </p>
+                  <div className="space-y-2 text-sm text-gray-500">
+                    <p>Features will include:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Weekly Monday snapshots for warehouse storage</li>
+                      <li>Monthly Amazon FBA storage fees from API</li>
+                      <li>Cost calculations based on current rates</li>
+                      <li>Export for invoice reconciliation</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
-          ) : (
-            <span>
-              Showing <span className="font-medium">{filteredTransactions.length}</span> of{' '}
-              <span className="font-medium">{transactions.length}</span> transactions
-            </span>
-          )}
-        </div>
+          </>
+        )}
+
+        {/* Results Summary */}
+        {activeTab !== 'storage' && (
+          <div className="text-sm text-gray-700">
+            {activeTab === 'balances' ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  Showing <span className="font-medium">{filteredInventory.length}</span> of{' '}
+                  <span className="font-medium">{inventoryData.length}</span> inventory items
+                </div>
+                {filteredInventory.length > 0 && (
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-red-100 rounded" />
+                      Out of Stock
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-orange-100 rounded" />
+                      Low Stock (&lt;10)
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span>
+                Showing <span className="font-medium">{filteredAndSortedTransactions.length}</span> of{' '}
+                <span className="font-medium">{transactions.length}</span> transactions
+                <span className="text-xs text-gray-500 ml-2">
+                  ({sortOrder === 'desc' ? 'Latest first' : 'Oldest first'})
+                </span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )
