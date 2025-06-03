@@ -181,7 +181,7 @@ export default function AmazonIntegrationPage() {
                     Warehouse Units
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Other Locations
+                    Amazon FBA
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Total (Units)
@@ -241,6 +241,14 @@ export default function AmazonIntegrationPage() {
           <p className="text-sm text-blue-800">
             <strong>Note:</strong> This page displays inventory levels across all warehouse locations. Showing {skusWithStock} of {totalSkus} SKUs with stock.
             The total column shows the combined inventory across all locations.
+          </p>
+        </div>
+
+        {/* Amazon API Status */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-sm text-amber-800">
+            <strong>Amazon FBA Integration:</strong> Currently showing data from local database only. 
+            To sync live data from Amazon FBA, configure the Amazon SP-API credentials (SELLING_PARTNER_APP_CLIENT_ID and SELLING_PARTNER_APP_CLIENT_SECRET) in your environment variables.
           </p>
         </div>
       </div>
