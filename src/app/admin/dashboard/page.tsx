@@ -49,11 +49,15 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null)
   const [loadingStats, setLoadingStats] = useState(true)
+  const [hasFetched, setHasFetched] = useState(false)
 
   useEffect(() => {
-    // Always try to fetch stats when component mounts
-    fetchDashboardStats()
-  }, [])
+    // Only fetch if we haven't already
+    if (!hasFetched && status === 'authenticated') {
+      setHasFetched(true)
+      fetchDashboardStats()
+    }
+  }, [hasFetched, status])
 
   const fetchDashboardStats = async () => {
     try {
@@ -104,7 +108,11 @@ export default function AdminDashboardPage() {
     return null
   }
 
-  const handleImportData = async () => {
+  const handleImportData = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     setLoading('import')
     try {
       router.push('/admin/import')
@@ -113,7 +121,11 @@ export default function AdminDashboardPage() {
     }
   }
 
-  const handleExportData = async () => {
+  const handleExportData = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     setLoading('export')
     try {
       const response = await fetch('/api/export?type=all', {
@@ -438,7 +450,12 @@ interface SystemActionProps {
 function SystemAction({ title, description, icon: Icon, onClick, loading, danger }: SystemActionProps) {
   return (
     <button
-      onClick={onClick}
+      type="button"
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onClick()
+      }}
       disabled={loading}
       className={`p-4 border rounded-lg transition-all text-left relative overflow-hidden ${
         danger 

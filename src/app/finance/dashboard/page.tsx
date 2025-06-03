@@ -49,12 +49,14 @@ export default function FinanceDashboardPage() {
   const router = useRouter()
   const [financialData, setFinancialData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [hasFetched, setHasFetched] = useState(false)
 
   useEffect(() => {
-    if (session) {
+    if (session && !hasFetched) {
+      setHasFetched(true)
       fetchFinancialData()
     }
-  }, [session])
+  }, [session, hasFetched])
 
   const fetchFinancialData = async () => {
     try {
@@ -99,7 +101,11 @@ export default function FinanceDashboardPage() {
   billingEnd.setMonth(billingEnd.getMonth() + 1)
   billingEnd.setDate(15)
 
-  const handleExportFinancialReport = async () => {
+  const handleExportFinancialReport = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     try {
       const response = await fetch('/api/reports', {
         method: 'POST',
@@ -142,6 +148,7 @@ export default function FinanceDashboardPage() {
           textColor="text-emerald-800"
           actions={
             <button
+              type="button"
               onClick={handleExportFinancialReport}
               className="action-button"
             >

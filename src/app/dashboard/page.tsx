@@ -1,6 +1,8 @@
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { 
   Package2, 
   TrendingUp, 
@@ -18,12 +20,51 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { QuickStartGuide } from '@/components/ui/quick-start-guide'
 import Link from 'next/link'
+import { toast } from 'react-hot-toast'
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
+export default function DashboardPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [stats, setStats] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/auth/login')
+      return
+    }
+    fetchDashboardStats()
+  }, [session, status, router])
+
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await fetch('/api/dashboard/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      } else {
+        console.error('Failed to fetch dashboard stats')
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (status === 'loading' || loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   if (!session) {
-    redirect('/auth/login')
+    return null
   }
 
   return (
@@ -43,35 +84,35 @@ export default async function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <DashboardCard
             title="Total Inventory"
-            value="1,234"
+            value={stats?.totalInventory?.toLocaleString() || '--'}
             description="Cartons across all warehouses"
             icon={Package2}
-            trend="+12% from last month"
-            trendUp={true}
+            trend={stats ? `${stats.inventoryTrend === 'up' ? '+' : ''}${stats.inventoryChange}% from last month` : 'Loading...'}
+            trendUp={stats?.inventoryTrend === 'up' ? true : stats?.inventoryTrend === 'down' ? false : null}
           />
           <DashboardCard
             title="Storage Cost"
-            value="£5,432"
-            description="Current month estimate"
+            value={stats ? `£${parseFloat(stats.storageCost).toLocaleString()}` : '--'}
+            description="Current billing period"
             icon={DollarSign}
-            trend="+8% from last month"
-            trendUp={true}
+            trend={stats ? `${stats.costTrend === 'up' ? '+' : ''}${stats.costChange}% from last period` : 'Loading...'}
+            trendUp={stats?.costTrend === 'up' ? true : stats?.costTrend === 'down' ? false : null}
           />
           <DashboardCard
             title="Active SKUs"
-            value="45"
+            value={stats?.activeSkus?.toString() || '--'}
             description="Products in stock"
             icon={TrendingUp}
-            trend="No change"
+            trend="With inventory"
             trendUp={null}
           />
           <DashboardCard
             title="Pending Invoices"
-            value="3"
+            value={stats?.pendingInvoices?.toString() || '--'}
             description="Awaiting reconciliation"
             icon={AlertCircle}
-            trend="2 overdue"
-            trendUp={false}
+            trend={stats && stats.overdueInvoices > 0 ? `${stats.overdueInvoices} overdue` : 'All current'}
+            trendUp={stats?.overdueInvoices === 0}
           />
         </div>
 

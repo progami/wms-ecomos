@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ import { ImmutableLedgerNotice } from '@/components/ui/immutable-ledger-notice'
 import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/lib/utils'
 import { StorageLedgerTab } from '@/components/warehouse/storage-ledger-tab'
+import { InventoryTabs } from '@/components/warehouse/inventory-tabs'
 
 interface InventoryBalance {
   id: string
@@ -53,11 +54,18 @@ export default function UnifiedInventoryPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // Default: latest first
   
+  
+  
   // Data states
   const [inventoryData, setInventoryData] = useState<InventoryBalance[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [warehouses, setWarehouses] = useState<{id: string; name: string}[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const [dataCache, setDataCache] = useState<{
+    balances?: { data: InventoryBalance[], key: string },
+    transactions?: { data: Transaction[], key: string }
+  }>({})
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
@@ -85,9 +93,28 @@ export default function UnifiedInventoryPage() {
     }
   }, [session, status, router])
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     try {
-      setLoading(true)
+      // Generate cache keys based on current state
+      const balancesCacheKey = `${viewMode}-${selectedDate}`
+      const transactionsCacheKey = `${viewMode}-${selectedDate}`
+      
+      // Check if we have cached data for the current tab and haven't changed view/date
+      if (!forceRefresh && hasInitialized && activeTab !== 'storage') {
+        if (activeTab === 'balances' && dataCache.balances?.key === balancesCacheKey) {
+          setInventoryData(dataCache.balances.data)
+          return
+        }
+        if (activeTab === 'transactions' && dataCache.transactions?.key === transactionsCacheKey) {
+          setTransactions(dataCache.transactions.data)
+          return
+        }
+      }
+      
+      // Only show loading on first load
+      if (!hasInitialized) {
+        setLoading(true)
+      }
       
       // Fetch warehouses on first load
       if (warehouses.length === 0) {
@@ -98,47 +125,103 @@ export default function UnifiedInventoryPage() {
         }
       }
       
-      if (activeTab === 'balances') {
+      // Always fetch both tabs on initial load
+      if (!hasInitialized) {
         // Fetch inventory balances
-        const url = viewMode === 'point-in-time' 
+        const balancesUrl = viewMode === 'point-in-time' 
           ? `/api/inventory/balances?date=${selectedDate}`
           : '/api/inventory/balances'
         
-        const response = await fetch(url)
-        if (response.ok) {
-          const data = await response.json()
-          setInventoryData(data)
+        const balancesResponse = await fetch(balancesUrl)
+        if (balancesResponse.ok) {
+          const balancesData = await balancesResponse.json()
+          setInventoryData(balancesData)
+          setDataCache(prev => ({
+            ...prev,
+            balances: { data: balancesData, key: balancesCacheKey }
+          }))
         }
-      } else if (activeTab === 'transactions') {
+        
         // Fetch transactions
-        const url = viewMode === 'point-in-time'
+        const transactionsUrl = viewMode === 'point-in-time'
           ? `/api/transactions/ledger?date=${selectedDate}`
           : '/api/transactions/ledger'
         
-        const response = await fetch(url)
-        if (response.ok) {
-          const data = await response.json()
-          setTransactions(data.transactions)
+        const transactionsResponse = await fetch(transactionsUrl)
+        if (transactionsResponse.ok) {
+          const transactionsData = await transactionsResponse.json()
+          setTransactions(transactionsData.transactions)
+          setDataCache(prev => ({
+            ...prev,
+            transactions: { data: transactionsData.transactions, key: transactionsCacheKey }
+          }))
+        }
+        
+        setHasInitialized(true)
+      } else {
+        // After initialization, only fetch the active tab
+        if (activeTab === 'balances') {
+          const url = viewMode === 'point-in-time' 
+            ? `/api/inventory/balances?date=${selectedDate}`
+            : '/api/inventory/balances'
           
-          // If point-in-time and we have inventory summary, we could use it
-          if (viewMode === 'point-in-time' && data.inventorySummary) {
-            // Store for potential use
+          const response = await fetch(url)
+          if (response.ok) {
+            const data = await response.json()
+            setInventoryData(data)
+            setDataCache(prev => ({
+              ...prev,
+              balances: { data, key: balancesCacheKey }
+            }))
+          }
+        } else if (activeTab === 'transactions') {
+          const url = viewMode === 'point-in-time'
+            ? `/api/transactions/ledger?date=${selectedDate}`
+            : '/api/transactions/ledger'
+          
+          const response = await fetch(url)
+          if (response.ok) {
+            const data = await response.json()
+            setTransactions(data.transactions)
+            setDataCache(prev => ({
+              ...prev,
+              transactions: { data: data.transactions, key: transactionsCacheKey }
+            }))
           }
         }
       }
     } catch (error) {
       toast.error('Failed to load data')
     } finally {
-      setLoading(false)
+      if (!hasInitialized) {
+        setLoading(false)
+      }
     }
-  }, [activeTab, viewMode, selectedDate, warehouses.length])
+  }, [activeTab, viewMode, selectedDate, warehouses.length, hasInitialized])
 
+  // Initial load
   useEffect(() => {
-    // Only fetch data for non-storage tabs
-    if (activeTab !== 'storage') {
-      fetchData()
+    if (!hasInitialized && activeTab !== 'storage') {
+      fetchData(true)
     }
-  }, [fetchData, activeTab])
+  }, [hasInitialized])
+  
+  // Refetch when view mode or date changes
+  useEffect(() => {
+    if (hasInitialized && activeTab !== 'storage') {
+      // Clear cache when view mode or date changes to force fresh data
+      setDataCache({})
+      fetchData(true)
+    }
+  }, [viewMode, selectedDate])
+  
+  // Handle tab changes
+  useEffect(() => {
+    if (hasInitialized && activeTab !== 'storage') {
+      // Use cached data if available, otherwise fetch
+      fetchData(false)
+    }
+  }, [activeTab])
 
   // Filter inventory data
   const filteredInventory = inventoryData.filter(item => {
@@ -190,7 +273,11 @@ export default function UnifiedInventoryPage() {
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
     })
 
-  const handleExport = () => {
+  const handleExport = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     if (activeTab === 'balances') {
       toast.success('Exporting inventory balances...')
       window.open('/api/export/inventory', '_blank')
@@ -280,61 +367,10 @@ export default function UnifiedInventoryPage() {
         />
 
         {/* Tab Navigation */}
-        <div className="bg-white border rounded-lg">
-          <div className="border-b">
-            <nav className="-mb-px flex">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleTabChange('balances')
-                }}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'balances'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Package className="h-4 w-4 inline mr-2" />
-                Current Balances
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleTabChange('transactions')
-                }}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'transactions'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <BookOpen className="h-4 w-4 inline mr-2" />
-                Inventory Ledger
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleTabChange('storage')
-                }}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'storage'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Calendar className="h-4 w-4 inline mr-2" />
-                Storage Ledger
-              </button>
-            </nav>
-          </div>
+        <InventoryTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
-          {/* View Mode Controls */}
+        {/* View Mode Controls */}
+        <div className="bg-white border rounded-lg">
           <div className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -419,7 +455,7 @@ export default function UnifiedInventoryPage() {
         </div>
 
         {/* Filters */}
-        <div className="space-y-4">
+        <div className="space-y-4" onSubmit={(e) => e.preventDefault()}>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -437,7 +473,11 @@ export default function UnifiedInventoryPage() {
             </div>
             <button 
               type="button"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowFilters(!showFilters)
+              }}
               className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
                 showFilters 
                   ? 'border-primary bg-primary text-white' 
@@ -556,16 +596,20 @@ export default function UnifiedInventoryPage() {
               <div className="mt-4 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setFilters({
-                    warehouse: '',
-                    transactionType: '',
-                    startDate: '',
-                    endDate: '',
-                    minCartons: '',
-                    maxCartons: '',
-                    showLowStock: false,
-                    showZeroStock: false
-                  })}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setFilters({
+                      warehouse: '',
+                      transactionType: '',
+                      startDate: '',
+                      endDate: '',
+                      minCartons: '',
+                      maxCartons: '',
+                      showLowStock: false,
+                      showZeroStock: false
+                    })
+                  }}
                   className="text-sm text-primary hover:underline"
                 >
                   Clear all filters
@@ -576,12 +620,12 @@ export default function UnifiedInventoryPage() {
         </div>
 
         {/* Show immutable notice for ledger tab */}
-        {activeTab === 'transactions' && (
+        <div className={activeTab === 'transactions' ? '' : 'hidden'}>
           <ImmutableLedgerNotice />
-        )}
+        </div>
 
         {/* Content based on active tab */}
-        {activeTab === 'balances' && (
+        <div className={activeTab === 'balances' ? '' : 'hidden'}>
           <>
             {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-4">
@@ -745,9 +789,9 @@ export default function UnifiedInventoryPage() {
               </table>
             </div>
           </>
-        )}
+        </div>
 
-        {activeTab === 'transactions' && (
+        <div className={activeTab === 'transactions' ? '' : 'hidden'}>
           <>
             {/* Transaction Summary Stats */}
             <div className="grid gap-4 md:grid-cols-4">
@@ -799,7 +843,11 @@ export default function UnifiedInventoryPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <button
                           type="button"
-                          onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')
+                          }}
                           className="flex items-center gap-1 hover:text-gray-700 transition-colors"
                         >
                           Date/Time
@@ -944,9 +992,9 @@ export default function UnifiedInventoryPage() {
               </div>
             </div>
           </>
-        )}
+        </div>
 
-        {activeTab === 'storage' && (
+        <div className={activeTab === 'storage' ? '' : 'hidden'}>
           <StorageLedgerTab 
             viewMode={viewMode}
             selectedDate={selectedDate}
@@ -957,10 +1005,10 @@ export default function UnifiedInventoryPage() {
             setFilters={setFilters}
             warehouses={warehouses}
           />
-        )}
+        </div>
 
         {/* Results Summary */}
-        {activeTab !== 'storage' && (
+        <div className={activeTab === 'storage' ? 'hidden' : ''}>
           <div className="text-sm text-gray-700">
             {activeTab === 'balances' ? (
               <div className="flex items-center justify-between">
@@ -991,7 +1039,7 @@ export default function UnifiedInventoryPage() {
               </span>
             )}
           </div>
-        )}
+        </div>
       </div>
     </DashboardLayout>
   )

@@ -36,6 +36,10 @@ All notable changes to the Warehouse Management System will be documented in thi
   - Added proper event handling to prevent form submissions
   - Optimized data fetching with debouncing and memoization
   - Fixed React hook initialization errors
+  - Fixed tab switching blink/refresh issue for inventory ledger and current balances tabs
+    - Implemented CSS-based tab switching instead of conditional rendering
+    - Added data caching to prevent unnecessary re-fetches when switching tabs
+    - Separated initial loading state from tab switching to maintain smooth transitions
 
 - **Admin Credentials**
   - Updated admin login for easier testing:
@@ -48,6 +52,12 @@ All notable changes to the Warehouse Management System will be documented in thi
   - Uses inventory balance table for pallet configurations
   - Falls back to warehouse SKU configs when needed
   - Improved error handling and logging
+
+- **Dashboard Updates**
+  - Fixed dashboard showing hardcoded values instead of real data
+  - Created dashboard stats API to calculate actual metrics
+  - Implemented historical storage cost calculations
+  - Dashboard now shows real inventory counts, storage costs, and invoice totals
 
 - **Code Quality**
   - Fixed TypeScript errors in storage ledger components

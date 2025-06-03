@@ -19,9 +19,6 @@ export default async function WarehouseDashboardPage() {
 
   // Get the user's warehouse
   const warehouseId = session.user.warehouseId
-  if (!warehouseId && session.user.role === 'staff') {
-    redirect('/dashboard')
-  }
 
   // Get warehouse info
   const warehouse = warehouseId
