@@ -16,10 +16,12 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 
 #### 📦 Inventory Management
 - Real-time inventory tracking by SKU, warehouse, and batch
-- Receive and ship inventory with pallet tracking
-- Point-in-time inventory views
+- Receive and ship inventory with carton and pallet tracking
+- Point-in-time inventory views with running balances
 - Low stock alerts and inventory balances
-- Immutable inventory ledger
+- Immutable inventory ledger with audit trail
+- Pallet variance tracking for data accuracy
+- Sortable transaction history with date filtering
 
 #### 💰 Financial Management
 - Create and manage invoices
@@ -181,11 +183,12 @@ After seeding the database, you can login with:
 - Recent activity tracking
 
 ### Inventory Operations
-- **Receive Inventory**: Record incoming shipments with batch tracking
-- **Ship Inventory**: Process outbound shipments
-- **Inventory Ledger**: View all transactions with filtering
-- **Current Balances**: Real-time inventory by SKU and warehouse
-- **Point-in-Time Views**: Historical inventory snapshots
+- **Receive Inventory**: Record incoming shipments with batch and pallet tracking
+- **Ship Inventory**: Process outbound shipments with pallet configuration
+- **Inventory Ledger**: View all transactions with sorting, filtering, and pallet details
+- **Current Balances**: Real-time inventory by SKU, warehouse, and batch
+- **Point-in-Time Views**: Historical inventory snapshots with running balances
+- **Storage Ledger**: Track weekly storage charges and reconcile costs (coming soon)
 
 ### Financial Operations
 - **Invoice Management**: Create, edit, and track invoices
