@@ -13,7 +13,7 @@ interface InventoryComparison {
   description: string
   warehouseQty: number
   amazonQty: number
-  difference: number
+  total: number
   lastUpdated?: string
 }
 
@@ -72,14 +72,17 @@ export default function AmazonIntegrationPage() {
 
   const totalWarehouse = inventory.reduce((sum, item) => sum + item.warehouseQty, 0)
   const totalAmazon = inventory.reduce((sum, item) => sum + item.amazonQty, 0)
+  const totalCombined = totalWarehouse + totalAmazon
+  const skusWithStock = inventory.filter(item => item.total > 0).length
+  const totalSkus = inventory.length
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Amazon Inventory Comparison"
-          subtitle="Compare warehouse and Amazon FBA inventory"
-          description="View side-by-side comparison of your warehouse stock and Amazon FBA inventory levels for all SKUs."
+          title="Amazon FBA Inventory Overview"
+          subtitle="View warehouse and Amazon FBA inventory"
+          description="Overview of inventory levels across your warehouses and Amazon FBA UK. Shows all SKUs including those with zero stock."
           icon={Package2}
           iconColor="text-orange-600"
           bgColor="bg-orange-50"
@@ -119,7 +122,7 @@ export default function AmazonIntegrationPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white border rounded-lg p-4">
             <h3 className="text-sm font-medium text-gray-600">Total Warehouse Stock</h3>
             <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -130,6 +133,12 @@ export default function AmazonIntegrationPage() {
             <h3 className="text-sm font-medium text-gray-600">Total Amazon FBA Stock</h3>
             <p className="text-2xl font-bold text-orange-600 mt-1">
               {totalAmazon.toLocaleString()} units
+            </p>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-600">Combined Total</h3>
+            <p className="text-2xl font-bold text-blue-600 mt-1">
+              {totalCombined.toLocaleString()} units
             </p>
           </div>
           <div className="bg-white border rounded-lg p-4">
@@ -159,7 +168,7 @@ export default function AmazonIntegrationPage() {
                     Amazon FBA Units
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Difference (Units)
+                    Total (Units)
                   </th>
                 </tr>
               </thead>
@@ -177,27 +186,34 @@ export default function AmazonIntegrationPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredInventory.map((item) => (
-                    <tr key={item.sku} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.sku}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {item.description}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {item.warehouseQty.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-medium text-right">
-                        {item.amazonQty.toLocaleString()}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
-                        item.difference > 0 ? 'text-green-600' : item.difference < 0 ? 'text-red-600' : 'text-gray-500'
-                      }`}>
-                        {item.difference > 0 && '+'}{item.difference.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))
+                  filteredInventory.map((item) => {
+                    const hasNoStock = item.total === 0
+                    return (
+                      <tr key={item.sku} className={`hover:bg-gray-50 ${hasNoStock ? 'opacity-50' : ''}`}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {item.sku}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {item.description}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right ${
+                          item.warehouseQty === 0 ? 'text-gray-400' : 'text-gray-900'
+                        }`}>
+                          {item.warehouseQty.toLocaleString()}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
+                          item.amazonQty === 0 ? 'text-gray-400' : 'text-orange-600'
+                        }`}>
+                          {item.amazonQty.toLocaleString()}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
+                          item.total === 0 ? 'text-gray-400' : 'text-blue-600'
+                        }`}>
+                          {item.total.toLocaleString()}
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -207,9 +223,8 @@ export default function AmazonIntegrationPage() {
         {/* Info Note */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            <strong>Note:</strong> This page displays a read-only comparison of inventory levels. 
-            Warehouse quantities are managed through the warehouse system, while Amazon FBA quantities 
-            are fetched from Amazon's API. The difference column shows warehouse quantity minus Amazon quantity.
+            <strong>Note:</strong> This page displays inventory levels across all locations. Showing {skusWithStock} of {totalSkus} SKUs with stock.
+            Warehouse quantities exclude Amazon FBA UK. The total column shows the combined inventory across all locations.
           </p>
         </div>
       </div>

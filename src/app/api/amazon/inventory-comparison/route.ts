@@ -80,22 +80,18 @@ export async function GET() {
         description: sku.description || '',
         warehouseQty: warehouseUnits, // Now in units
         amazonQty: amazonUnits, // Now in units
-        difference: warehouseUnits - amazonUnits,
+        total: warehouseUnits + amazonUnits, // Sum instead of difference
         unitsPerCarton: unitsPerCarton // Include for reference
       }
     })
 
-    // Filter out SKUs with no activity
-    const activeInventory = inventoryData.filter(
-      item => item.warehouseQty > 0 || item.amazonQty > 0
-    )
+    // Include all SKUs, even those with 0 stock
+    // Sort by SKU code for consistent display
+    const sortedInventory = inventoryData.sort((a, b) => a.sku.localeCompare(b.sku))
     
-    console.log(`Total SKUs: ${skus.length}, Active inventory items: ${activeInventory.length}`)
-    
-    // If no active inventory found, include all SKUs for debugging
-    const responseData = activeInventory.length > 0 ? activeInventory : inventoryData
+    console.log(`Total SKUs: ${skus.length}, Returning all SKUs including those with 0 stock`)
 
-    return NextResponse.json(responseData)
+    return NextResponse.json(sortedInventory)
   } catch (error) {
     console.error('Error in inventory comparison:', error)
     return NextResponse.json(
