@@ -40,6 +40,8 @@
    - Real Excel data imported (174 transactions)
    - No test/sample data in production
    - All import scripts removed
+   - Batch numbers auto-increment per SKU
+   - Document attachments stored as JSONB
 
 ### Removed Features
 - ❌ Excel import scripts (data already imported)
@@ -61,6 +63,8 @@ Only essential user management scripts remain:
 4. **ALWAYS** use GBP (£) for monetary values
 5. **FOLLOW** the immutable ledger pattern
 6. **SKU Selection** - Both Receive and Ship pages use dropdown based on SKU master
+7. **Batch Numbers** - Automatically incremented based on last batch for each SKU
+8. **Attachments** - Receive Goods supports document uploads (packing lists, invoices, etc.)
 
 ## 📁 Documentation Structure
 
