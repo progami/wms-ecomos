@@ -896,6 +896,9 @@ export default function UnifiedInventoryPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         User
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Notes
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -984,11 +987,16 @@ export default function UnifiedInventoryPage() {
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {transaction.createdBy.fullName}
                         </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div className="max-w-xs truncate" title={transaction.notes || ''}>
+                            {transaction.notes || '-'}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={viewMode === 'point-in-time' ? 11 : 10} className="px-6 py-12">
+                        <td colSpan={viewMode === 'point-in-time' ? 12 : 11} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"

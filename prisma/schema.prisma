@@ -163,6 +163,9 @@ model InventoryTransaction {
   createdById              String          @map("created_by")
   shippingCartonsPerPallet Int?            @map("shipping_cartons_per_pallet")
   storageCartonsPerPallet  Int?            @map("storage_cartons_per_pallet")
+  shipName                 String?         @map("ship_name")
+  containerNumber          String?         @map("container_number")
+  attachments              Json?           @db.JsonB
   createdBy                User            @relation("TransactionCreator", fields: [createdById], references: [id])
   sku                      Sku             @relation(fields: [skuId], references: [id])
   warehouse                Warehouse       @relation(fields: [warehouseId], references: [id])

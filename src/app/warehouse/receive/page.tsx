@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package2, Plus, Save, X, AlertCircle } from 'lucide-react'
+import { Package2, Plus, Save, X, AlertCircle, Upload, FileText, Loader2 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
@@ -14,12 +14,22 @@ interface Sku {
   unitsPerCarton: number
 }
 
+interface Attachment {
+  name: string
+  type: string
+  size: number
+  data?: string
+}
+
 export default function WarehouseReceivePage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [skus, setSkus] = useState<Sku[]>([])
   const [skuLoading, setSkuLoading] = useState(true)
+  const [shipName, setShipName] = useState('')
+  const [containerNumber, setContainerNumber] = useState('')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const [items, setItems] = useState([
     { 
       id: 1, 
@@ -32,7 +42,8 @@ export default function WarehouseReceivePage() {
       storageCartonsPerPallet: 0,
       shippingCartonsPerPallet: 0,
       configLoaded: false,
-      palletVariance: false
+      palletVariance: false,
+      loadingBatch: false
     }
   ])
 
@@ -56,6 +67,27 @@ export default function WarehouseReceivePage() {
     }
   }
 
+  const fetchNextBatchNumber = async (itemId: number, skuCode: string) => {
+    try {
+      setItems(prevItems => prevItems.map(item => 
+        item.id === itemId ? { ...item, loadingBatch: true } : item
+      ))
+      
+      const response = await fetch(`/api/skus/${encodeURIComponent(skuCode)}/next-batch`)
+      if (response.ok) {
+        const data = await response.json()
+        setItems(prevItems => prevItems.map(item => 
+          item.id === itemId ? { ...item, batchLot: data.suggestedBatchLot, loadingBatch: false } : item
+        ))
+      }
+    } catch (error) {
+      console.error('Error fetching next batch number:', error)
+      setItems(prevItems => prevItems.map(item => 
+        item.id === itemId ? { ...item, loadingBatch: false } : item
+      ))
+    }
+  }
+
   const addItem = () => {
     setItems([
       ...items,
@@ -70,7 +102,8 @@ export default function WarehouseReceivePage() {
         storageCartonsPerPallet: 0,
         shippingCartonsPerPallet: 0,
         configLoaded: false,
-        palletVariance: false
+        palletVariance: false,
+        loadingBatch: false
       }
     ])
   }
@@ -79,12 +112,49 @@ export default function WarehouseReceivePage() {
     setItems(items.filter(item => item.id !== id))
   }
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files) return
+
+    const newAttachments: Attachment[] = []
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      // Limit file size to 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Maximum size is 5MB.`)
+        continue
+      }
+      
+      // Convert to base64
+      const reader = new FileReader()
+      reader.onload = () => {
+        newAttachments.push({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          data: reader.result as string
+        })
+        
+        if (newAttachments.length === files.length) {
+          setAttachments([...attachments, ...newAttachments])
+          toast.success(`${newAttachments.length} file(s) uploaded`)
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index))
+  }
+
   const updateItem = async (id: number, field: string, value: any) => {
     setItems(items.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ))
     
-    // If SKU code changed, fetch warehouse config and update units
+    // If SKU code changed, fetch warehouse config, update units, and get next batch number
     if (field === 'skuCode' && value) {
       const selectedSku = skus.find(sku => sku.skuCode === value)
       if (selectedSku) {
@@ -98,6 +168,7 @@ export default function WarehouseReceivePage() {
         }))
       }
       await fetchWarehouseConfig(id, value)
+      await fetchNextBatchNumber(id, value)
     }
     
     // If cartons changed, recalculate units
@@ -236,6 +307,13 @@ export default function WarehouseReceivePage() {
     const supplier = formData.get('supplier') as string
     const notes = formData.get('notes') as string
     
+    // Build comprehensive notes
+    let fullNotes = ''
+    if (supplier) fullNotes += `Supplier: ${supplier}. `
+    if (shipName) fullNotes += `Ship: ${shipName}. `
+    if (containerNumber) fullNotes += `Container: ${containerNumber}. `
+    if (notes) fullNotes += notes
+    
     try {
       const response = await fetch('/api/transactions', {
         method: 'POST',
@@ -245,7 +323,10 @@ export default function WarehouseReceivePage() {
           referenceNumber,
           date: receiptDate,
           items: validItems,
-          notes: supplier ? `Supplier: ${supplier}. ${notes}` : notes,
+          notes: fullNotes,
+          shipName,
+          containerNumber,
+          attachments: attachments.length > 0 ? attachments : null,
           warehouseId: session?.user.warehouseId, // Include warehouse ID if not staff
         }),
       })
@@ -328,6 +409,32 @@ export default function WarehouseReceivePage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ship Name
+                </label>
+                <input
+                  type="text"
+                  value={shipName}
+                  onChange={(e) => setShipName(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="e.g., MV Ocean Star"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Container Number
+                </label>
+                <input
+                  type="text"
+                  value={containerNumber}
+                  onChange={(e) => setContainerNumber(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="e.g., MSKU1234567"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Line Items */}
@@ -392,14 +499,23 @@ export default function WarehouseReceivePage() {
                         </select>
                       </td>
                       <td className="px-4 py-3">
-                        <input
-                          type="text"
-                          value={item.batchLot}
-                          onChange={(e) => updateItem(item.id, 'batchLot', e.target.value)}
-                          className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                          placeholder="Batch/Lot"
-                          required
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={item.batchLot}
+                            onChange={(e) => updateItem(item.id, 'batchLot', e.target.value)}
+                            className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary bg-gray-100"
+                            placeholder={item.loadingBatch ? "Loading..." : "Select SKU first"}
+                            required
+                            readOnly
+                            title="Batch number is automatically assigned based on the last batch for this SKU"
+                          />
+                          {item.loadingBatch && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -540,6 +656,56 @@ export default function WarehouseReceivePage() {
                   </tr>
                 </tfoot>
               </table>
+            </div>
+          </div>
+
+          {/* Attachments */}
+          <div className="border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Attachments</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Upload packing lists, commercial invoices, delivery notes, and other documents (Max 5MB per file)
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
+                    <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, DOC, DOCX, XLS, XLSX</p>
+                  </div>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Uploaded files:</p>
+                  {attachments.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-700">{file.name}</span>
+                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
