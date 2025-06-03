@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!referenceNumber || !date || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ 
-        error: 'Missing required fields: referenceNumber, date, and items' 
+        error: 'Missing required fields: PI/CI/PO number, date, and items' 
       }, { status: 400 })
     }
 

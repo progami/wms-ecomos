@@ -375,13 +375,14 @@ export default function WarehouseReceivePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reference Number
+                  PI / CI / PO Number
                 </label>
                 <input
                   type="text"
                   name="referenceNumber"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., PO-2024-001"
+                  placeholder="e.g., PO-2024-001, PI-2024-123, CI-2024-456"
+                  title="Enter Purchase Order (PO), Proforma Invoice (PI), or Commercial Invoice (CI) number"
                   required
                 />
               </div>
