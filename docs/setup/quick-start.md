@@ -60,8 +60,8 @@ npm run db:generate
 # Seed with demo data
 npm run db:seed
 
-# (Optional) Apply immutable ledger constraints
-npx tsx scripts/make-ledger-immutable.ts
+# Note: The immutable ledger is enforced by database triggers
+# created during migrations - no additional script needed
 ```
 
 **Note**: The immutable ledger prevents editing/deleting transactions for audit compliance.
@@ -78,7 +78,7 @@ Visit http://localhost:3000
 
 After seeding, use these credentials:
 
-- **Admin**: admin@warehouse.com / admin123
+- **Admin**: admin@admin.com / admin
 - **Staff (Finance)**: hashar@warehouse.com / staff123
 - **Staff (Operations)**: umair@warehouse.com / staff123
 

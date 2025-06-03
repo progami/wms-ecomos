@@ -241,7 +241,8 @@ The inventory ledger follows accounting best practices:
 - **Pickup Date Tracking**: Separate tracking for transaction and pickup dates with reconciliation status
 
 ### Data Import
-- Initial data should be imported from Excel using dedicated import scripts
+- Initial data can be imported from Excel through the Admin Import page (`/admin/import`)
+- Place your Excel file named "Warehouse Management.xlsx" in the data folder
 - After import, all data entry should be through the web interface
 - The system maintains data integrity and prevents duplicate entries
 
@@ -267,22 +268,20 @@ npm run test:coverage
 ## 📝 Utility Scripts
 
 ```bash
-# Import data from Excel
-npx tsx scripts/import-warehouse-excel.ts
-
-# Add sample data
-npx tsx scripts/add-sample-rates.ts
-npx tsx scripts/add-sample-finance-data.ts
-
 # Create additional users
+npx tsx scripts/create-users.ts
 npx tsx scripts/create-staff-users.ts
 
-# Ensure Amazon warehouse exists
-npx tsx scripts/ensure-amazon-warehouse.ts
+# Update role permissions
+node scripts/update-role-checks.js
 
-# Verify finance dashboard
-npx tsx scripts/verify-finance-dashboard.ts
+# Development/Debug scripts (not for production use)
+npx tsx scripts/check-dashboard-data.ts
+npx tsx scripts/check-system-imports.ts
+npx tsx scripts/verify-amazon-exclusion.ts
 ```
+
+**Note**: Data import from Excel should be done through the Admin Import page at `/admin/import` after logging in as an admin.
 
 ## 🚀 Development Commands
 

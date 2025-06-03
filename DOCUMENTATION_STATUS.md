@@ -43,11 +43,11 @@
    - Batch numbers auto-increment per SKU
    - Document attachments stored as JSONB
 
-### Removed Features
-- ❌ Excel import scripts (data already imported)
-- ❌ Test data generators
-- ❌ Sample data scripts
-- ❌ Temporary/debug scripts
+### Removed/Missing Features
+- ❌ Excel import scripts (import-excel-data.ts is missing - use Admin Import page instead)
+- ❌ Test data generators (various test/sample scripts exist but not documented)
+- ❌ Sample data scripts (add-sample-rates.ts, add-sample-finance-data.ts don't exist)
+- ❌ Utility scripts (ensure-amazon-warehouse.ts, verify-finance-dashboard.ts don't exist)
 
 ### Current Scripts
 Only essential user management scripts remain:
@@ -75,6 +75,10 @@ Only essential user management scripts remain:
 11. **Ledger Features** - Pickup date tracking, reconciliation status, chronological enforcement
 12. **Amazon FBA UK** - Excluded from operational pages, only visible in Amazon integration and cost rates
 
+## ⚠️ Known Issues
+
+1. **Import Functionality**: The Admin Import page (`/admin/import`) expects `scripts/import-excel-data.ts` which doesn't exist. The import feature will not work until this script is created or the API is updated to handle imports directly.
+
 ## 📁 Documentation Structure
 
 ```
@@ -89,4 +93,4 @@ docs/
     └── *.md                       (Original Excel system docs)
 ```
 
-The documentation is now accurate and reflects the current state of the system.
+The documentation has been updated to reflect the actual state of the system.
