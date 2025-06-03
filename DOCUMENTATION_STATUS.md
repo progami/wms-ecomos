@@ -73,11 +73,14 @@ Only essential user management scripts remain:
    - Additional documents
 10. **Ship Goods** - Uses source warehouse selection, Amazon carriers, FBA Tracking ID
 11. **Ledger Features** - Pickup date tracking, reconciliation status, chronological enforcement
-12. **Amazon FBA UK** - Excluded from operational pages, only visible in Amazon integration and cost rates
+12. **Amazon FBA UK** - REMOVED from system entirely (deleted in v1.3.0)
 
-## ✅ Recent Updates
+## ✅ Recent Updates (v1.3.0 - 2025-06-03)
 
 1. **Import Functionality Removed**: All import buttons and references have been removed from the UI since the required scripts don't exist.
+2. **Amazon FBA UK Removed**: Deleted Amazon FBA UK warehouse and all references throughout the system.
+3. **Documentation Cleanup**: Fixed all outdated script references and updated architecture docs.
+4. **Amazon Integration Updated**: Changed to show total inventory across locations instead of differences.
 
 ## 📁 Documentation Structure
 

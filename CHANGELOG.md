@@ -2,6 +2,39 @@
 
 All notable changes to the Warehouse Management System will be documented in this file.
 
+## [1.3.0] - 2025-06-03
+
+### Added
+- **Documentation Updates**
+  - Comprehensive cleanup of all documentation files
+  - Fixed all outdated script references
+  - Updated architecture documentation to reflect actual implementation
+
+### Changed
+- **Amazon Integration Page**
+  - Changed "Difference" column to "Total" showing sum of all locations
+  - Shows all SKUs including those with zero stock
+  - Visual indicators for zero stock items
+  - Added combined total summary card
+
+### Removed
+- **Amazon FBA UK Warehouse**
+  - Completely removed from system including 4 associated cost rates
+  - Updated all references throughout the application
+- **Import Functionality**
+  - Removed all import buttons and references
+  - Removed broken import API routes
+  - Updated documentation to reflect removal
+- **Orphaned Pages**
+  - Removed unused calculations page
+  - Removed broken import page
+  - Cleaned up associated API routes
+
+### Fixed
+- React hooks order error in Amazon integration page
+- Removed references to non-existent scripts in documentation
+- Fixed test suite to remove references to deleted pages
+
 ## [1.2.0] - 2025-06-03
 
 ### Added

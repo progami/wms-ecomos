@@ -7,10 +7,10 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 ### Core Functionality
 - **Multi-Warehouse Support**: Manage inventory across multiple warehouses (FMC, VGlobal, 4AS)
 - **Inventory Management**: Track inventory movements, balances, and transactions in real-time
-- **Amazon FBA Integration**: Compare and sync inventory between warehouses and Amazon FBA (displays in units)
 - **Financial Management**: Invoice creation, reconciliation, and cost calculations
 - **Reporting System**: Generate comprehensive reports for inventory, billing, and operations
 - **Role-Based Access**: Two-tier access control (Admin and Staff roles)
+- **Storage Ledger**: Weekly and monthly storage cost calculations with billing period aggregation
 
 ### Key Modules
 
@@ -61,6 +61,7 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 - Warehouse configuration
 - Cost rate configuration with overlap detection
 - System settings and preferences
+- Data export capabilities (no import functionality)
 
 ## 🛠️ Tech Stack
 
