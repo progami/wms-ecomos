@@ -113,12 +113,7 @@ export default function AdminDashboardPage() {
       e.preventDefault()
       e.stopPropagation()
     }
-    setLoading('import')
-    try {
-      router.push('/admin/import')
-    } finally {
-      setLoading(null)
-    }
+    toast.error('Import functionality is currently unavailable. Please contact support.')
   }
 
   const handleExportData = async (e?: React.MouseEvent) => {

@@ -43,12 +43,7 @@ export default function AdminSettingsPage() {
   }
 
   const handleImportData = async () => {
-    setLoading('import')
-    try {
-      router.push('/admin/import')
-    } finally {
-      setLoading(null)
-    }
+    toast.error('Import functionality is currently unavailable. Please contact support.')
   }
 
   const handleExportData = async () => {

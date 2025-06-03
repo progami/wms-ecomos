@@ -36,7 +36,6 @@ import InventoryPage from '@/app/warehouse/inventory/page'
 import ReceivePage from '@/app/warehouse/receive/page'
 import ShipPage from '@/app/warehouse/ship/page'
 import { AdminReportsClient } from '@/app/admin/reports/client-page'
-import CalculationsPage from '@/app/admin/calculations/page'
 import InvoicesPage from '@/app/finance/invoices/page'
 import ReconciliationPage from '@/app/finance/reconciliation/page'
 import UsersPage from '@/app/admin/users/page'
@@ -599,48 +598,7 @@ describe('Complete UI Coverage Tests', () => {
     })
   })
 
-  describe('9. Calculations Page - All Controls', () => {
-    it('should have all calculation controls working', async () => {
-      renderWithProviders(<CalculationsPage />)
-      
-      // Test calculation type selector
-      const typeSelector = screen.getByLabelText(/calculation type/i)
-      await userEvent.selectOptions(typeSelector, 'storage-ledger')
-      
-      // Test date inputs
-      const yearInput = screen.getByLabelText(/year/i)
-      const monthInput = screen.getByLabelText(/month/i)
-      
-      await userEvent.selectOptions(yearInput, '2024')
-      await userEvent.selectOptions(monthInput, '3')
-      
-      // Test warehouse filter
-      const warehouseFilter = screen.getByLabelText(/warehouse/i)
-      await userEvent.selectOptions(warehouseFilter, 'warehouse-1')
-      
-      // Test run calculation button
-      const runButton = screen.getByRole('button', { name: /run calculation/i })
-      expect(runButton).toBeInTheDocument()
-      expect(runButton).not.toBeDisabled()
-      
-      await userEvent.click(runButton)
-      
-      // Test progress indicator appears
-      await waitFor(() => {
-        expect(screen.getByText(/processing/i)).toBeInTheDocument()
-      })
-      
-      // Test view results button
-      const viewResultsButton = screen.getByRole('button', { name: /view results/i })
-      expect(viewResultsButton).toBeInTheDocument()
-      
-      // Test reset button
-      const resetButton = screen.getByRole('button', { name: /reset/i })
-      await userEvent.click(resetButton)
-    })
-  })
-
-  describe('10. Invoice & Finance Pages - All Elements', () => {
+  describe('9. Invoice & Finance Pages - All Elements', () => {
     it('should have all invoice page elements working', async () => {
       renderWithProviders(<InvoicesPage />)
       

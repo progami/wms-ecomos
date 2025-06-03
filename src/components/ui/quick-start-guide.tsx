@@ -53,10 +53,11 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
         link: '/admin/settings/rates'
       },
       {
-        title: 'Import Data',
-        description: 'Upload existing inventory and transaction data',
+        title: 'Initial Data Import',
+        description: 'Contact support for assistance with data import',
         icon: FileText,
-        link: '/admin/import'
+        link: '#',
+        disabled: true
       }
     ],
     staff: [
@@ -120,28 +121,43 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {steps.map((step, index) => (
-          <a
-            key={index}
-            href={step.link}
-            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all group"
-          >
-            <div className="flex items-start gap-3">
-              <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition-colors">
-                <step.icon className="h-5 w-5 text-blue-600" />
+        {steps.map((step, index) => {
+          const isDisabled = (step as any).disabled
+          const Component = isDisabled ? 'div' : 'a'
+          
+          return (
+            <Component
+              key={index}
+              href={isDisabled ? undefined : step.link}
+              className={`bg-white p-4 rounded-lg border ${
+                isDisabled 
+                  ? 'border-gray-200 opacity-60 cursor-not-allowed' 
+                  : 'border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all group cursor-pointer'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`p-2 rounded-lg ${
+                  isDisabled ? 'bg-gray-100' : 'bg-blue-100 group-hover:bg-blue-200 transition-colors'
+                }`}>
+                  <step.icon className={`h-5 w-5 ${isDisabled ? 'text-gray-400' : 'text-blue-600'}`} />
+                </div>
+                <div className="flex-1">
+                  <h4 className={`font-medium text-sm mb-1 ${
+                    isDisabled ? 'text-gray-500' : 'group-hover:text-blue-600 transition-colors'
+                  }`}>
+                    {step.title}
+                  </h4>
+                  <p className="text-xs text-gray-600">
+                    {step.description}
+                  </p>
+                </div>
+                {!isDisabled && (
+                  <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors mt-0.5" />
+                )}
               </div>
-              <div className="flex-1">
-                <h4 className="font-medium text-sm mb-1 group-hover:text-blue-600 transition-colors">
-                  {step.title}
-                </h4>
-                <p className="text-xs text-gray-600">
-                  {step.description}
-                </p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors mt-0.5" />
-            </div>
-          </a>
-        ))}
+            </Component>
+          )
+        })}
       </div>
 
       <div className="mt-4 flex items-center justify-between text-sm">
