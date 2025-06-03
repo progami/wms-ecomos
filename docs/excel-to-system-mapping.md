@@ -23,6 +23,11 @@ The Excel "inventory ledger" sheet contains all warehouse movements (RECEIVE, SH
 - `palletVarianceNotes` - Auto-generated notes when actual ≠ calculated
 - `storageCartonsPerPallet` - Batch-specific configuration
 - `shippingCartonsPerPallet` - Batch-specific configuration
+- `pickupDate` - Actual pickup date (separate from transaction date)
+- `isReconciled` - Whether pickup date has been confirmed
+- `shipName` - Name of the ship (for receiving)
+- `containerNumber` - Container number (for receiving)
+- `attachments` - Document attachments as JSONB
 
 ### Excel: "inventory balance" → System: InventoryBalance table
 Current stock levels by warehouse, SKU, and batch.
