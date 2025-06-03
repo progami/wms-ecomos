@@ -45,7 +45,7 @@ const navigation = {
     {
       title: 'Operations',
       items: [
-        { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
+        { name: 'Ledger', href: '/warehouse/inventory', icon: BookOpen },
       ]
     },
     {
@@ -89,7 +89,7 @@ const navigation = {
     {
       title: 'Operations',
       items: [
-        { name: 'Inventory Ledger', href: '/warehouse/inventory', icon: BookOpen },
+        { name: 'Ledger', href: '/warehouse/inventory', icon: BookOpen },
       ]
     },
     {

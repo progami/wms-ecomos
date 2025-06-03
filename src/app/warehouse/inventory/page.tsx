@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ImmutableLedgerNotice } from '@/components/ui/immutable-ledger-notice'
 import { toast } from 'react-hot-toast'
+import { formatCurrency } from '@/lib/utils'
+import { StorageLedgerTab } from '@/components/warehouse/storage-ledger-tab'
 
 interface InventoryBalance {
   id: string
@@ -132,8 +134,11 @@ export default function UnifiedInventoryPage() {
   }, [activeTab, viewMode, selectedDate, warehouses.length])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    // Only fetch data for non-storage tabs
+    if (activeTab !== 'storage') {
+      fetchData()
+    }
+  }, [fetchData, activeTab])
 
   // Filter inventory data
   const filteredInventory = inventoryData.filter(item => {
@@ -201,6 +206,10 @@ export default function UnifiedInventoryPage() {
 
   const handleDateChange = (date: string) => {
     setSelectedDate(date)
+  }
+  
+  const handleTabChange = (tab: 'balances' | 'transactions' | 'storage') => {
+    setActiveTab(tab)
   }
 
   const getTransactionColor = (type: string) => {
@@ -276,7 +285,11 @@ export default function UnifiedInventoryPage() {
             <nav className="-mb-px flex">
               <button
                 type="button"
-                onClick={() => setActiveTab('balances')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleTabChange('balances')
+                }}
                 className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'balances'
                     ? 'border-primary text-primary'
@@ -288,7 +301,11 @@ export default function UnifiedInventoryPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('transactions')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleTabChange('transactions')
+                }}
                 className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'transactions'
                     ? 'border-primary text-primary'
@@ -300,7 +317,11 @@ export default function UnifiedInventoryPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('storage')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleTabChange('storage')
+                }}
                 className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'storage'
                     ? 'border-primary text-primary'
@@ -321,7 +342,11 @@ export default function UnifiedInventoryPage() {
                 <div className="flex rounded-md shadow-sm">
                   <button
                     type="button"
-                    onClick={() => setViewMode('live')}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setViewMode('live')
+                    }}
                     className={`px-4 py-2 text-sm font-medium rounded-l-md border ${
                       viewMode === 'live'
                         ? 'bg-primary text-white border-primary'
@@ -333,7 +358,11 @@ export default function UnifiedInventoryPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setViewMode('point-in-time')}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setViewMode('point-in-time')
+                    }}
                     className={`px-4 py-2 text-sm font-medium rounded-r-md border ${
                       viewMode === 'point-in-time'
                         ? 'bg-primary text-white border-primary'
@@ -918,46 +947,16 @@ export default function UnifiedInventoryPage() {
         )}
 
         {activeTab === 'storage' && (
-          <>
-            {/* Storage Ledger Content */}
-            <div className="space-y-6">
-              {/* Information Panel */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-blue-900">Storage Billing Information</p>
-                    <ul className="mt-2 space-y-1 text-blue-800">
-                      <li>• <strong>Regular Warehouses:</strong> Charged weekly based on Monday inventory counts (23:59:59)</li>
-                      <li>• <strong>Amazon FBA:</strong> Charged monthly based on average daily inventory volume</li>
-                      <li>• <strong>Billing Period:</strong> 16th of one month to 15th of the next</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Coming Soon Notice */}
-              <div className="border rounded-lg p-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Storage Ledger Coming Soon</h3>
-                  <p className="text-gray-600 mb-6">
-                    The storage ledger will show weekly storage charges for regular warehouses 
-                    and monthly charges for Amazon FBA, helping you track and reconcile storage costs.
-                  </p>
-                  <div className="space-y-2 text-sm text-gray-500">
-                    <p>Features will include:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Weekly Monday snapshots for warehouse storage</li>
-                      <li>Monthly Amazon FBA storage fees from API</li>
-                      <li>Cost calculations based on current rates</li>
-                      <li>Export for invoice reconciliation</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
+          <StorageLedgerTab 
+            viewMode={viewMode}
+            selectedDate={selectedDate}
+            searchQuery={searchQuery}
+            filters={filters}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            setFilters={setFilters}
+            warehouses={warehouses}
+          />
         )}
 
         {/* Results Summary */}

@@ -164,8 +164,8 @@ warehouse_management/
 After seeding the database, you can login with:
 
 **Admin Account:**
-- Email: admin@warehouse.com
-- Password: admin123
+- Email: admin@admin.com
+- Password: admin
 
 **Staff Accounts:**
 - Email: hashar@warehouse.com (Finance Manager)
@@ -188,7 +188,11 @@ After seeding the database, you can login with:
 - **Inventory Ledger**: View all transactions with sorting, filtering, and pallet details
 - **Current Balances**: Real-time inventory by SKU, warehouse, and batch
 - **Point-in-Time Views**: Historical inventory snapshots with running balances
-- **Storage Ledger**: Track weekly storage charges and reconcile costs (coming soon)
+- **Storage Ledger**: 
+  - Weekly storage cost calculations based on Monday snapshots
+  - Monthly aggregation by billing periods (16th-15th)
+  - Cost share breakdown per SKU
+  - Export to CSV functionality
 
 ### Financial Operations
 - **Invoice Management**: Create, edit, and track invoices

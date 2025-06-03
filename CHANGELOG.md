@@ -4,6 +4,58 @@ All notable changes to the Warehouse Management System will be documented in thi
 
 ## [Unreleased] - 2025-06-03
 
+### Storage Ledger Features
+- **Full Storage Ledger Implementation**
+  - Calculates weekly storage costs based on Monday 23:59:59 CT inventory snapshots
+  - Shows storage costs per SKU with cost share percentages
+  - Displays ISO week numbers (W1, W2, etc.) for easy reference
+  - Expandable rows to view SKU-level details within each snapshot
+
+- **Monthly Aggregation View**
+  - Toggle between Weekly and Monthly views
+  - Monthly view aggregates by billing periods (16th to 15th)
+  - Shows average pallets per week and total costs for billing period
+  - Displays which weeks are included in each billing period
+
+- **Enhanced Date Selection**
+  - Quick date range buttons: Last 30 days, Last 90 days, Last 6 months, Year to date, All time
+  - Improved date picker UI with floating labels and visual arrows
+  - Responsive layout that works on all screen sizes
+
+- **Export Functionality**
+  - Export storage ledger data to CSV
+  - Includes week numbers, cost shares, and all relevant details
+  - Supports both weekly and monthly views
+
+### UI/UX Improvements
+- **Navigation Updates**
+  - Renamed "Inventory Ledger" to "Ledger" in sidebar for conciseness
+  
+- **Performance Fixes**
+  - Fixed page refresh issues when clicking UI elements
+  - Added proper event handling to prevent form submissions
+  - Optimized data fetching with debouncing and memoization
+  - Fixed React hook initialization errors
+
+- **Admin Credentials**
+  - Updated admin login for easier testing:
+    - Email: admin@admin.com
+    - Password: admin
+
+### Technical Improvements
+- **API Enhancements**
+  - Storage ledger API now fetches all historical transactions for accurate calculations
+  - Uses inventory balance table for pallet configurations
+  - Falls back to warehouse SKU configs when needed
+  - Improved error handling and logging
+
+- **Code Quality**
+  - Fixed TypeScript errors in storage ledger components
+  - Proper async/await handling in API routes
+  - Consistent button types to prevent accidental form submissions
+
+## [Previous] - 2025-06-03
+
 ### Added
 - **Pallet Columns in Inventory Ledger**
   - Added "Pallets In" column showing actual storage pallets received
