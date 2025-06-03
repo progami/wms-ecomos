@@ -123,8 +123,7 @@ npx prisma db push
 # Seed the database with initial data
 npx tsx prisma/seed.ts
 
-# Apply immutable ledger constraints (recommended)
-npx tsx scripts/make-ledger-immutable.ts
+# Note: Immutable ledger constraints are applied automatically via database migrations
 ```
 
 **Note**: The inventory ledger is designed to be immutable for audit compliance. Once applied, transactions cannot be edited or deleted - only adjustment entries can be made.
