@@ -1,16 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Package2, Plus, Save, X, AlertCircle } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 
+interface Sku {
+  id: string
+  skuCode: string
+  description: string
+  unitsPerCarton: number
+}
+
 export default function WarehouseReceivePage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
+  const [skus, setSkus] = useState<Sku[]>([])
+  const [skuLoading, setSkuLoading] = useState(true)
   const [items, setItems] = useState([
     { 
       id: 1, 
@@ -26,6 +35,26 @@ export default function WarehouseReceivePage() {
       palletVariance: false
     }
   ])
+
+  useEffect(() => {
+    fetchSkus()
+  }, [])
+
+  const fetchSkus = async () => {
+    try {
+      setSkuLoading(true)
+      const response = await fetch('/api/skus')
+      if (response.ok) {
+        const data = await response.json()
+        setSkus(data.filter((sku: any) => sku.isActive !== false))
+      }
+    } catch (error) {
+      console.error('Error fetching SKUs:', error)
+      toast.error('Failed to load SKUs')
+    } finally {
+      setSkuLoading(false)
+    }
+  }
 
   const addItem = () => {
     setItems([
@@ -55,9 +84,34 @@ export default function WarehouseReceivePage() {
       item.id === id ? { ...item, [field]: value } : item
     ))
     
-    // If SKU code changed, fetch warehouse config
+    // If SKU code changed, fetch warehouse config and update units
     if (field === 'skuCode' && value) {
+      const selectedSku = skus.find(sku => sku.skuCode === value)
+      if (selectedSku) {
+        // Update units based on SKU's unitsPerCarton
+        setItems(items.map(item => {
+          if (item.id === id) {
+            const units = item.cartons * (selectedSku.unitsPerCarton || 1)
+            return { ...item, units }
+          }
+          return item
+        }))
+      }
       await fetchWarehouseConfig(id, value)
+    }
+    
+    // If cartons changed, recalculate units
+    if (field === 'cartons') {
+      const item = items.find(i => i.id === id)
+      if (item && item.skuCode) {
+        const selectedSku = skus.find(sku => sku.skuCode === item.skuCode)
+        if (selectedSku) {
+          const units = value * (selectedSku.unitsPerCarton || 1)
+          setItems(items.map(i => 
+            i.id === id ? { ...i, units } : i
+          ))
+        }
+      }
     }
   }
   
@@ -322,14 +376,20 @@ export default function WarehouseReceivePage() {
                   {items.map((item) => (
                     <tr key={item.id}>
                       <td className="px-4 py-3">
-                        <input
-                          type="text"
+                        <select
                           value={item.skuCode}
                           onChange={(e) => updateItem(item.id, 'skuCode', e.target.value)}
                           className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                          placeholder="SKU code"
                           required
-                        />
+                          disabled={skuLoading}
+                        >
+                          <option value="">Select SKU...</option>
+                          {skus.map((sku) => (
+                            <option key={sku.id} value={sku.skuCode}>
+                              {sku.skuCode} - {sku.description}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -345,9 +405,9 @@ export default function WarehouseReceivePage() {
                         <input
                           type="number"
                           value={item.cartons}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const newCartons = parseInt(e.target.value) || 0
-                            updateItem(item.id, 'cartons', newCartons)
+                            await updateItem(item.id, 'cartons', newCartons)
                             // Calculate pallets if config is loaded
                             if (item.configLoaded && item.storageCartonsPerPallet > 0) {
                               const calculatedPallets = Math.ceil(newCartons / item.storageCartonsPerPallet)
@@ -442,10 +502,10 @@ export default function WarehouseReceivePage() {
                         <input
                           type="number"
                           value={item.units}
-                          onChange={(e) => updateItem(item.id, 'units', parseInt(e.target.value) || 0)}
-                          className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full px-2 py-1 border rounded text-right bg-gray-100"
                           min="0"
-                          required
+                          readOnly
+                          title="Units are calculated based on cartons × units per carton"
                         />
                       </td>
                       <td className="px-4 py-3">

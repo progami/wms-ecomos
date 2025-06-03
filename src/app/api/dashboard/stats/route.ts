@@ -20,7 +20,16 @@ export async function GET() {
     // Check if user has warehouse restriction
     const warehouseFilter = session.user.warehouseId 
       ? { warehouseId: session.user.warehouseId }
-      : {}
+      : {
+          warehouse: {
+            NOT: {
+              OR: [
+                { code: 'AMZN' },
+                { code: 'AMZN-UK' }
+              ]
+            }
+          }
+        }
 
     // Total inventory
     const inventoryStats = await prisma.inventoryBalance.aggregate({
@@ -38,10 +47,22 @@ export async function GET() {
     // Get transactions to calculate last month's ending balance
     const transactionsUpToLastMonth = await prisma.inventoryTransaction.aggregate({
       where: {
-        ...warehouseFilter,
         transactionDate: {
           lte: lastMonthEnd,
         },
+        ...(session.user.warehouseId 
+          ? { warehouseId: session.user.warehouseId }
+          : {
+              warehouse: {
+                NOT: {
+                  OR: [
+                    { code: 'AMZN' },
+                    { code: 'AMZN-UK' }
+                  ]
+                }
+              }
+            }
+        ),
       },
       _sum: {
         cartonsIn: true,
@@ -74,12 +95,24 @@ export async function GET() {
     // Get storage costs for current billing period
     const storageCosts = await prisma.calculatedCost.aggregate({
       where: {
-        ...warehouseFilter,
         billingPeriodStart: {
           gte: billingStart,
           lte: billingEnd,
         },
-        costCategory: 'Storage',
+        transactionType: 'STORAGE',
+        ...(session.user.warehouseId 
+          ? { warehouseId: session.user.warehouseId }
+          : {
+              warehouse: {
+                NOT: {
+                  OR: [
+                    { code: 'AMZN' },
+                    { code: 'AMZN-UK' }
+                  ]
+                }
+              }
+            }
+        ),
       },
       _sum: {
         finalExpectedCost: true,
@@ -96,12 +129,24 @@ export async function GET() {
     
     const lastPeriodCosts = await prisma.calculatedCost.aggregate({
       where: {
-        ...warehouseFilter,
         billingPeriodStart: {
           gte: lastBillingStart,
           lte: lastBillingEnd,
         },
-        costCategory: 'Storage',
+        transactionType: 'STORAGE',
+        ...(session.user.warehouseId 
+          ? { warehouseId: session.user.warehouseId }
+          : {
+              warehouse: {
+                NOT: {
+                  OR: [
+                    { code: 'AMZN' },
+                    { code: 'AMZN-UK' }
+                  ]
+                }
+              }
+            }
+        ),
       },
       _sum: {
         finalExpectedCost: true,

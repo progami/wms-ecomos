@@ -95,7 +95,18 @@ async function generateMonthlyInventoryReport(period: string, warehouseId?: stri
   const endDate = endOfMonth(new Date(year, month - 1))
 
   const balances = await prisma.inventoryBalance.findMany({
-    where: warehouseId ? { warehouseId } : {},
+    where: warehouseId 
+      ? { warehouseId } 
+      : {
+          warehouse: {
+            NOT: {
+              OR: [
+                { code: 'AMZN' },
+                { code: 'AMZN-UK' }
+              ]
+            }
+          }
+        },
     include: {
       warehouse: true,
       sku: true,
@@ -122,7 +133,19 @@ async function generateInventoryLedger(period: string, warehouseId?: string) {
 
   const transactions = await prisma.inventoryTransaction.findMany({
     where: {
-      ...(warehouseId ? { warehouseId } : {}),
+      ...(warehouseId 
+        ? { warehouseId } 
+        : {
+            warehouse: {
+              NOT: {
+                OR: [
+                  { code: 'AMZN' },
+                  { code: 'AMZN-UK' }
+                ]
+              }
+            }
+          }
+      ),
       transactionDate: {
         gte: startDate,
         lte: endDate,
@@ -160,7 +183,19 @@ async function generateStorageCharges(period: string, warehouseId?: string) {
 
   const storageLedger = await prisma.storageLedger.findMany({
     where: {
-      ...(warehouseId ? { warehouseId } : {}),
+      ...(warehouseId 
+        ? { warehouseId } 
+        : {
+            warehouse: {
+              NOT: {
+                OR: [
+                  { code: 'AMZN' },
+                  { code: 'AMZN-UK' }
+                ]
+              }
+            }
+          }
+      ),
       billingPeriodStart: billingStart,
       billingPeriodEnd: billingEnd,
     },
@@ -223,7 +258,7 @@ async function generateReconciliationReport(period: string, warehouseId?: string
   const startDate = new Date(year, month - 2, 16)
   const endDate = new Date(year, month - 1, 15)
 
-  const invoices = await prisma.invoiceInput.findMany({
+  const invoices = await prisma.invoice.findMany({
     where: {
       ...(warehouseId ? { warehouseId } : {}),
       invoiceDate: {
@@ -252,17 +287,17 @@ async function generateReconciliationReport(period: string, warehouseId?: string
   })
 
   const costMap = new Map(
-    calculatedCosts.map(c => [c.warehouseId, c._sum.calculatedWeeklyCost || 0])
+    calculatedCosts.map(c => [c.warehouseId, Number(c._sum.calculatedWeeklyCost || 0)])
   )
 
   return invoices.map(invoice => ({
     'Invoice Number': invoice.invoiceNumber,
     'Invoice Date': invoice.invoiceDate.toLocaleDateString(),
     'Warehouse': invoice.warehouse.name,
-    'Invoiced Amount': `£${invoice.totalAmount.toFixed(2)}`,
+    'Invoiced Amount': `£${Number(invoice.totalAmount).toFixed(2)}`,
     'Calculated Amount': `£${(costMap.get(invoice.warehouseId) || 0).toFixed(2)}`,
-    'Variance': `£${(invoice.totalAmount - (costMap.get(invoice.warehouseId) || 0)).toFixed(2)}`,
-    'Status': Math.abs(invoice.totalAmount - (costMap.get(invoice.warehouseId) || 0)) < 0.01 ? 'Matched' : 'Variance',
+    'Variance': `£${(Number(invoice.totalAmount) - (costMap.get(invoice.warehouseId) || 0)).toFixed(2)}`,
+    'Status': Math.abs(Number(invoice.totalAmount) - (costMap.get(invoice.warehouseId) || 0)) < 0.01 ? 'Matched' : 'Variance',
   }))
 }
 
@@ -360,8 +395,8 @@ async function generateCostAnalysisReport(period: string, warehouseId?: string) 
         weeks: 0,
       }
     }
-    acc[key].totalCartons += item.cartons
-    acc[key].totalCost += item.calculatedWeeklyCost
+    acc[key].totalCartons += item.storagePalletsCharged || 0
+    acc[key].totalCost += Number(item.calculatedWeeklyCost || 0)
     acc[key].weeks += 1
     return acc
   }, {} as any)
@@ -419,11 +454,11 @@ async function generateMonthlyBillingReport(period: string, warehouseId?: string
 
       return {
         'Warehouse': warehouse.name,
-        'Storage Costs': `£${(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`,
+        'Storage Costs': `£${Number(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`,
         'Receiving Transactions': receiveCount,
         'Shipping Transactions': shipCount,
         'Handling Fees': `£${((receiveCount + shipCount) * 25).toFixed(2)}`, // £25 per transaction
-        'Total Charges': `£${((storageCost._sum.calculatedWeeklyCost || 0) + ((receiveCount + shipCount) * 25)).toFixed(2)}`,
+        'Total Charges': `£${(Number(storageCost._sum.calculatedWeeklyCost || 0) + ((receiveCount + shipCount) * 25)).toFixed(2)}`,
         'Billing Period': `${billingStart.toLocaleDateString()} - ${billingEnd.toLocaleDateString()}`,
       }
     })

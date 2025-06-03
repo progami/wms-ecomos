@@ -61,7 +61,10 @@ export async function GET(request: NextRequest) {
         isActive: true,
         // Exclude Amazon warehouse from storage ledger
         NOT: {
-          code: 'AMZN'
+          OR: [
+            { code: 'AMZN' },
+            { code: 'AMZN-UK' }
+          ]
         }
       },
       orderBy: {

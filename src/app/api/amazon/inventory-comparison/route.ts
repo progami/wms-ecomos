@@ -15,48 +15,58 @@ export async function GET() {
       where: {
         OR: [
           { code: 'AMZN-UK' },
-          { name: 'Amazon FBA UK' }
+          { code: 'AMZN' },
+          { name: 'Amazon FBA UK' },
+          { name: { contains: 'Amazon' } }
         ]
       }
     })
 
     if (!amazonWarehouse) {
       console.warn('Amazon FBA UK warehouse not found')
+      // Log all warehouses to help debug
+      const allWarehouses = await prisma.warehouse.findMany()
+      console.log('Available warehouses:', allWarehouses.map(w => ({ id: w.id, code: w.code, name: w.name })))
+    } else {
+      console.log('Found Amazon warehouse:', { id: amazonWarehouse.id, code: amazonWarehouse.code, name: amazonWarehouse.name })
     }
 
-    // Get all SKUs from the database with their current inventory
+    // Get all SKUs from the database
     const skus = await prisma.sku.findMany({
-      include: {
-        inventoryTransactions: {
-          include: {
-            warehouse: true
-          }
-        }
-      },
       orderBy: {
         skuCode: 'asc'
       }
     })
 
+    // Get inventory balances for all warehouses
+    const inventoryBalances = await prisma.inventoryBalance.findMany({
+      include: {
+        warehouse: true,
+        sku: true
+      }
+    })
+    
+    console.log(`Found ${inventoryBalances.length} inventory balance records`)
+
     // Calculate inventory for each SKU
     const inventoryData = skus.map(sku => {
+      // Get all balances for this SKU
+      const skuBalances = inventoryBalances.filter(balance => balance.skuId === sku.id)
+      
       // Calculate warehouse quantity (excluding Amazon FBA UK)
       let warehouseCartons = 0
       let amazonCartons = 0
 
-      sku.inventoryTransactions.forEach(tx => {
-        // Calculate net quantity change for this transaction
-        const cartonsQty = tx.cartonsIn - tx.cartonsOut
-
+      skuBalances.forEach(balance => {
         // Use warehouse ID for comparison if available, fallback to name/code
-        const isAmazonTransaction = amazonWarehouse 
-          ? tx.warehouseId === amazonWarehouse.id
-          : (tx.warehouse.name === 'Amazon FBA UK' || tx.warehouse.code === 'AMZN-UK')
+        const isAmazonBalance = amazonWarehouse 
+          ? balance.warehouseId === amazonWarehouse.id
+          : (balance.warehouse.name === 'Amazon FBA UK' || balance.warehouse.code === 'AMZN-UK' || balance.warehouse.code === 'AMZN')
 
-        if (isAmazonTransaction) {
-          amazonCartons += cartonsQty
+        if (isAmazonBalance) {
+          amazonCartons += balance.currentCartons
         } else {
-          warehouseCartons += cartonsQty
+          warehouseCartons += balance.currentCartons
         }
       })
 
@@ -79,8 +89,13 @@ export async function GET() {
     const activeInventory = inventoryData.filter(
       item => item.warehouseQty > 0 || item.amazonQty > 0
     )
+    
+    console.log(`Total SKUs: ${skus.length}, Active inventory items: ${activeInventory.length}`)
+    
+    // If no active inventory found, include all SKUs for debugging
+    const responseData = activeInventory.length > 0 ? activeInventory : inventoryData
 
-    return NextResponse.json(activeInventory.length > 0 ? activeInventory : inventoryData)
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Error in inventory comparison:', error)
     return NextResponse.json(

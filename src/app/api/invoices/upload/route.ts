@@ -169,7 +169,7 @@ async function parseCSV(buffer: Buffer): Promise<InvoiceUploadData | null> {
 
     // Extract header information (assuming it's in the first few rows)
     const headerInfo = records[0]
-    const lineItems = records.slice(1).filter(row => 
+    const lineItems = records.slice(1).filter((row: any) => 
       row.costCategory && row.costName && row.amount
     )
 
@@ -181,7 +181,7 @@ async function parseCSV(buffer: Buffer): Promise<InvoiceUploadData | null> {
       invoiceDate: headerInfo.invoiceDate || headerInfo['Invoice Date'] || '',
       dueDate: headerInfo.dueDate || headerInfo['Due Date'],
       totalAmount: parseFloat(headerInfo.totalAmount || headerInfo['Total Amount'] || '0'),
-      lineItems: lineItems.map(item => ({
+      lineItems: lineItems.map((item: any) => ({
         costCategory: item.costCategory || item['Cost Category'],
         costName: item.costName || item['Cost Name'] || item['Description'],
         quantity: parseFloat(item.quantity || item['Quantity'] || '0'),
@@ -214,10 +214,10 @@ async function parseExcel(buffer: Buffer): Promise<InvoiceUploadData | null> {
 
     // First, try to find invoice header info
     for (const row of data) {
-      if (row['Invoice Number'] || row['invoiceNumber']) {
+      if ((row as any)['Invoice Number'] || (row as any)['invoiceNumber']) {
         invoiceInfo = row
         headerFound = true
-      } else if (headerFound && (row['Cost Category'] || row['costCategory'])) {
+      } else if (headerFound && ((row as any)['Cost Category'] || (row as any)['costCategory'])) {
         lineItems.push(row)
       }
     }
@@ -236,7 +236,7 @@ async function parseExcel(buffer: Buffer): Promise<InvoiceUploadData | null> {
       invoiceDate: invoiceInfo['Invoice Date'] || invoiceInfo.invoiceDate || '',
       dueDate: invoiceInfo['Due Date'] || invoiceInfo.dueDate,
       totalAmount: parseFloat(invoiceInfo['Total Amount'] || invoiceInfo.totalAmount || '0'),
-      lineItems: lineItems.map(item => ({
+      lineItems: lineItems.map((item: any) => ({
         costCategory: item['Cost Category'] || item.costCategory,
         costName: item['Cost Name'] || item.costName || item['Description'],
         quantity: parseFloat(item['Quantity'] || item.quantity || '0'),

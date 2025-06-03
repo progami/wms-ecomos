@@ -191,17 +191,12 @@ export function StorageLedgerTab({
     // Convert to array format
     const monthlySnapshots: any[] = []
     monthlyMap.forEach(monthly => {
-      const items = Array.from(monthly.itemsMap.values()).map(item => ({
-        ...item,
-        avgCartons: Math.round(item.totalCartonWeeks / monthly.weeks.length),
-        avgPallets: Math.round(item.totalPalletWeeks / monthly.weeks.length)
-      }))
+      const items = Array.from(monthly.itemsMap.values())
       
       monthlySnapshots.push({
         ...monthly,
         weekCount: monthly.weeks.length,
-        avgPalletsPerWeek: Math.round(monthly.totalPalletWeeks / monthly.weeks.length),
-        items: items.sort((a, b) => a.sku.skuCode.localeCompare(b.sku.skuCode))
+        items: items.sort((a: any, b: any) => a.sku.skuCode.localeCompare(b.sku.skuCode))
       })
     })
     
@@ -262,6 +257,7 @@ export function StorageLedgerTab({
               <li>• <strong>Amazon FBA:</strong> Charged monthly based on average daily inventory volume</li>
               <li>• <strong>Billing Period:</strong> 16th of one month to 15th of the next</li>
               <li>• <strong>Snapshot Time:</strong> Every Monday at 23:59:59 CT</li>
+              <li>• <strong>Monthly View:</strong> Shows total pallet-weeks (sum of all weekly pallets in the period)</li>
             </ul>
           </div>
         </div>
@@ -531,7 +527,7 @@ export function StorageLedgerTab({
                   Warehouse
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {aggregationView === 'weekly' ? 'Total Pallets' : 'Avg Pallets/Week'}
+                  {aggregationView === 'weekly' ? 'Total Pallets' : 'Total Pallet-Weeks'}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Rate (£/pallet)
@@ -604,7 +600,7 @@ export function StorageLedgerTab({
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {aggregationView === 'weekly' 
                           ? snapshot.totalPallets.toLocaleString()
-                          : snapshot.avgPalletsPerWeek.toLocaleString()}
+                          : snapshot.totalPalletWeeks.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {formatCurrency(snapshot.rate)}
@@ -635,11 +631,11 @@ export function StorageLedgerTab({
                                   <th className="text-left pb-2">Description</th>
                                   <th className="text-left pb-2">Batch/Lot</th>
                                   <th className="text-right pb-2">
-                                    {aggregationView === 'weekly' ? 'Cartons' : 'Avg Cartons'}
+                                    {aggregationView === 'weekly' ? 'Cartons' : 'Total Cartons'}
                                   </th>
                                   <th className="text-right pb-2">Config</th>
                                   <th className="text-right pb-2">
-                                    {aggregationView === 'weekly' ? 'Pallets' : 'Avg Pallets'}
+                                    {aggregationView === 'weekly' ? 'Pallets' : 'Total Pallets'}
                                   </th>
                                   <th className="text-right pb-2">
                                     {aggregationView === 'weekly' ? 'Cost Share' : 'Total Cost'}
@@ -648,9 +644,9 @@ export function StorageLedgerTab({
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-200">
-                                {snapshot.items.map((item, idx) => {
-                                  const pallets = aggregationView === 'weekly' ? item.pallets : item.avgPallets
-                                  const totalPallets = aggregationView === 'weekly' ? snapshot.totalPallets : snapshot.avgPalletsPerWeek
+                                {snapshot.items.map((item: any, idx: number) => {
+                                  const pallets = aggregationView === 'weekly' ? item.pallets : item.totalPalletWeeks
+                                  const totalPallets = aggregationView === 'weekly' ? snapshot.totalPallets : snapshot.totalPalletWeeks
                                   const percentage = (pallets / totalPallets) * 100
                                   
                                   return (
@@ -659,7 +655,7 @@ export function StorageLedgerTab({
                                       <td className="py-2">{item.sku.description}</td>
                                       <td className="py-2">{item.batchLot}</td>
                                       <td className="py-2 text-right">
-                                        {(aggregationView === 'weekly' ? item.cartons : item.avgCartons).toLocaleString()}
+                                        {(aggregationView === 'weekly' ? item.cartons : item.totalCartonWeeks).toLocaleString()}
                                       </td>
                                       <td className="py-2 text-right">{item.cartonsPerPallet}/pallet</td>
                                       <td className="py-2 text-right font-medium">{pallets}</td>

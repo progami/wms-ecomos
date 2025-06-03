@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
       const pointInTime = new Date(date)
       pointInTime.setHours(23, 59, 59, 999)
       
+      console.log(`Point-in-time query for date: ${date}, parsed as: ${pointInTime.toISOString()}`)
+      
       // Build where clause for transactions
       const transactionWhere: any = {
         transactionDate: { lte: pointInTime }
@@ -29,6 +31,16 @@ export async function GET(req: NextRequest) {
         transactionWhere.warehouseId = session.user.warehouseId
       } else if (warehouseId) {
         transactionWhere.warehouseId = warehouseId
+      } else {
+        // Exclude Amazon warehouse when not querying specific warehouse
+        transactionWhere.warehouse = {
+          NOT: {
+            OR: [
+              { code: 'AMZN' },
+              { code: 'AMZN-UK' }
+            ]
+          }
+        }
       }
       
       // Fetch all transactions up to the date
@@ -61,8 +73,16 @@ export async function GET(req: NextRequest) {
         }
         
         current.currentCartons += transaction.cartonsIn - transaction.cartonsOut
-        current.currentUnits = current.currentCartons * transaction.sku.unitsPerCarton
+        current.currentUnits = current.currentCartons * (transaction.sku.unitsPerCarton || 1)
         current.lastTransactionDate = transaction.transactionDate
+        
+        // Store pallet configuration from transaction if available
+        if (transaction.storageCartonsPerPallet) {
+          current.storageCartonsPerPallet = transaction.storageCartonsPerPallet
+        }
+        if (transaction.shippingCartonsPerPallet) {
+          current.shippingCartonsPerPallet = transaction.shippingCartonsPerPallet
+        }
         
         balances.set(key, current)
       }
@@ -70,21 +90,34 @@ export async function GET(req: NextRequest) {
       // Calculate pallets for each balance
       for (const [key, balance] of balances.entries()) {
         if (balance.currentCartons > 0) {
-          const config = await prisma.warehouseSkuConfig.findFirst({
-            where: {
-              warehouseId: balance.warehouse.id,
-              skuId: balance.sku.id,
-              effectiveDate: { lte: pointInTime },
-              OR: [
-                { endDate: null },
-                { endDate: { gte: pointInTime } }
-              ]
-            },
-            orderBy: { effectiveDate: 'desc' }
-          })
-          
-          if (config) {
-            balance.currentPallets = Math.ceil(balance.currentCartons / config.storageCartonsPerPallet)
+          // First try to use pallet configuration from transactions
+          if (balance.storageCartonsPerPallet) {
+            balance.currentPallets = Math.ceil(balance.currentCartons / balance.storageCartonsPerPallet)
+          } else {
+            // Fall back to warehouse config
+            const config = await prisma.warehouseSkuConfig.findFirst({
+              where: {
+                warehouseId: balance.warehouse.id,
+                skuId: balance.sku.id,
+                effectiveDate: { lte: pointInTime },
+                OR: [
+                  { endDate: null },
+                  { endDate: { gte: pointInTime } }
+                ]
+              },
+              orderBy: { effectiveDate: 'desc' }
+            })
+            
+            if (config) {
+              balance.currentPallets = Math.ceil(balance.currentCartons / config.storageCartonsPerPallet)
+              balance.storageCartonsPerPallet = config.storageCartonsPerPallet
+              balance.shippingCartonsPerPallet = config.shippingCartonsPerPallet
+            } else {
+              // Default to 1 carton per pallet if no config found
+              balance.currentPallets = balance.currentCartons
+              balance.storageCartonsPerPallet = 1
+              balance.shippingCartonsPerPallet = 1
+            }
           }
         }
       }
@@ -102,6 +135,8 @@ export async function GET(req: NextRequest) {
         return a.batchLot.localeCompare(b.batchLot)
       })
       
+      console.log(`Point-in-time results: ${results.length} items with positive stock`)
+      
       return NextResponse.json(results)
     }
 
@@ -110,6 +145,16 @@ export async function GET(req: NextRequest) {
     
     if (warehouseId) {
       where.warehouseId = warehouseId
+    } else {
+      // Exclude Amazon warehouse when not querying specific warehouse
+      where.warehouse = {
+        NOT: {
+          OR: [
+            { code: 'AMZN' },
+            { code: 'AMZN-UK' }
+          ]
+        }
+      }
     }
 
     // Only show items with positive inventory unless explicitly requested

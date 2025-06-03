@@ -33,9 +33,22 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams
     const includeInactive = searchParams.get('includeInactive') === 'true'
+    const includeAmazon = searchParams.get('includeAmazon') === 'true'
+
+    const where: any = includeInactive ? {} : { isActive: true }
+    
+    // Exclude Amazon FBA UK warehouse unless explicitly requested
+    if (!includeAmazon) {
+      where.NOT = {
+        OR: [
+          { code: 'AMZN' },
+          { code: 'AMZN-UK' }
+        ]
+      }
+    }
 
     const warehouses = await prisma.warehouse.findMany({
-      where: includeInactive ? {} : { isActive: true },
+      where,
       orderBy: { name: 'asc' },
       include: {
         _count: {

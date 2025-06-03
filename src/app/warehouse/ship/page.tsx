@@ -7,6 +7,13 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 
+interface Sku {
+  id: string
+  skuCode: string
+  description: string
+  unitsPerCarton: number
+}
+
 interface InventoryItem {
   id: string
   sku: {
@@ -41,6 +48,8 @@ export default function WarehouseShipPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
+  const [skus, setSkus] = useState<Sku[]>([])
+  const [skuLoading, setSkuLoading] = useState(true)
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [items, setItems] = useState<ShipItem[]>([
     { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }
@@ -49,7 +58,7 @@ export default function WarehouseShipPage() {
   const addItem = () => {
     setItems([
       ...items,
-      { id: Date.now(), skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0 }
+      { id: Date.now(), skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }
     ])
   }
 
@@ -85,9 +94,24 @@ export default function WarehouseShipPage() {
           }
         }
         
-        // Update cartons and recalculate pallets
+        // If SKU changed, update units based on unitsPerCarton
+        if (field === 'skuCode' && value) {
+          const selectedSku = skus.find(sku => sku.skuCode === value)
+          if (selectedSku && updated.cartons) {
+            updated.units = updated.cartons * selectedSku.unitsPerCarton
+            updated.unitsPerCarton = selectedSku.unitsPerCarton
+          }
+        }
+        
+        // Update cartons and recalculate pallets and units
         if (field === 'cartons') {
           updated.cartons = updated.available > 0 ? Math.min(value, updated.available) : value
+          
+          // Update units based on cartons
+          if (updated.unitsPerCarton) {
+            updated.units = updated.cartons * updated.unitsPerCarton
+          }
+          
           // Calculate pallets based on batch-specific config
           if (updated.shippingCartonsPerPallet && updated.shippingCartonsPerPallet > 0) {
             const calculated = Math.ceil(updated.cartons / updated.shippingCartonsPerPallet)
@@ -110,7 +134,24 @@ export default function WarehouseShipPage() {
 
   useEffect(() => {
     fetchInventory()
+    fetchSkus()
   }, [])
+
+  const fetchSkus = async () => {
+    try {
+      setSkuLoading(true)
+      const response = await fetch('/api/skus')
+      if (response.ok) {
+        const data = await response.json()
+        setSkus(data.filter((sku: any) => sku.isActive !== false))
+      }
+    } catch (error) {
+      console.error('Error fetching SKUs:', error)
+      toast.error('Failed to load SKUs')
+    } finally {
+      setSkuLoading(false)
+    }
+  }
 
   const fetchInventory = async () => {
     try {
@@ -380,14 +421,20 @@ export default function WarehouseShipPage() {
                   {items.map((item) => (
                     <tr key={item.id}>
                       <td className="px-4 py-3">
-                        <input
-                          type="text"
+                        <select
                           value={item.skuCode}
                           onChange={(e) => updateItem(item.id, 'skuCode', e.target.value)}
                           className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                          placeholder="SKU code"
                           required
-                        />
+                          disabled={skuLoading}
+                        >
+                          <option value="">Select SKU...</option>
+                          {skus.map((sku) => (
+                            <option key={sku.id} value={sku.skuCode}>
+                              {sku.skuCode} - {sku.description}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -482,17 +529,10 @@ export default function WarehouseShipPage() {
                         <input
                           type="number"
                           value={item.units}
-                          onChange={(e) => updateItem(item.id, 'units', parseInt(e.target.value) || 0)}
-                          onKeyDown={(e) => {
-                            // Prevent decimal point and negative sign
-                            if (e.key === '.' || e.key === '-' || e.key === 'e' || e.key === 'E') {
-                              e.preventDefault()
-                            }
-                          }}
-                          className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full px-2 py-1 border rounded text-right bg-gray-100"
                           min="0"
-                          step="1"
-                          required
+                          readOnly
+                          title="Units are calculated based on cartons × units per carton"
                         />
                       </td>
                       <td className="px-4 py-3">

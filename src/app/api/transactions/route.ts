@@ -180,12 +180,16 @@ export async function POST(request: NextRequest) {
       // Get SKU (already validated above)
       const sku = await prisma.sku.findFirst({
         where: { skuCode: item.skuCode }
-      })!
+      })
+      
+      if (!sku) {
+        throw new Error(`SKU not found: ${item.skuCode}`)
+      }
 
       // Generate transaction ID in format similar to Excel data
       const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-      const sequence = transactions.length + 1
-      const transactionId = `${warehouse.code}-${type.slice(0, 3)}-${timestamp}-${sequence.toString().padStart(3, '0')}`
+      const sequenceNum: number = transactions.length + 1
+      const transactionId = `${warehouse.code}-${type.slice(0, 3)}-${timestamp}-${sequenceNum.toString().padStart(3, '0')}`
       
       // Calculate pallet values
       let calculatedStoragePalletsIn = null
@@ -229,11 +233,8 @@ export async function POST(request: NextRequest) {
           cartonsOut: type === 'SHIP' ? item.cartons : 0,
           storagePalletsIn: type === 'RECEIVE' ? (item.pallets || 0) : 0,
           shippingPalletsOut: type === 'SHIP' ? (item.pallets || 0) : 0,
-          calculatedStoragePalletsIn,
-          calculatedShippingPalletsOut,
           storageCartonsPerPallet: type === 'RECEIVE' ? item.storageCartonsPerPallet : null,
           shippingCartonsPerPallet: type === 'RECEIVE' ? item.shippingCartonsPerPallet : (type === 'SHIP' ? batchShippingCartonsPerPallet : null),
-          palletVarianceNotes,
           notes,
           transactionDate: new Date(date),
           createdById: session.user.id,

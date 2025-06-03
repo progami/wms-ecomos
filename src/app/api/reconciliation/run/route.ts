@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
 
         if (!hasLineItem) {
           const calculatedSum = calculatedCosts.find(c => c.costRateId === costRate.id)
-          const expectedAmount = calculatedSum?._sum.finalExpectedCost || 0
+          const expectedAmount = Number(calculatedSum?._sum.finalExpectedCost || 0)
 
           if (expectedAmount > 0) {
             reconciliations.push({

@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Amazon sync error:', error)
     return NextResponse.json(
-      { message: 'Failed to sync Amazon data', error: error.message },
+      { message: 'Failed to sync Amazon data', error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -39,6 +39,15 @@ export async function POST(request: NextRequest) {
 
 async function syncInventory() {
   try {
+    // Get current session
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     // Get FBA inventory from Amazon
     const inventoryData = await getInventory()
     
@@ -133,6 +142,7 @@ async function syncInventory() {
             // Create adjustment transaction
             await prisma.inventoryTransaction.create({
               data: {
+                transactionId: `AMZN-SYNC-${Date.now()}-${sku.skuCode}`,
                 warehouseId: amazonWarehouse.id,
                 skuId: sku.id,
                 batchLot: 'AMAZON-FBA',
@@ -140,8 +150,6 @@ async function syncInventory() {
                 referenceId: `AMZN-SYNC-${new Date().toISOString()}`,
                 cartonsIn: difference > 0 ? difference : 0,
                 cartonsOut: difference < 0 ? Math.abs(difference) : 0,
-                unitsIn: 0,
-                unitsOut: 0,
                 transactionDate: new Date(),
                 notes: `Amazon FBA sync - Fulfillable: ${item.inventoryDetails?.fulfillableQuantity || 0}, Reserved: ${item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0}`,
                 createdById: session.user.id
@@ -178,7 +186,7 @@ async function syncInventory() {
         console.error(`Error syncing item ${item.asin}:`, itemError)
         errors.push({
           asin: item.asin,
-          error: itemError.message
+          error: itemError instanceof Error ? itemError.message : 'Unknown error'
         })
       }
     }
@@ -245,7 +253,7 @@ async function syncProducts() {
         console.error(`Error updating product ${sku.asin}:`, itemError)
         errors.push({
           asin: sku.asin,
-          error: itemError.message
+          error: itemError instanceof Error ? itemError.message : 'Unknown error'
         })
       }
 

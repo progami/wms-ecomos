@@ -132,6 +132,7 @@ export default function UnifiedInventoryPage() {
           ? `/api/inventory/balances?date=${selectedDate}`
           : '/api/inventory/balances'
         
+        console.log('Fetching balances from:', balancesUrl)
         const balancesResponse = await fetch(balancesUrl)
         if (balancesResponse.ok) {
           const balancesData = await balancesResponse.json()
@@ -165,6 +166,7 @@ export default function UnifiedInventoryPage() {
             ? `/api/inventory/balances?date=${selectedDate}`
             : '/api/inventory/balances'
           
+          console.log('Fetching balances from:', url)
           const response = await fetch(url)
           if (response.ok) {
             const data = await response.json()
@@ -204,7 +206,7 @@ export default function UnifiedInventoryPage() {
     if (!hasInitialized && activeTab !== 'storage') {
       fetchData(true)
     }
-  }, [hasInitialized])
+  }, [hasInitialized, activeTab, fetchData])
   
   // Refetch when view mode or date changes
   useEffect(() => {
@@ -213,7 +215,7 @@ export default function UnifiedInventoryPage() {
       setDataCache({})
       fetchData(true)
     }
-  }, [viewMode, selectedDate])
+  }, [viewMode, selectedDate, fetchData, hasInitialized, activeTab])
   
   // Handle tab changes
   useEffect(() => {
@@ -221,7 +223,7 @@ export default function UnifiedInventoryPage() {
       // Use cached data if available, otherwise fetch
       fetchData(false)
     }
-  }, [activeTab])
+  }, [activeTab, hasInitialized, fetchData])
 
   // Filter inventory data
   const filteredInventory = inventoryData.filter(item => {
@@ -285,7 +287,14 @@ export default function UnifiedInventoryPage() {
       const params = new URLSearchParams({
         viewMode,
         ...(viewMode === 'point-in-time' && { date: selectedDate }),
-        ...filters
+        warehouse: filters.warehouse,
+        transactionType: filters.transactionType,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        minCartons: filters.minCartons,
+        maxCartons: filters.maxCartons,
+        showLowStock: String(filters.showLowStock),
+        showZeroStock: String(filters.showZeroStock)
       })
       window.open(`/api/export/ledger?${params}`, '_blank')
     }
@@ -840,7 +849,7 @@ export default function UnifiedInventoryPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -858,42 +867,33 @@ export default function UnifiedInventoryPage() {
                           )}
                         </button>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Transaction ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Warehouse
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         SKU
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Batch/Lot
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Reference
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Cartons In
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Cartons
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Cartons Out
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pallets In
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pallets Out
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pallets
                       </th>
                       {viewMode === 'point-in-time' && (
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Balance
                         </th>
                       )}
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         User
                       </th>
                     </tr>
@@ -901,82 +901,94 @@ export default function UnifiedInventoryPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAndSortedTransactions.map((transaction) => (
                       <tr key={transaction.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(transaction.transactionDate).toLocaleString('en-US', {
-                            timeZone: 'America/Chicago',
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                        <td className="px-4 py-3 text-sm">
+                          <div className="text-gray-900">
+                            {new Date(transaction.transactionDate).toLocaleDateString('en-US', {
+                              timeZone: 'America/Chicago',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(transaction.transactionDate).toLocaleTimeString('en-US', {
+                              timeZone: 'America/Chicago',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
-                          {transaction.transactionId}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             getTransactionColor(transaction.transactionType)
                           }`}>
                             {transaction.transactionType}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-4 py-3 text-sm text-gray-900">
                           {transaction.warehouse.name}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-4 py-3 text-sm">
                           <div>
-                            <div className="font-medium">{transaction.sku.skuCode}</div>
-                            <div className="text-xs text-gray-500">{transaction.sku.description}</div>
+                            <div className="font-medium text-gray-900">{transaction.sku.skuCode}</div>
+                            <div className="text-xs text-gray-500 truncate max-w-[200px]" title={transaction.sku.description}>
+                              {transaction.sku.description}
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-500">
                           {transaction.batchLot}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-500">
                           {transaction.referenceId}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {transaction.cartonsIn > 0 && (
-                            <span className="text-green-600 font-medium">
-                              +{transaction.cartonsIn.toLocaleString()}
-                            </span>
-                          )}
+                        <td className="px-4 py-3 text-sm text-center">
+                          <div className="space-y-1">
+                            {transaction.cartonsIn > 0 && (
+                              <div className="text-green-600 font-medium">
+                                +{transaction.cartonsIn.toLocaleString()}
+                              </div>
+                            )}
+                            {transaction.cartonsOut > 0 && (
+                              <div className="text-red-600 font-medium">
+                                -{transaction.cartonsOut.toLocaleString()}
+                              </div>
+                            )}
+                            {transaction.cartonsIn === 0 && transaction.cartonsOut === 0 && (
+                              <div className="text-gray-400">-</div>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {transaction.cartonsOut > 0 && (
-                            <span className="text-red-600 font-medium">
-                              -{transaction.cartonsOut.toLocaleString()}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {transaction.storagePalletsIn > 0 && (
-                            <span className="text-green-600 font-medium">
-                              +{transaction.storagePalletsIn}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {transaction.shippingPalletsOut > 0 && (
-                            <span className="text-red-600 font-medium">
-                              -{transaction.shippingPalletsOut}
-                            </span>
-                          )}
+                        <td className="px-4 py-3 text-sm text-center">
+                          <div className="space-y-1">
+                            {transaction.storagePalletsIn > 0 && (
+                              <div className="text-green-600 font-medium">
+                                +{transaction.storagePalletsIn}
+                              </div>
+                            )}
+                            {transaction.shippingPalletsOut > 0 && (
+                              <div className="text-red-600 font-medium">
+                                -{transaction.shippingPalletsOut}
+                              </div>
+                            )}
+                            {transaction.storagePalletsIn === 0 && transaction.shippingPalletsOut === 0 && (
+                              <div className="text-gray-400">-</div>
+                            )}
+                          </div>
                         </td>
                         {viewMode === 'point-in-time' && (
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
                             {transaction.runningBalance?.toLocaleString() || '-'}
                           </td>
                         )}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-500">
                           {transaction.createdBy.fullName}
                         </td>
                       </tr>
                     ))}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={viewMode === 'point-in-time' ? 13 : 12} className="px-6 py-12">
+                        <td colSpan={viewMode === 'point-in-time' ? 11 : 10} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"
