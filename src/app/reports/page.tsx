@@ -1,181 +1,156 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { FileText, Download, Package2, TrendingUp, Users, Calendar } from 'lucide-react'
+import { Download, Calendar, TrendingUp, Package, DollarSign, FileText } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { AdminReportsClient } from './client-page'
 import { prisma } from '@/lib/prisma'
 
-export default async function ReportsPage() {
+export default async function AdminReportsPage() {
   const session = await getServerSession(authOptions)
 
-  if (!session) {
+  if (!session || session.user.role !== 'admin') {
     redirect('/auth/login')
   }
 
-  // Both admin and staff can access reports
-  if (!['admin', 'staff'].includes(session.user.role)) {
-    redirect('/dashboard')
-  }
-
-  // Get summary statistics
-  const totalInventory = await prisma.inventoryBalance.aggregate({
-    _sum: { currentCartons: true }
-  })
-
-  const activeWarehouses = await prisma.warehouse.count()
-  const totalTransactions = await prisma.inventoryTransaction.count({
-    where: {
-      transactionDate: {
-        gte: new Date(new Date().setDate(new Date().getDate() - 30))
+  // Fetch current stats
+  const currentMonth = new Date()
+  const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+  
+  const [storageCost, movements, invoices] = await Promise.all([
+    // Total storage cost this month
+    prisma.storageLedger.aggregate({
+      where: {
+        weekEndingDate: {
+          gte: startOfMonth,
+          lte: currentMonth
+        }
+      },
+      _sum: {
+        calculatedWeeklyCost: true
       }
-    }
-  })
-
-  const reports = [
-    {
-      name: 'Executive Summary',
-      description: 'High-level overview of operations',
-      icon: FileText,
-      category: 'Executive',
-      access: ['admin', 'staff'],
-    },
-    {
-      name: 'Inventory Status Report',
-      description: 'Current stock levels across warehouses',
-      icon: Package2,
-      category: 'Operations',
-      access: ['admin', 'staff'],
-    },
-    {
-      name: 'Monthly Activity Report',
-      description: 'Transaction summary and trends',
-      icon: TrendingUp,
-      category: 'Operations',
-      access: ['admin', 'staff'],
-    },
-    {
-      name: 'Warehouse Performance',
-      description: 'Efficiency metrics by location',
-      icon: Users,
-      category: 'Analytics',
-      access: ['admin', 'staff'],
-    },
-    {
-      name: 'Cost Summary',
-      description: 'High-level cost overview',
-      icon: Calendar,
-      category: 'Financial',
-      access: ['admin', 'staff'],
-    },
-  ]
-
-  const userReports = reports.filter(r => r.access.includes(session.user.role))
+    }),
+    // Total movements this month
+    prisma.inventoryTransaction.count({
+      where: {
+        transactionDate: {
+          gte: startOfMonth,
+          lte: currentMonth
+        }
+      }
+    }),
+    // Invoices this month
+    prisma.invoice.count({
+      where: {
+        invoiceDate: {
+          gte: startOfMonth,
+          lte: currentMonth
+        }
+      }
+    })
+  ])
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Page Header with Description */}
-        <div className="bg-white border rounded-lg p-6">
-          <h1 className="text-3xl font-bold mb-2">Reports Center</h1>
-          <p className="text-muted-foreground mb-4">
-            Access operational and analytical reports
-          </p>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <FileText className="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-              <div className="text-sm text-blue-800">
-                <p className="font-semibold mb-1">About This Page:</p>
-                <p>Access pre-configured reports for warehouse operations, inventory status, and performance analytics. Download reports in various formats or view them directly in the browser. Reports are automatically updated with real-time data.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="dashboard-card bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-700">Total Inventory</p>
-                <h2 className="text-3xl font-bold text-blue-900 mt-1">
-                  {(totalInventory._sum.currentCartons || 0).toLocaleString()}
-                </h2>
-                <p className="text-xs text-blue-600 mt-1">Cartons across all locations</p>
-              </div>
-              <Package2 className="h-10 w-10 text-blue-400" />
-            </div>
-          </div>
-
-          <div className="dashboard-card bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-700">Active Warehouses</p>
-                <h2 className="text-3xl font-bold text-green-900 mt-1">{activeWarehouses}</h2>
-                <p className="text-xs text-green-600 mt-1">Operating locations</p>
-              </div>
-              <Users className="h-10 w-10 text-green-400" />
-            </div>
-          </div>
-
-          <div className="dashboard-card bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-700">Monthly Activity</p>
-                <h2 className="text-3xl font-bold text-purple-900 mt-1">{totalTransactions}</h2>
-                <p className="text-xs text-purple-600 mt-1">Transactions (30 days)</p>
-              </div>
-              <TrendingUp className="h-10 w-10 text-purple-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Available Reports */}
+        {/* Header */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Available Reports</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {userReports.map((report, index) => (
-              <div
-                key={index}
-                className="bg-white border rounded-lg p-6 hover:shadow-lg transition-all duration-200 hover:border-primary cursor-pointer group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <report.icon className="h-8 w-8 text-gray-400 group-hover:text-primary transition-colors" />
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    {report.category}
-                  </span>
-                </div>
-                <h3 className="font-semibold text-gray-900 group-hover:text-primary mb-1">
-                  {report.name}
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">{report.description}</p>
-                <button className="inline-flex items-center text-sm text-primary hover:text-primary/80 font-medium">
-                  <Download className="h-4 w-4 mr-1" />
-                  View Report
-                </button>
-              </div>
-            ))}
-          </div>
+          <h1 className="text-3xl font-bold">Reports & Analytics</h1>
+          <p className="text-muted-foreground">
+            Generate and view comprehensive reports
+          </p>
         </div>
 
-        {/* Quick Insights */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6 border">
-          <h3 className="text-lg font-semibold mb-4">Quick Insights</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white p-4 rounded-lg">
-              <p className="text-sm font-medium text-gray-700">Most Active Warehouse</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">FMC</p>
-              <p className="text-xs text-gray-500">Based on transaction volume</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg">
-              <p className="text-sm font-medium text-gray-700">Top SKU by Volume</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">CS 010</p>
-              <p className="text-xs text-gray-500">Highest inventory levels</p>
-            </div>
-          </div>
+        {/* Quick Stats */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <StatCard
+            title="Total Storage Cost"
+            value={`£${(storageCost._sum.calculatedWeeklyCost || 0).toFixed(2)}`}
+            period="This Month"
+            change="+12%"
+            icon={DollarSign}
+          />
+          <StatCard
+            title="Inventory Turnover"
+            value="4.2x"
+            period="Last 30 Days"
+            change="+0.5"
+            icon={TrendingUp}
+          />
+          <StatCard
+            title="Total Movements"
+            value={movements.toString()}
+            period="This Month"
+            change="+8%"
+            icon={Package}
+          />
+          <StatCard
+            title="Invoices Processed"
+            value={invoices.toString()}
+            period="This Month"
+            change="+15%"
+            icon={FileText}
+          />
         </div>
 
+        {/* Report Generation Section */}
+        <AdminReportsClient />
+
+        {/* Recent Reports */}
+        <div className="border rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Recently Generated Reports</h3>
+          <div className="text-sm text-muted-foreground">
+            No reports generated yet. Select a report type above to get started.
+          </div>
+        </div>
       </div>
     </DashboardLayout>
+  )
+}
+
+interface StatCardProps {
+  title: string
+  value: string
+  period: string
+  change: string
+  icon: React.ElementType
+}
+
+function StatCard({ title, value, period, change, icon: Icon }: StatCardProps) {
+  return (
+    <div className="border rounded-lg p-4">
+      <div className="flex items-center justify-between mb-2">
+        <Icon className="h-5 w-5 text-muted-foreground" />
+        <span className="text-xs text-green-600">{change}</span>
+      </div>
+      <h3 className="text-2xl font-bold">{value}</h3>
+      <p className="text-sm text-muted-foreground">{title}</p>
+      <p className="text-xs text-muted-foreground mt-1">{period}</p>
+    </div>
+  )
+}
+
+interface ReportItemProps {
+  title: string
+  description: string
+  icon: React.ElementType
+  onClick: () => void
+}
+
+function ReportItem({ title, description, icon: Icon, onClick }: ReportItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+    >
+      <div className="flex items-start gap-3">
+        <Icon className="h-5 w-5 text-muted-foreground mt-0.5" />
+        <div className="flex-1">
+          <h4 className="text-sm font-medium">{title}</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        </div>
+        <Download className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </button>
   )
 }

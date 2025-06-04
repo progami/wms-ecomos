@@ -38,19 +38,19 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
         title: 'Set Up Warehouses',
         description: 'Configure your warehouse locations and storage settings',
         icon: Package,
-        link: '/admin/settings/warehouses'
+        link: '/config/locations'
       },
       {
         title: 'Configure SKUs',
         description: 'Add product SKUs and set up tracking parameters',
         icon: Package,
-        link: '/admin/settings/skus'
+        link: '/config/products'
       },
       {
         title: 'Define Cost Rates',
         description: 'Set storage and handling rates for accurate billing',
         icon: DollarSign,
-        link: '/admin/settings/rates'
+        link: '/config/rates'
       },
     ],
     staff: [
@@ -58,13 +58,13 @@ export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
         title: 'Check Inventory',
         description: 'Review current stock levels and locations',
         icon: Package,
-        link: '/warehouse/inventory'
+        link: '/operations/inventory'
       },
       {
         title: 'Process Transactions',
         description: 'Receive shipments and ship orders',
         icon: Package,
-        link: '/warehouse/receive'
+        link: '/operations/receive'
       },
       {
         title: 'Process Invoices',

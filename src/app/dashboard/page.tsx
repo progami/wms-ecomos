@@ -229,7 +229,7 @@ function getQuickActions(role: string) {
     inventory: {
       title: 'Manage Inventory',
       description: 'View and update inventory levels',
-      href: '/warehouse/inventory',
+      href: '/operations/inventory',
       icon: Package2,
       bgColor: 'bg-blue-100',
       iconColor: 'text-blue-600'
@@ -237,7 +237,7 @@ function getQuickActions(role: string) {
     receive: {
       title: 'Receive Shipments',
       description: 'Process incoming inventory',
-      href: '/warehouse/receive',
+      href: '/operations/receive',
       icon: Package2,
       bgColor: 'bg-green-100',
       iconColor: 'text-green-600'
@@ -245,7 +245,7 @@ function getQuickActions(role: string) {
     ship: {
       title: 'Ship Orders',
       description: 'Process outbound shipments',
-      href: '/warehouse/ship',
+      href: '/operations/ship',
       icon: Package2,
       bgColor: 'bg-purple-100',
       iconColor: 'text-purple-600'
@@ -261,7 +261,7 @@ function getQuickActions(role: string) {
     rates: {
       title: 'Cost Rates',
       description: 'Manage warehouse rates',
-      href: '/admin/settings/rates',
+      href: '/config/rates',
       icon: DollarSign,
       bgColor: 'bg-emerald-100',
       iconColor: 'text-emerald-600'

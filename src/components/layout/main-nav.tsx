@@ -45,36 +45,44 @@ const navigation = {
     {
       title: 'Operations',
       items: [
-        { name: 'Ledger', href: '/warehouse/inventory', icon: BookOpen },
+        { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
+        { name: 'Receive Goods', href: '/operations/receive', icon: Package },
+        { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
       ]
     },
     {
       title: 'Finance',
       items: [
-        { name: 'Finance Dashboard', href: '/finance/dashboard', icon: DollarSign },
+        { name: 'Dashboard', href: '/finance/dashboard', icon: DollarSign },
         { name: 'Invoices', href: '/finance/invoices', icon: FileText },
         { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
       ]
     },
     {
-      title: 'Master Data',
+      title: 'Configuration',
       items: [
-        { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
-        { name: 'Warehouse Configs', href: '/admin/settings/warehouse-configs', icon: Building },
-        { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
+        { name: 'Products (SKUs)', href: '/config/products', icon: Package },
+        { name: 'Locations', href: '/config/locations', icon: Building },
+        { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
+        { name: 'Warehouse Configs', href: '/config/warehouse-configs', icon: Warehouse },
       ]
     },
     {
       title: 'Reports',
       items: [
-        { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+        { name: 'Reports', href: '/reports', icon: BarChart3 },
       ]
     },
     {
-      title: 'System',
+      title: 'Integrations',
+      items: [
+        { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
+      ]
+    },
+    {
+      title: 'Admin',
       items: [
         { name: 'Users', href: '/admin/users', icon: Users },
-        { name: 'Amazon Integration', href: '/admin/amazon', icon: Cloud },
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ]
     },
@@ -83,13 +91,15 @@ const navigation = {
     {
       title: '',
       items: [
-        { name: 'Dashboard', href: '/warehouse/dashboard', icon: Home },
+        { name: 'Dashboard', href: '/dashboard', icon: Home },
       ]
     },
     {
       title: 'Operations',
       items: [
-        { name: 'Ledger', href: '/warehouse/inventory', icon: BookOpen },
+        { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
+        { name: 'Receive Goods', href: '/operations/receive', icon: Package },
+        { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
       ]
     },
     {
@@ -100,18 +110,18 @@ const navigation = {
       ]
     },
     {
-      title: 'Master Data',
+      title: 'Configuration',
       items: [
-        { name: 'SKU Master', href: '/admin/settings/skus', icon: Package },
-        { name: 'Warehouse Configs', href: '/admin/settings/warehouse-configs', icon: Building },
-        { name: 'Cost Rates', href: '/admin/settings/rates', icon: DollarSign },
+        { name: 'Products (SKUs)', href: '/config/products', icon: Package },
+        { name: 'Locations', href: '/config/locations', icon: Building },
+        { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
+        { name: 'Warehouse Configs', href: '/config/warehouse-configs', icon: Warehouse },
       ]
     },
     {
-      title: 'Reports & Settings',
+      title: 'Reports',
       items: [
-        { name: 'Reports', href: '/warehouse/reports', icon: BarChart3 },
-        { name: 'Settings', href: '/warehouse/settings', icon: Settings },
+        { name: 'Reports', href: '/reports', icon: BarChart3 },
       ]
     },
   ] as NavSection[],

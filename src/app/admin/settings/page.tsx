@@ -96,26 +96,26 @@ export default function AdminSettingsPage() {
                 title="SKU Master"
                 description="Product definitions and specifications"
                 icon={Package}
-                href="/admin/settings/skus"
+                href="/config/products"
               />
               <SettingCard
                 title="Warehouses"
                 description="Manage warehouse locations"
                 icon={Building2}
-                href="/admin/settings/warehouses"
+                href="/config/locations"
               />
               <SettingCard
                 title="Warehouse Configurations"
                 description="Cartons per pallet settings for each SKU"
                 icon={Building2}
-                href="/admin/settings/warehouse-configs"
+                href="/config/warehouse-configs"
                 iconColor="text-purple-600"
               />
               <SettingCard
                 title="Cost Rates"
                 description="3PL pricing and rate structures"
                 icon={DollarSign}
-                href="/admin/settings/rates"
+                href="/config/rates"
               />
             </div>
           </div>
