@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/prisma'
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!session) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+    if (session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
     // First, get the Amazon warehouse to ensure we have the correct ID
@@ -38,50 +41,60 @@ export async function GET() {
       }
     })
 
-    // Get inventory balances for all warehouses
+    // Get inventory balances for all warehouses (excluding Amazon FBA)
     const inventoryBalances = await prisma.inventoryBalance.findMany({
+      where: {
+        warehouse: {
+          NOT: {
+            code: { in: ['AMZN-UK', 'AMZN'] }
+          }
+        }
+      },
       include: {
         warehouse: true,
         sku: true
       }
     })
     
-    console.log(`Found ${inventoryBalances.length} inventory balance records`)
+    console.log(`Found ${inventoryBalances.length} inventory balance records (excluding Amazon)`)
+    
+    // Get Amazon FBA inventory separately
+    let amazonInventory: any[] = []
+    if (amazonWarehouse) {
+      amazonInventory = await prisma.inventoryBalance.findMany({
+        where: {
+          warehouseId: amazonWarehouse.id
+        },
+        include: {
+          sku: true
+        }
+      })
+      console.log(`Found ${amazonInventory.length} Amazon FBA inventory records`)
+    }
 
     // Calculate inventory for each SKU
     const inventoryData = skus.map(sku => {
-      // Get all balances for this SKU
+      // Get warehouse balances (non-Amazon)
       const skuBalances = inventoryBalances.filter(balance => balance.skuId === sku.id)
       
-      // Calculate warehouse quantity (excluding Amazon FBA UK)
-      let warehouseCartons = 0
-      let amazonCartons = 0
-
-      skuBalances.forEach(balance => {
-        // Use warehouse ID for comparison if available, fallback to name/code
-        const isAmazonBalance = amazonWarehouse 
-          ? balance.warehouseId === amazonWarehouse.id
-          : (balance.warehouse.name === 'Amazon FBA UK' || balance.warehouse.code === 'AMZN-UK' || balance.warehouse.code === 'AMZN')
-
-        if (isAmazonBalance) {
-          amazonCartons += balance.currentCartons
-        } else {
-          warehouseCartons += balance.currentCartons
-        }
-      })
+      // Calculate total warehouse quantity (excluding Amazon)
+      const warehouseCartons = skuBalances.reduce((sum, balance) => sum + balance.currentCartons, 0)
+      
+      // Get Amazon FBA quantity
+      const amazonBalance = amazonInventory.find(balance => balance.skuId === sku.id)
+      const amazonUnits = amazonBalance?.currentUnits || 0
 
       // Convert cartons to units
       const unitsPerCarton = sku.unitsPerCarton || 1
       const warehouseUnits = Math.max(0, warehouseCartons * unitsPerCarton)
-      const amazonUnits = Math.max(0, amazonCartons * unitsPerCarton)
 
       return {
         sku: sku.skuCode,
         description: sku.description || '',
-        warehouseQty: warehouseUnits, // Now in units
-        amazonQty: amazonUnits, // Now in units
-        total: warehouseUnits + amazonUnits, // Sum instead of difference
-        unitsPerCarton: unitsPerCarton // Include for reference
+        warehouseQty: warehouseUnits, // Total from all non-Amazon warehouses
+        amazonQty: amazonUnits, // Amazon FBA units
+        total: warehouseUnits + amazonUnits, // Combined total
+        unitsPerCarton: unitsPerCarton
       }
     })
 

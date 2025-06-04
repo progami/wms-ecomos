@@ -5,12 +5,22 @@ let spApiClient: any = null
 
 export function getAmazonClient() {
   if (!spApiClient) {
+    // Check if we have the required credentials
+    if (!process.env.AMAZON_SP_APP_CLIENT_ID || !process.env.AMAZON_SP_APP_CLIENT_SECRET) {
+      throw new Error('Amazon SP-API credentials not configured. Please set AMAZON_SP_APP_CLIENT_ID and AMAZON_SP_APP_CLIENT_SECRET environment variables.')
+    }
+    
     spApiClient = new SellingPartnerAPI({
       region: process.env.AMAZON_REGION || 'eu-west-1',
       refresh_token: process.env.AMAZON_REFRESH_TOKEN,
+      credentials: {
+        SELLING_PARTNER_APP_CLIENT_ID: process.env.AMAZON_SP_APP_CLIENT_ID,
+        SELLING_PARTNER_APP_CLIENT_SECRET: process.env.AMAZON_SP_APP_CLIENT_SECRET
+      },
       options: {
         auto_request_tokens: true,
-        auto_request_throttled: true
+        auto_request_throttled: true,
+        use_sandbox: true // Enable sandbox mode for testing
       }
     })
   }

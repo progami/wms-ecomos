@@ -99,16 +99,36 @@ src/
 │   │   ├── types.ts
 │   │   └── index.ts
 │   │
-│   └── reports/
+│   ├── reports/
+│   │   ├── pages/
+│   │   │   └── reports.page.tsx
+│   │   ├── components/
+│   │   │   ├── report-generator.tsx
+│   │   │   └── export-button.tsx
+│   │   ├── api/
+│   │   │   └── reports/route.ts
+│   │   ├── services/
+│   │   │   └── report.service.ts
+│   │   ├── types.ts
+│   │   └── index.ts
+│   │
+│   └── amazon-integration/
 │       ├── pages/
-│       │   └── reports.page.tsx
+│       │   └── overview.page.tsx
 │       ├── components/
-│       │   ├── report-generator.tsx
-│       │   └── export-button.tsx
+│       │   ├── inventory-comparison-table.tsx
+│       │   └── sync-status.tsx
 │       ├── api/
-│       │   └── reports/route.ts
+│       │   ├── setup-warehouse/route.ts
+│       │   ├── sync-to-database/route.ts
+│       │   ├── inventory-comparison/route.ts
+│       │   └── sync/route.ts
 │       ├── services/
-│       │   └── report.service.ts
+│       │   ├── amazon-warehouse.service.ts
+│       │   ├── amazon-sync.service.ts
+│       │   └── amazon-inventory.service.ts
+│       ├── lib/
+│       │   └── amazon-client.ts
 │       ├── types.ts
 │       └── index.ts
 │
@@ -350,6 +370,65 @@ class StorageCostService {
 4. **Parallel Development**: Multiple features can progress simultaneously
 5. **Clear Contracts**: Module APIs define integration points
 
+## Amazon Integration Module Example
+
+### Module Structure
+```typescript
+// modules/amazon-integration/index.ts
+export { AmazonOverviewPage } from './pages/overview.page'
+export { amazonService } from './services/amazon.service'
+export type { AmazonInventoryItem, SyncResult } from './types'
+
+export const AMAZON_EVENTS = {
+  INVENTORY_SYNCED: 'amazon.inventory.synced',
+  WAREHOUSE_CREATED: 'amazon.warehouse.created',
+  SYNC_FAILED: 'amazon.sync.failed'
+} as const
+```
+
+### Service Implementation
+```typescript
+// modules/amazon-integration/services/amazon.service.ts
+import { eventBus } from '@/shared/events/event-bus'
+import { AMAZON_EVENTS } from '../'
+
+class AmazonService {
+  async syncInventory(): Promise<SyncResult> {
+    // Ensure warehouse exists
+    const warehouse = await this.ensureWarehouse()
+    
+    // Fetch from Amazon API
+    const inventory = await this.fetchInventory()
+    
+    // Update database
+    const result = await this.updateInventoryBalances(inventory)
+    
+    // Emit event for other modules
+    eventBus.emit(AMAZON_EVENTS.INVENTORY_SYNCED, {
+      warehouseId: warehouse.id,
+      itemsUpdated: result.synced,
+      timestamp: new Date()
+    })
+    
+    return result
+  }
+  
+  private async ensureWarehouse() {
+    // Implementation
+  }
+  
+  private async fetchInventory() {
+    // Use Amazon SP-API
+  }
+  
+  private async updateInventoryBalances(inventory: any[]) {
+    // Update database
+  }
+}
+
+export const amazonService = new AmazonService()
+```
+
 ## Migration Strategy
 
 ### Phase 1: Reorganize Files (No Code Changes)
@@ -371,5 +450,10 @@ class StorageCostService {
 - Implement repository pattern
 - Move Prisma calls to services
 - Define data ownership
+
+### Phase 5: Enable Parallel Development
+- Assign module ownership to different agents
+- Document module boundaries
+- Set up integration tests between modules
 
 This structure allows multiple AI agents to work on different modules with minimal conflicts while maintaining a clean, maintainable architecture.

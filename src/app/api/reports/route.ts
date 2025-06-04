@@ -239,8 +239,17 @@ async function generateCostSummary(period: string, warehouseId?: string) {
     },
   })
 
-  // Get warehouse names
-  const warehouses = await prisma.warehouse.findMany()
+  // Get warehouse names (excluding Amazon FBA)
+  const warehouses = await prisma.warehouse.findMany({
+    where: {
+      NOT: {
+        OR: [
+          { code: 'AMZN' },
+          { code: 'AMZN-UK' }
+        ]
+      }
+    }
+  })
   const warehouseMap = new Map(warehouses.map(w => [w.id, w.name]))
 
   return storageCosts.map(cost => ({
@@ -417,10 +426,19 @@ async function generateMonthlyBillingReport(period: string, warehouseId?: string
   const billingStart = new Date(year, month - 2, 16)
   const billingEnd = new Date(year, month - 1, 15)
 
-  // Get all warehouses
+  // Get all warehouses (excluding Amazon FBA)
   const warehouses = warehouseId 
     ? await prisma.warehouse.findMany({ where: { id: warehouseId } })
-    : await prisma.warehouse.findMany()
+    : await prisma.warehouse.findMany({
+        where: {
+          NOT: {
+            OR: [
+              { code: 'AMZN' },
+              { code: 'AMZN-UK' }
+            ]
+          }
+        }
+      })
 
   const billingData = await Promise.all(
     warehouses.map(async (warehouse) => {

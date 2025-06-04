@@ -244,9 +244,10 @@ const transactions = await inventoryAPI.getTransactions({ warehouseId })
 
 | Module | Primary Functions | Dependencies | Emits Events | Consumes Events |
 |--------|------------------|--------------|--------------|-----------------|
-| Inventory | Transactions, Balances | SKU, Warehouse | inventory.* | - |
+| Inventory | Transactions, Balances | SKU, Warehouse | inventory.* | amazon.inventory.synced |
 | Finance | Invoices, Reconciliation | - | finance.* | inventory.* |
 | Warehouse | Receive, Ship | Inventory API | - | - |
+| Amazon Integration | FBA Sync, Inventory Comparison | SKU, Warehouse | amazon.inventory.synced | - |
 | Admin | User Mgmt, Settings | All modules | admin.* | *.* |
 | Reports | Analytics, Exports | All modules (read) | - | *.* |
 

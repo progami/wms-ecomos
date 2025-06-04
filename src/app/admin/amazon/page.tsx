@@ -26,22 +26,53 @@ export default function AmazonIntegrationPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
   useEffect(() => {
-    const fetchInventoryComparison = async () => {
+    const fetchAndSyncInventory = async () => {
       setLoading(true)
       try {
+        // First ensure Amazon warehouse exists
+        const setupResponse = await fetch('/api/amazon/setup-warehouse', {
+          method: 'POST'
+        })
+        
+        if (!setupResponse.ok) {
+          throw new Error('Failed to setup Amazon warehouse')
+        }
+        
+        // Fetch inventory comparison
         const response = await fetch('/api/amazon/inventory-comparison')
         if (response.ok) {
           const data = await response.json()
           setInventory(data)
           setLastRefresh(new Date())
+          
+          // Automatically sync to database
+          const syncResponse = await fetch('/api/amazon/sync-to-database', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inventory: data })
+          })
+          
+          if (syncResponse.ok) {
+            const result = await syncResponse.json()
+            if (result.synced > 0) {
+              toast.success(`Updated ${result.synced} items in Amazon FBA warehouse`)
+            }
+          } else {
+            const errorData = await syncResponse.json()
+            console.error('Sync error:', errorData)
+          }
         } else {
           const errorData = await response.json()
           console.error('API Error:', errorData)
           toast.error(errorData.details || 'Failed to fetch inventory comparison')
         }
       } catch (error) {
-        toast.error('Error fetching inventory data')
-        console.error('Error:', error)
+        console.error('Error in fetchAndSyncInventory:', error)
+        if (error instanceof Error) {
+          toast.error(`Error: ${error.message}`)
+        } else {
+          toast.error('Error fetching inventory data')
+        }
       } finally {
         setLoading(false)
       }
@@ -49,7 +80,7 @@ export default function AmazonIntegrationPage() {
 
     // Only fetch if authenticated
     if (status === 'authenticated' && session?.user?.role === 'admin') {
-      fetchInventoryComparison()
+      fetchAndSyncInventory()
     }
   }, [status, session])
 
@@ -109,19 +140,50 @@ export default function AmazonIntegrationPage() {
             onClick={async () => {
               setLoading(true)
               try {
+                // First ensure Amazon warehouse exists
+                const setupResponse = await fetch('/api/amazon/setup-warehouse', {
+                  method: 'POST'
+                })
+                
+                if (!setupResponse.ok) {
+                  throw new Error('Failed to setup Amazon warehouse')
+                }
+                
+                // Fetch inventory comparison
                 const response = await fetch('/api/amazon/inventory-comparison')
                 if (response.ok) {
                   const data = await response.json()
                   setInventory(data)
                   setLastRefresh(new Date())
+                  
+                  // Automatically sync to database
+                  const syncResponse = await fetch('/api/amazon/sync-to-database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inventory: data })
+                  })
+                  
+                  if (syncResponse.ok) {
+                    const result = await syncResponse.json()
+                    if (result.synced > 0) {
+                      toast.success(`Updated ${result.synced} items in Amazon FBA warehouse`)
+                    }
+                  } else {
+                    const errorData = await syncResponse.json()
+                    console.error('Sync error:', errorData)
+                  }
                 } else {
                   const errorData = await response.json()
                   console.error('API Error:', errorData)
                   toast.error(errorData.details || 'Failed to fetch inventory comparison')
                 }
               } catch (error) {
-                toast.error('Error fetching inventory data')
-                console.error('Error:', error)
+                console.error('Error in refresh:', error)
+                if (error instanceof Error) {
+                  toast.error(`Error: ${error.message}`)
+                } else {
+                  toast.error('Error refreshing data')
+                }
               } finally {
                 setLoading(false)
               }
@@ -247,8 +309,12 @@ export default function AmazonIntegrationPage() {
         {/* Amazon API Status */}
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <p className="text-sm text-amber-800">
-            <strong>Amazon FBA Integration:</strong> Currently showing data from local database only. 
-            To sync live data from Amazon FBA, configure the Amazon SP-API credentials (SELLING_PARTNER_APP_CLIENT_ID and SELLING_PARTNER_APP_CLIENT_SECRET) in your environment variables.
+            <strong>Sandbox Mode Active:</strong> Currently using Amazon sandbox credentials. The API will return test data, not your actual FBA inventory.
+            <br />To see real inventory data, you need:
+            <br />• Production Client ID and Secret from Amazon Seller Central
+            <br />• Remove sandbox mode from the configuration
+            <br />
+            <br />Currently showing: Local database values only (all zeros if no data has been manually entered)
           </p>
         </div>
       </div>
