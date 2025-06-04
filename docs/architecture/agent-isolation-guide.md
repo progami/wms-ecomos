@@ -5,15 +5,18 @@ This guide provides recommendations for structuring the warehouse management sys
 
 ## Current Architecture Analysis
 
-### 1. Page-Based Structure (Good Foundation)
-The project already follows Next.js App Router conventions with page-based routing:
+### 1. Module-Based Structure (Current State)
+The project has been restructured into business domain modules:
 ```
 src/app/
-├── admin/           # Admin-only pages
-├── warehouse/       # Warehouse operations
-├── finance/         # Financial operations
+├── operations/      # Inventory, receive, ship operations
+├── finance/         # Invoices, reconciliation, financial dashboard
+├── config/          # Products, locations, rates, warehouse configs
+├── reports/         # Report generation and analytics
+├── integrations/    # Amazon FBA and other external integrations
+├── admin/           # User management and system settings
 ├── auth/           # Authentication
-└── api/            # API routes
+└── api/            # API routes organized by module
 ```
 
 ### 2. Shared Dependencies (Areas for Improvement)
@@ -43,29 +46,31 @@ export interface InventoryModule {
 }
 ```
 
-### 2. Vertical Slice Architecture
+### 2. Current Module Structure
 
-Organize code by feature/domain rather than technical layers:
+The codebase is already organized by business domains:
 
 ```
-src/
-├── modules/
-│   ├── inventory/
-│   │   ├── api/          # API routes for inventory
-│   │   ├── components/   # Inventory-specific components
-│   │   ├── pages/        # Inventory pages
-│   │   ├── hooks/        # Inventory-specific hooks
-│   │   ├── types/        # Inventory types
-│   │   ├── services/     # Business logic
-│   │   └── index.ts      # Module public API
-│   ├── finance/
-│   │   └── ... (same structure)
-│   └── warehouse/
-│       └── ... (same structure)
-└── shared/              # Truly shared code
-    ├── components/      # Generic UI components
-    ├── utils/          # Generic utilities
-    └── types/          # Shared types
+src/app/
+├── operations/          # Warehouse operations domain
+│   ├── inventory/       # Inventory ledger and balances
+│   ├── receive/         # Inbound shipment processing
+│   └── ship/           # Outbound shipment processing
+├── finance/            # Financial domain
+│   ├── dashboard/      # Financial metrics overview
+│   ├── invoices/       # Invoice management
+│   └── reconciliation/ # Cost reconciliation
+├── config/             # Configuration domain
+│   ├── products/       # SKU management
+│   ├── locations/      # Warehouse locations
+│   ├── rates/          # Cost rate configuration
+│   └── warehouse-configs/ # Pallet configurations
+├── reports/            # Analytics and reporting
+├── integrations/       # External integrations
+│   └── amazon/         # Amazon FBA sync
+└── admin/              # System administration
+    ├── users/          # User management
+    └── settings/       # System settings
 ```
 
 ### 3. Database Isolation Strategies
@@ -242,14 +247,14 @@ const transactions = await inventoryAPI.getTransactions({ warehouseId })
 
 ## Module Ownership Matrix
 
-| Module | Primary Functions | Dependencies | Emits Events | Consumes Events |
-|--------|------------------|--------------|--------------|-----------------|
-| Inventory | Transactions, Balances | SKU, Warehouse | inventory.* | amazon.inventory.synced |
-| Finance | Invoices, Reconciliation | - | finance.* | inventory.* |
-| Warehouse | Receive, Ship | Inventory API | - | - |
-| Amazon Integration | FBA Sync, Inventory Comparison | SKU, Warehouse | amazon.inventory.synced | - |
-| Admin | User Mgmt, Settings | All modules | admin.* | *.* |
-| Reports | Analytics, Exports | All modules (read) | - | *.* |
+| Module | Primary Functions | Dependencies | Branch Prefix | Owner |
+|--------|------------------|--------------|---------------|-------|
+| Operations | Inventory Ledger, Receive, Ship | SKU, Warehouse, Rates | `ops/` | Operations Agent |
+| Finance | Invoices, Reconciliation, Dashboard | Rates, Warehouses | `fin/` | Finance Agent |
+| Config | Products, Locations, Rates, Pallet Config | - | `cfg/` | Config Agent |
+| Reports | Analytics, Custom Reports, Exports | All modules (read) | `rpt/` | Reports Agent |
+| Integrations | Amazon FBA Sync | SKU, Warehouse | `int/` | Integration Agent |
+| Admin | User Management, System Settings | - | `adm/` | Admin Agent |
 
 ## Next Steps
 

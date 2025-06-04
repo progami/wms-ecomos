@@ -2,6 +2,17 @@
 
 A comprehensive warehouse management system built with Next.js, TypeScript, and PostgreSQL for managing inventory, billing, and operations across multiple warehouses.
 
+## 🏗️ Project Structure
+
+The system is organized into business domain modules:
+
+- **Operations** (`/operations`) - Inventory ledger, receive/ship goods
+- **Finance** (`/finance`) - Invoices, reconciliation, financial dashboard
+- **Configuration** (`/config`) - Products, locations, rates, warehouse configs
+- **Reports** (`/reports`) - Analytics and custom reporting
+- **Integrations** (`/integrations`) - Amazon FBA and external systems
+- **Admin** (`/admin`) - User management and system settings
+
 ## 🚀 Features
 
 ### Core Functionality
@@ -14,7 +25,7 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 
 ### Key Modules
 
-#### 📦 Inventory Management
+#### 📦 Operations Module
 - Real-time inventory tracking by SKU, warehouse, and batch
 - Receive and ship inventory with carton and pallet tracking
   - SKU selection via dropdown from master data
@@ -40,7 +51,7 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 - Pickup date tracking with reconciliation status
 - Chronological transaction enforcement (no backdating)
 
-#### 💰 Financial Management
+#### 💰 Finance Module
 - Create and manage invoices
 - Automatic invoice reconciliation
 - Cost rate management by warehouse and category
@@ -48,20 +59,29 @@ A comprehensive warehouse management system built with Next.js, TypeScript, and 
 - Financial dashboard with KPIs
 - Billing periods: 16th to 15th of following month
 
-#### 📊 Reporting & Analytics
+#### 📊 Reports Module
 - Inventory movement reports
 - Storage utilization reports
 - Financial reports with date ranges
 - Export functionality (CSV/Excel)
 - Real-time dashboards
 
-#### 🔧 Administration
-- User management (Admin/Staff roles)
-- SKU master data management
-- Warehouse configuration
+#### ⚙️ Configuration Module
+- SKU (Product) master data management
+- Warehouse locations and settings
 - Cost rate configuration with overlap detection
+- Warehouse-specific pallet configurations
+
+#### 🔄 Integrations Module
+- Amazon FBA inventory sync
+- Inventory comparison reports
+- Automated warehouse setup for Amazon FBA
+
+#### 🔧 Admin Module
+- User management (Admin/Staff roles)
 - System settings and preferences
 - Data export capabilities (no import functionality)
+- Security and access control
 
 ## 🛠️ Tech Stack
 
@@ -142,21 +162,24 @@ Visit `http://localhost:3000` to see the application.
 warehouse_management/
 ├── src/
 │   ├── app/                 # Next.js app directory
+│   │   ├── operations/     # Warehouse operations
+│   │   ├── finance/        # Financial management
+│   │   ├── config/         # Configuration pages
+│   │   ├── reports/        # Reporting module
+│   │   ├── integrations/   # External integrations
 │   │   ├── admin/          # Admin pages
 │   │   ├── api/            # API routes
-│   │   ├── auth/           # Authentication pages
-│   │   ├── dashboard/      # Main dashboard
-│   │   ├── finance/        # Finance module
-│   │   └── warehouse/      # Warehouse operations
+│   │   └── auth/           # Authentication
 │   ├── components/         # Reusable components
-│   ├── lib/               # Utility functions and configurations
-│   └── types/             # TypeScript type definitions
+│   ├── lib/               # Utility functions
+│   └── types/             # TypeScript types
 ├── prisma/
 │   ├── schema.prisma      # Database schema
-│   └── seed.ts           # Database seeding script
-├── scripts/              # User management scripts
-├── tests/               # Test files
-└── docs/                # Documentation
+│   └── migrations/        # Database migrations
+├── docs/                  # Documentation
+│   ├── architecture/      # System architecture
+│   └── BRANCHING_STRATEGY.md
+└── tests/                # Test files
 ```
 
 ## 👥 User Roles
@@ -356,9 +379,63 @@ Ensure all required environment variables are set in production.
 
 This project is proprietary software. All rights reserved.
 
+## 👨‍💻 Development Guidelines
+
+### Branching Strategy
+
+We follow a module-based branching strategy for multi-agent development:
+
+#### Branch Naming
+- `ops/{feature}` - Operations module
+- `fin/{feature}` - Finance module  
+- `cfg/{feature}` - Configuration module
+- `rpt/{feature}` - Reports module
+- `int/{feature}` - Integrations module
+- `adm/{feature}` - Admin module
+- `fix/{bug}` - Bug fixes
+- `docs/{update}` - Documentation
+
+#### Workflow
+1. Create feature branch from `main`
+2. Make changes within module boundaries
+3. Create pull request for review
+4. PR Master reviews and merges
+
+#### Module Boundaries
+Each module has specific directories it can modify:
+- Operations: `/operations`, `/api/inventory`, `/api/transactions`
+- Finance: `/finance`, `/api/invoices`, `/api/reconciliation`
+- Config: `/config`, `/api/skus`, `/api/warehouses`, `/api/rates`
+- Reports: `/reports`, `/api/reports` (read-only to other modules)
+- Integrations: `/integrations`, `/api/amazon`
+- Admin: `/admin`, `/api/users`, `/api/admin`
+
+See `docs/BRANCHING_STRATEGY.md` for complete details.
+
+### Commit Messages
+Follow conventional commits:
+```
+feat(ops): Add bulk receive functionality
+fix(fin): Correct invoice calculation
+docs(cfg): Update rate configuration guide
+```
+
+### Testing Requirements
+- All new features must have tests
+- Tests must pass before PR approval
+- Use module-specific test commands:
+  ```bash
+  npm run test:ops  # Operations tests
+  npm run test:fin  # Finance tests
+  npm run test:cfg  # Config tests
+  ```
+
 ## 🤝 Contributing
 
-Please contact the development team for contribution guidelines.
+Please refer to:
+- `docs/BRANCHING_STRATEGY.md` - Development workflow
+- `docs/architecture/` - System architecture
+- `ARCHITECTURE.md` - Module overview
 
 ## 📞 Support
 

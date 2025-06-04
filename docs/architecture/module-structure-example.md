@@ -1,26 +1,32 @@
 # Module Structure Implementation Example
 
-## Current vs Proposed Structure
+## Current Module-Based Structure
 
-### Current Structure (Technical Layers)
+### Current Structure (Business Domain Modules)
 ```
-src/
-├── app/
-│   ├── admin/
-│   ├── warehouse/
-│   └── finance/
-├── components/
-│   ├── ui/
-│   └── layout/
-├── lib/
-│   ├── auth.ts
-│   ├── prisma.ts
-│   └── utils.ts
-└── types/
-    └── index.ts
+src/app/
+├── operations/          # Warehouse operations
+│   ├── inventory/       # Inventory ledger & balances
+│   ├── receive/         # Inbound processing
+│   └── ship/           # Outbound processing
+├── finance/            # Financial management
+│   ├── dashboard/      # Financial overview
+│   ├── invoices/       # Invoice management
+│   └── reconciliation/ # Cost reconciliation
+├── config/             # Configuration
+│   ├── products/       # SKU management
+│   ├── locations/      # Warehouse locations
+│   ├── rates/          # Cost rates
+│   └── warehouse-configs/ # Pallet configs
+├── reports/            # Analytics & reporting
+├── integrations/       # External integrations
+│   └── amazon/         # Amazon FBA
+└── admin/              # System administration
+    ├── users/          # User management
+    └── settings/       # System settings
 ```
 
-### Proposed Structure (Feature Modules)
+### Enhanced Module Structure (Future State)
 ```
 src/
 ├── modules/
