@@ -9,8 +9,7 @@ The system is organized into business domain modules:
 - **Operations** (`/operations`) - Inventory ledger, receive/ship goods
 - **Finance** (`/finance`) - Invoices, reconciliation, financial dashboard
 - **Configuration** (`/config`) - Products, locations, rates, warehouse configs
-- **Reports** (`/reports`) - Analytics and custom reporting
-- **Integrations** (`/integrations`) - Amazon FBA and external systems
+- **Analytics** (`/reports` & `/integrations`) - Reports, Amazon FBA, data exports
 - **Admin** (`/admin`) - User management and system settings
 
 ## 🚀 Features

@@ -252,8 +252,7 @@ const transactions = await inventoryAPI.getTransactions({ warehouseId })
 | Operations | Inventory Ledger, Receive, Ship | SKU, Warehouse, Rates | `ops/` | Operations Agent |
 | Finance | Invoices, Reconciliation, Dashboard | Rates, Warehouses | `fin/` | Finance Agent |
 | Config | Products, Locations, Rates, Pallet Config | - | `cfg/` | Config Agent |
-| Reports | Analytics, Custom Reports, Exports | All modules (read) | `rpt/` | Reports Agent |
-| Integrations | Amazon FBA Sync | SKU, Warehouse | `int/` | Integration Agent |
+| Analytics | Reports, Amazon FBA, Exports | All modules (read) | `rpt/` or `int/` | Analytics Agent |
 | Admin | User Management, System Settings | - | `adm/` | Admin Agent |
 
 ## Next Steps

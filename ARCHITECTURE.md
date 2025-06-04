@@ -20,13 +20,12 @@ The application is organized into logical modules that reflect business domains:
 - **Cost Rates** (`/config/rates`) - 3PL pricing and rate structures
 - **Warehouse Configs** (`/config/warehouse-configs`) - Batch-specific pallet configurations
 
-### 4. Reports Module (`/reports`)
+### 4. Analytics Module (`/reports` & `/integrations`)
 - **Report Generator** (`/reports`) - Create custom reports with various filters
-
-### 5. Integrations Module (`/integrations`)
 - **Amazon FBA** (`/integrations/amazon`) - Sync inventory with Amazon FBA
+- **Data Exports** - CSV and Excel export functionality
 
-### 6. Admin Module (`/admin`)
+### 5. Admin Module (`/admin`)
 - **Users** (`/admin/users`) - User management and permissions
 - **Settings** (`/admin/settings`) - System-wide settings and configurations
 

@@ -51,6 +51,20 @@ claude-squad
 # Task: "Implement rate inheritance for warehouse configs in /config module"
 ```
 
+#### Analytics Agent (Reports + Integrations)
+```bash
+# Create new session: analytics-agent
+# Branch: rpt/custom-reports or int/amazon-updates
+# Task: "Work on analytics features in /reports and /integrations modules"
+```
+
+#### Admin Agent
+```bash
+# Create new session: adm-agent
+# Branch: adm/user-permissions
+# Task: "Enhance user permission system in /admin module"
+```
+
 ### 3. Agent Task Templates
 
 Use these templates when creating agent tasks:
@@ -107,6 +121,44 @@ Remember:
 - Changes to core entities need approval
 - Maintain backward compatibility
 - Update validation logic appropriately
+```
+
+#### Analytics Module Tasks (Reports + Integrations)
+```
+You are the Analytics Agent. You can ONLY modify files in:
+- /src/app/reports/*
+- /src/app/integrations/*
+- /src/components/reports/*
+- /src/app/api/reports/*
+- /src/app/api/export/*
+- /src/app/api/amazon/*
+- /src/lib/amazon/*
+
+Current task: [SPECIFIC TASK]
+Branch: rpt/[FEATURE-NAME] or int/[FEATURE-NAME]
+
+Remember:
+- Read-only access to all business data
+- Cannot modify core business logic
+- Focus on data aggregation and visualization
+- Use existing APIs to fetch data
+```
+
+#### Admin Module Tasks
+```
+You are the Admin Agent. You can ONLY modify files in:
+- /src/app/admin/*
+- /src/app/api/admin/*
+- /src/app/api/users/*
+- /src/lib/auth.ts (with caution)
+
+Current task: [SPECIFIC TASK]
+Branch: adm/[FEATURE-NAME]
+
+Remember:
+- Be extra careful with authentication changes
+- Document security implications
+- Test permission changes thoroughly
 ```
 
 ## PR Master Workflow with Claude Squad

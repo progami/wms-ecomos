@@ -68,14 +68,9 @@ const navigation = {
       ]
     },
     {
-      title: 'Reports',
+      title: 'Analytics',
       items: [
         { name: 'Reports', href: '/reports', icon: BarChart3 },
-      ]
-    },
-    {
-      title: 'Integrations',
-      items: [
         { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
       ]
     },
@@ -119,9 +114,10 @@ const navigation = {
       ]
     },
     {
-      title: 'Reports',
+      title: 'Analytics',
       items: [
         { name: 'Reports', href: '/reports', icon: BarChart3 },
+        { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
       ]
     },
   ] as NavSection[],

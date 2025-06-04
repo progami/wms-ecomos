@@ -13,8 +13,8 @@ Module prefixes:
 - `ops/` - Operations module (inventory, receive, ship)
 - `fin/` - Finance module (invoices, reconciliation)
 - `cfg/` - Configuration module (products, locations, rates)
-- `rpt/` - Reports module
-- `int/` - Integrations module (Amazon FBA)
+- `rpt/` - Analytics module - Reports
+- `int/` - Analytics module - Integrations (Amazon FBA)
 - `adm/` - Admin module
 - `fix/` - Bug fixes (any module)
 - `docs/` - Documentation updates
@@ -165,25 +165,25 @@ Relates to #456
 **Special permission needed:**
 - Modifying core entities (SKU, Warehouse models)
 
-### 4. Reports Module (`/reports`)
+### 4. Analytics Module (`/reports` & `/integrations`)
 **Can modify:**
 - `/src/app/reports/*`
+- `/src/app/integrations/*`
 - `/src/components/reports/*`
 - `/src/app/api/reports/*`
+- `/src/app/api/export/*`
+- `/src/app/api/amazon/*`
+- `/src/lib/amazon/*`
 
 **Read-only access to:**
 - All other modules (via APIs only)
 
-### 5. Integrations Module (`/integrations`)
-**Can modify:**
-- `/src/app/integrations/*`
-- `/src/app/api/amazon/*`
-- `/src/lib/amazon/*`
-
 **Cannot modify:**
-- Core inventory logic (use APIs)
+- Core business logic
+- Inventory transactions
+- Financial calculations
 
-### 6. Admin Module (`/admin`)
+### 5. Admin Module (`/admin`)
 **Can modify:**
 - `/src/app/admin/*`
 - `/src/app/api/admin/*`
