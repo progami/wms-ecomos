@@ -12,6 +12,11 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
+import { 
+  SHIPMENT_PLANNING_CONFIG, 
+  getStockUrgency, 
+  getUrgencyReason 
+} from '@/lib/config/shipment-planning'
 
 interface FBAStockItem {
   skuId: string
@@ -47,6 +52,7 @@ export default function ShipmentPlanningPage() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [showOnlyLowStock, setShowOnlyLowStock] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [lowStockCount, setLowStockCount] = useState(0)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -68,21 +74,30 @@ export default function ShipmentPlanningPage() {
         
         // Transform data to include analytics
         const enrichedData: FBAStockItem[] = data.map((item: any) => {
-          // Calculate days of stock (simplified - in real implementation would use actual sales data)
-          const dailySalesVelocity = Math.max(1, Math.floor(Math.random() * 20)) // Mock data
-          const daysOfStock = item.amazonQty > 0 ? Math.floor(item.amazonQty / dailySalesVelocity) : 0
+          // TODO: Replace with actual sales velocity from analytics
+          // For now, use a configurable default or 0 if not available
+          const dailySalesVelocity = item.dailySalesVelocity || SHIPMENT_PLANNING_CONFIG.DEFAULT_DAILY_SALES_VELOCITY
+          const daysOfStock = item.amazonQty > 0 && dailySalesVelocity > 0 
+            ? Math.floor(item.amazonQty / dailySalesVelocity) 
+            : 0
+          
+          // Use configuration values
+          const targetDaysOfStock = SHIPMENT_PLANNING_CONFIG.TARGET_DAYS_OF_STOCK
+          const reorderDays = SHIPMENT_PLANNING_CONFIG.REORDER_DAYS
+          const defaultCartonsPerPallet = item.cartonsPerPallet || SHIPMENT_PLANNING_CONFIG.DEFAULT_CARTONS_PER_PALLET
           
           // Calculate suggested shipment
-          const targetDaysOfStock = 30 // 30 days target
-          const reorderPoint = dailySalesVelocity * 14 // Reorder at 14 days
+          const reorderPoint = dailySalesVelocity * reorderDays
           const targetStock = dailySalesVelocity * targetDaysOfStock
           const suggestedUnits = Math.max(0, targetStock - item.amazonQty)
           const suggestedCartons = Math.ceil(suggestedUnits / (item.unitsPerCarton || 1))
           
           // Calculate optimal shipment size (round to pallet quantities)
-          const cartonsPerPallet = 48 // Default assumption
-          const optimalPallets = Math.max(1, Math.ceil(suggestedCartons / cartonsPerPallet))
-          const optimalCartons = optimalPallets * cartonsPerPallet
+          const optimalPallets = suggestedCartons > 0 
+            ? Math.max(SHIPMENT_PLANNING_CONFIG.MINIMUM_PALLETS_TO_SHIP, 
+                      Math.ceil(suggestedCartons / defaultCartonsPerPallet))
+            : 0
+          const optimalCartons = optimalPallets * defaultCartonsPerPallet
 
           return {
             skuId: item.skuId,
@@ -102,6 +117,13 @@ export default function ShipmentPlanningPage() {
         
         setStockItems(enrichedData)
         generateSuggestions(enrichedData)
+        
+        // Count low stock items
+        const lowStock = enrichedData.filter(item => 
+          item.daysOfStock <= SHIPMENT_PLANNING_CONFIG.LOW_STOCK_THRESHOLD_DAYS && 
+          item.warehouseStock > 0
+        )
+        setLowStockCount(lowStock.length)
       }
     } catch (error) {
       console.error('Error fetching stock data:', error)
@@ -115,19 +137,8 @@ export default function ShipmentPlanningPage() {
     const newSuggestions: ShipmentSuggestion[] = []
     
     items.forEach(item => {
-      let urgency: 'critical' | 'high' | 'medium' | 'low' = 'low'
-      let reason = ''
-      
-      if (item.daysOfStock <= 7) {
-        urgency = 'critical'
-        reason = `Only ${item.daysOfStock} days of stock remaining`
-      } else if (item.daysOfStock <= 14) {
-        urgency = 'high'
-        reason = `Stock will run out in ${item.daysOfStock} days`
-      } else if (item.daysOfStock <= 21) {
-        urgency = 'medium'
-        reason = `Approaching reorder point (${item.daysOfStock} days left)`
-      }
+      const urgency = getStockUrgency(item.daysOfStock)
+      const reason = getUrgencyReason(item.daysOfStock, urgency)
       
       if (urgency !== 'low' && item.warehouseStock > 0) {
         newSuggestions.push({
@@ -203,15 +214,15 @@ export default function ShipmentPlanningPage() {
       item.skuCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase())
     
-    const matchesStockFilter = !showOnlyLowStock || item.daysOfStock <= 21
+    const matchesStockFilter = !showOnlyLowStock || item.daysOfStock <= SHIPMENT_PLANNING_CONFIG.LOW_STOCK_THRESHOLD_DAYS
     
     return matchesSearch && matchesStockFilter
   })
 
   const getStockStatusColor = (daysOfStock: number) => {
-    if (daysOfStock <= 7) return 'text-red-600'
-    if (daysOfStock <= 14) return 'text-orange-600'
-    if (daysOfStock <= 21) return 'text-yellow-600'
+    if (daysOfStock <= SHIPMENT_PLANNING_CONFIG.URGENCY_LEVELS.CRITICAL) return 'text-red-600'
+    if (daysOfStock <= SHIPMENT_PLANNING_CONFIG.URGENCY_LEVELS.HIGH) return 'text-orange-600'
+    if (daysOfStock <= SHIPMENT_PLANNING_CONFIG.URGENCY_LEVELS.MEDIUM) return 'text-yellow-600'
     return 'text-green-600'
   }
 
@@ -239,7 +250,16 @@ export default function ShipmentPlanningPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
-          title="FBA Shipment Planning"
+          title={
+            <div className="flex items-center gap-3">
+              FBA Shipment Planning
+              {lowStockCount > 0 && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  {lowStockCount} items below {SHIPMENT_PLANNING_CONFIG.LOW_STOCK_THRESHOLD_DAYS} days
+                </span>
+              )}
+            </div>
+          }
           subtitle="Monitor FBA stock levels and plan replenishments"
           icon={TrendingUp}
           iconColor="text-purple-600"
@@ -403,7 +423,7 @@ export default function ShipmentPlanningPage() {
                           {item.optimalShipmentCartons} cartons
                         </div>
                         <div className="text-xs text-gray-500">
-                          ({Math.ceil(item.optimalShipmentCartons / 48)} pallets)
+                          ({Math.ceil(item.optimalShipmentCartons / SHIPMENT_PLANNING_CONFIG.DEFAULT_CARTONS_PER_PALLET)} pallets)
                         </div>
                       </div>
                     ) : (
