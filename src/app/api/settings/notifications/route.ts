@@ -3,30 +3,52 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 
+interface NotificationSettings {
+  emailEnabled: boolean
+  smsEnabled: boolean
+  pushEnabled: boolean
+  lowStockAlerts: boolean
+  newTransactionAlerts: boolean
+  dailyReports: boolean
+  weeklyReports: boolean
+  monthlyReports: boolean
+  alertRecipients: string[]
+  reportRecipients: string[]
+}
+
+// Default notification settings
+const DEFAULT_SETTINGS: NotificationSettings = {
+  emailEnabled: true,
+  smsEnabled: false,
+  pushEnabled: true,
+  lowStockAlerts: true,
+  newTransactionAlerts: false,
+  dailyReports: false,
+  weeklyReports: true,
+  monthlyReports: true,
+  alertRecipients: [],
+  reportRecipients: [],
+}
+
 // GET /api/settings/notifications - Get notification settings
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'admin') {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // In a real app, this would fetch from a settings table
-    // For now, return default values
-    const settings = {
-      emailEnabled: true,
-      smsEnabled: false,
-      pushEnabled: true,
-      lowStockAlerts: true,
-      newTransactionAlerts: false,
-      dailyReports: false,
-      weeklyReports: true,
-      monthlyReports: true,
-      alertRecipients: ['admin@example.com'],
-      reportRecipients: ['reports@example.com'],
+    // Check if settings exist in database
+    const settings = await prisma.settings.findFirst({
+      where: { key: 'notifications' }
+    })
+
+    if (settings && settings.value) {
+      return NextResponse.json(settings.value)
     }
 
-    return NextResponse.json(settings)
+    // Return default settings if none exist
+    return NextResponse.json(DEFAULT_SETTINGS)
   } catch (error) {
     console.error('Error fetching notification settings:', error)
     return NextResponse.json(
@@ -44,12 +66,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const settings = await req.json()
+    const body = await req.json() as NotificationSettings
 
     // Validate settings
-    if (typeof settings.emailEnabled !== 'boolean' ||
-        typeof settings.smsEnabled !== 'boolean' ||
-        typeof settings.pushEnabled !== 'boolean') {
+    if (typeof body.emailEnabled !== 'boolean' ||
+        typeof body.smsEnabled !== 'boolean' ||
+        typeof body.pushEnabled !== 'boolean') {
       return NextResponse.json(
         { error: 'Invalid settings format' },
         { status: 400 }
@@ -58,29 +80,51 @@ export async function POST(req: NextRequest) {
 
     // Validate email addresses
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const allEmails = [...settings.alertRecipients, ...settings.reportRecipients]
-    for (const email of allEmails) {
+    
+    for (const email of body.alertRecipients) {
       if (!emailRegex.test(email)) {
         return NextResponse.json(
-          { error: `Invalid email address: ${email}` },
+          { error: `Invalid alert recipient email: ${email}` },
+          { status: 400 }
+        )
+      }
+    }
+    
+    for (const email of body.reportRecipients) {
+      if (!emailRegex.test(email)) {
+        return NextResponse.json(
+          { error: `Invalid report recipient email: ${email}` },
           { status: 400 }
         )
       }
     }
 
-    // In a real app, this would save to a database table
-    // For now, we'll just simulate success
-    
-    // Log the settings for debugging
-    console.log('Saving notification settings:', settings)
+    // At least one notification method should be enabled
+    if (!body.emailEnabled && !body.smsEnabled && !body.pushEnabled) {
+      return NextResponse.json(
+        { error: 'At least one notification method must be enabled' },
+        { status: 400 }
+      )
+    }
 
-    // Simulate async save
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Save or update settings
+    const updatedSettings = await prisma.settings.upsert({
+      where: { key: 'notifications' },
+      update: {
+        value: body,
+        updatedAt: new Date()
+      },
+      create: {
+        key: 'notifications',
+        value: body,
+        description: 'System notification settings'
+      }
+    })
 
     return NextResponse.json({
       success: true,
       message: 'Notification settings saved successfully',
-      settings
+      settings: updatedSettings.value
     })
   } catch (error) {
     console.error('Error saving notification settings:', error)

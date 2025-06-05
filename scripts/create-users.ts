@@ -40,7 +40,7 @@ async function main() {
         email: 'hashar@warehouse.com',
         passwordHash: staffPassword,
         fullName: 'Hashar (Finance Manager)',
-        role: 'finance_admin' as any, // Use old role that exists
+        role: 'staff', // Finance staff role
         isActive: true,
       },
     })
@@ -64,7 +64,7 @@ async function main() {
         email: 'umair@warehouse.com',
         passwordHash: staffPassword,
         fullName: 'Umair (Operations Manager)',
-        role: 'warehouse_staff' as any, // Use old role that exists
+        role: 'staff', // Operations staff role
         warehouseId: warehouse?.id,
         isActive: true,
       },

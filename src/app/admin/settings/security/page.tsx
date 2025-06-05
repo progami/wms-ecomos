@@ -53,11 +53,15 @@ export default function SecuritySettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      // In a real app, this would fetch from an API
-      // For now, we'll use default values
-      setLoading(false)
+      const response = await fetch('/api/settings/security')
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings')
+      }
+      const data = await response.json()
+      setSettings(data)
     } catch (error) {
       toast.error('Failed to load security settings')
+    } finally {
       setLoading(false)
     }
   }
@@ -65,11 +69,22 @@ export default function SecuritySettingsPage() {
   const saveSettings = async () => {
     setSaving(true)
     try {
-      // In a real app, this would save to an API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const response = await fetch('/api/settings/security', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings),
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save settings')
+      }
+      
       toast.success('Security settings saved successfully')
-    } catch (error) {
-      toast.error('Failed to save security settings')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save security settings')
     } finally {
       setSaving(false)
     }

@@ -51,6 +51,7 @@ model Warehouse {
   storageLedgerEntries  StorageLedger[]
   users                 User[]
   warehouseSkuConfigs   WarehouseSkuConfig[]
+  notifications         WarehouseNotification[]
 
   @@map("warehouses")
 }
@@ -269,11 +270,24 @@ model Invoice {
   createdAt          DateTime                @default(now()) @map("created_at")
   updatedAt          DateTime                @updatedAt @map("updated_at")
   createdById        String                  @map("created_by")
+  paymentMethod      String?                 @map("payment_method")
+  paymentReference   String?                 @map("payment_reference")
+  paymentDate        DateTime?               @map("payment_date") @db.Date
+  paidAt             DateTime?               @map("paid_at")
+  paidBy             String?                 @map("paid_by")
+  disputedAt         DateTime?               @map("disputed_at")
+  disputedBy         String?                 @map("disputed_by")
   lineItems          InvoiceLineItem[]
   reconciliations    InvoiceReconciliation[]
+  disputes           InvoiceDispute[]
+  auditLogs          InvoiceAuditLog[]
+  notifications      WarehouseNotification[]
   createdBy          User                    @relation(fields: [createdById], references: [id])
   warehouse          Warehouse               @relation(fields: [warehouseId], references: [id])
 
+  @@index([paymentDate], map: "idx_invoices_payment_date")
+  @@index([paidAt], map: "idx_invoices_paid_at")
+  @@index([disputedAt], map: "idx_invoices_disputed_at")
   @@map("invoices")
 }
 
@@ -293,20 +307,24 @@ model InvoiceLineItem {
 }
 
 model InvoiceReconciliation {
-  id              String               @id @default(uuid())
-  invoiceId       String               @map("invoice_id")
-  costCategory    CostCategory         @map("cost_category")
-  costName        String               @map("cost_name")
-  expectedAmount  Decimal              @map("expected_amount") @db.Decimal(12, 2)
-  invoicedAmount  Decimal              @map("invoiced_amount") @db.Decimal(12, 2)
-  difference      Decimal              @db.Decimal(12, 2)
-  status          ReconciliationStatus
-  resolutionNotes String?              @map("resolution_notes")
-  resolvedById    String?              @map("resolved_by")
-  resolvedAt      DateTime?            @map("resolved_at")
-  createdAt       DateTime             @default(now()) @map("created_at")
-  invoice         Invoice              @relation(fields: [invoiceId], references: [id])
-  resolvedBy      User?                @relation("ReconciliationResolver", fields: [resolvedById], references: [id])
+  id               String               @id @default(uuid())
+  invoiceId        String               @map("invoice_id")
+  costCategory     CostCategory         @map("cost_category")
+  costName         String               @map("cost_name")
+  expectedAmount   Decimal              @map("expected_amount") @db.Decimal(12, 2)
+  invoicedAmount   Decimal              @map("invoiced_amount") @db.Decimal(12, 2)
+  difference       Decimal              @db.Decimal(12, 2)
+  status           ReconciliationStatus
+  resolutionNotes  String?              @map("resolution_notes")
+  resolvedById     String?              @map("resolved_by")
+  resolvedAt       DateTime?            @map("resolved_at")
+  suggestedAmount  Decimal?             @map("suggested_amount") @db.Decimal(12, 2)
+  expectedQuantity Decimal?             @map("expected_quantity") @db.Decimal(12, 2)
+  invoicedQuantity Decimal?             @map("invoiced_quantity") @db.Decimal(12, 2)
+  unitRate         Decimal?             @map("unit_rate") @db.Decimal(10, 2)
+  createdAt        DateTime             @default(now()) @map("created_at")
+  invoice          Invoice              @relation(fields: [invoiceId], references: [id])
+  resolvedBy       User?                @relation("ReconciliationResolver", fields: [resolvedById], references: [id])
 
   @@map("invoice_reconciliations")
 }
@@ -338,6 +356,17 @@ model inventory_audit_log {
   error_message  String?
   old_data       Json?
   new_data       Json?
+}
+
+model Settings {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }
 
 enum UserRole {
@@ -374,4 +403,109 @@ enum ReconciliationStatus {
   match
   overbilled
   underbilled
+}
+
+enum DisputeStatus {
+  open
+  resolved
+  escalated
+}
+
+enum InvoiceAction {
+  CREATED
+  UPDATED
+  ACCEPTED
+  DISPUTED
+  RESOLVED
+  PAID
+}
+
+enum NotificationType {
+  INVOICE_DISPUTED
+  RECONCILIATION_COMPLETE
+  PAYMENT_RECEIVED
+  DISPUTE_RESOLVED
+}
+
+enum ResolutionType {
+  ACCEPTED
+  REJECTED
+  PARTIAL_ACCEPT
+  ESCALATED
+}
+
+model InvoiceDispute {
+  id                 String               @id @default(uuid())
+  invoiceId          String               @map("invoice_id")
+  disputedBy         String               @map("disputed_by")
+  disputedAt         DateTime             @default(now()) @map("disputed_at")
+  reason             String
+  disputedAmount     Decimal              @map("disputed_amount") @db.Decimal(12, 2)
+  lineItemsDisputed  Int                  @default(0) @map("line_items_disputed")
+  status             DisputeStatus        @default(open)
+  contactedWarehouse Boolean              @default(false) @map("contacted_warehouse")
+  resolutionNotes    String?              @map("resolution_notes")
+  resolvedBy         String?              @map("resolved_by")
+  resolvedAt         DateTime?            @map("resolved_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  invoice            Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  resolutions        DisputeResolution[]
+
+  @@index([invoiceId], map: "idx_invoice_disputes_invoice_id")
+  @@index([status], map: "idx_invoice_disputes_status")
+  @@index([disputedAt], map: "idx_invoice_disputes_disputed_at")
+  @@map("invoice_disputes")
+}
+
+model InvoiceAuditLog {
+  id          String            @id @default(uuid())
+  invoiceId   String            @map("invoice_id")
+  action      InvoiceAction
+  performedBy String            @map("performed_by")
+  performedAt DateTime          @default(now()) @map("performed_at")
+  details     Json?             @db.JsonB
+  createdAt   DateTime          @default(now()) @map("created_at")
+  invoice     Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId], map: "idx_invoice_audit_logs_invoice_id")
+  @@index([action], map: "idx_invoice_audit_logs_action")
+  @@index([performedAt], map: "idx_invoice_audit_logs_performed_at")
+  @@map("invoice_audit_logs")
+}
+
+model WarehouseNotification {
+  id               String            @id @default(uuid())
+  warehouseId      String            @map("warehouse_id")
+  type             NotificationType
+  title            String
+  message          String
+  relatedInvoiceId String?           @map("related_invoice_id")
+  read             Boolean           @default(false)
+  readAt           DateTime?         @map("read_at")
+  readBy           String?           @map("read_by")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  warehouse        Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  relatedInvoice   Invoice?          @relation(fields: [relatedInvoiceId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId], map: "idx_warehouse_notifications_warehouse_id")
+  @@index([type], map: "idx_warehouse_notifications_type")
+  @@index([read], map: "idx_warehouse_notifications_read")
+  @@index([createdAt], map: "idx_warehouse_notifications_created_at")
+  @@map("warehouse_notifications")
+}
+
+model DisputeResolution {
+  id               String              @id @default(uuid())
+  disputeId        String              @map("dispute_id")
+  resolutionType   ResolutionType
+  resolutionAmount Decimal?            @map("resolution_amount") @db.Decimal(12, 2)
+  resolutionNotes  String?             @map("resolution_notes")
+  resolvedBy       String              @map("resolved_by")
+  resolvedAt       DateTime            @default(now()) @map("resolved_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  dispute          InvoiceDispute      @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId], map: "idx_dispute_resolutions_dispute_id")
+  @@map("dispute_resolutions")
 }
