@@ -35,7 +35,7 @@ interface Transaction {
   isReconciled: boolean
   transactionType: 'RECEIVE' | 'SHIP' | 'ADJUST_IN' | 'ADJUST_OUT'
   warehouse: { id: string; name: string }
-  sku: { id: string; skuCode: string; description: string }
+  sku: { id: string; skuCode: string; description: string; unitsPerCarton: number }
   batchLot: string
   referenceId: string
   cartonsIn: number
@@ -46,6 +46,10 @@ interface Transaction {
   createdBy: { id: string; fullName: string }
   createdAt: string
   runningBalance?: number
+  shipName?: string | null
+  containerNumber?: string | null
+  storageCartonsPerPallet?: number | null
+  shippingCartonsPerPallet?: number | null
 }
 
 export default function UnifiedInventoryPage() {
@@ -258,7 +262,9 @@ export default function UnifiedInventoryPage() {
             !transaction.sku.description.toLowerCase().includes(query) &&
             !transaction.batchLot.toLowerCase().includes(query) &&
             !transaction.referenceId.toLowerCase().includes(query) &&
-            !transaction.warehouse.name.toLowerCase().includes(query)) {
+            !transaction.warehouse.name.toLowerCase().includes(query) &&
+            !(transaction.shipName?.toLowerCase().includes(query)) &&
+            !(transaction.containerNumber?.toLowerCase().includes(query))) {
           return false
         }
       }
@@ -551,7 +557,7 @@ export default function UnifiedInventoryPage() {
                   type="text"
                   placeholder={activeTab === 'balances' 
                     ? "Search by SKU, description, batch, or warehouse..."
-                    : "Search by SKU, description, batch, reference, or warehouse..."}
+                    : "Search by SKU, description, batch, reference, warehouse, ship, or container..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -976,6 +982,15 @@ export default function UnifiedInventoryPage() {
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Pallets
                       </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Units
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ship/Container
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Pallet Config
+                      </th>
                       {viewMode === 'point-in-time' && (
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Balance
@@ -1101,6 +1116,61 @@ export default function UnifiedInventoryPage() {
                             )}
                           </div>
                         </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <div className="space-y-1">
+                            {transaction.cartonsIn > 0 && (
+                              <div className="text-green-600 font-medium">
+                                +{(transaction.cartonsIn * (transaction.sku?.unitsPerCarton || 1)).toLocaleString()}
+                              </div>
+                            )}
+                            {transaction.cartonsOut > 0 && (
+                              <div className="text-red-600 font-medium">
+                                -{(transaction.cartonsOut * (transaction.sku?.unitsPerCarton || 1)).toLocaleString()}
+                              </div>
+                            )}
+                            {transaction.cartonsIn === 0 && transaction.cartonsOut === 0 && (
+                              <div className="text-gray-400">-</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {(transaction.shipName || transaction.containerNumber) ? (
+                            <div className="text-xs">
+                              {transaction.shipName && (
+                                <div className="text-gray-700" title="Ship Name">
+                                  {transaction.shipName}
+                                </div>
+                              )}
+                              {transaction.containerNumber && (
+                                <div className="text-gray-500" title="Container Number">
+                                  {transaction.containerNumber}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="text-xs text-gray-600">
+                            {(transaction.storageCartonsPerPallet || transaction.shippingCartonsPerPallet) ? (
+                              <div className="space-y-1">
+                                {transaction.storageCartonsPerPallet && (
+                                  <div title="Storage cartons per pallet">
+                                    S: {transaction.storageCartonsPerPallet}
+                                  </div>
+                                )}
+                                {transaction.shippingCartonsPerPallet && (
+                                  <div title="Shipping cartons per pallet">
+                                    P: {transaction.shippingCartonsPerPallet}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </div>
+                        </td>
                         {viewMode === 'point-in-time' && (
                           <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
                             {transaction.runningBalance?.toLocaleString() || '-'}
@@ -1118,7 +1188,7 @@ export default function UnifiedInventoryPage() {
                     ))}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={viewMode === 'point-in-time' ? 14 : 13} className="px-6 py-12">
+                        <td colSpan={viewMode === 'point-in-time' ? 17 : 16} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"
