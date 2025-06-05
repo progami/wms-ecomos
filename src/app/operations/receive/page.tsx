@@ -19,7 +19,7 @@ interface Attachment {
   type: string
   size: number
   data?: string
-  category: 'packing_list' | 'commercial_invoice' | 'delivery_note' | 'cube_master' | 'transport_certificate' | 'other'
+  category: 'packing_list' | 'commercial_invoice' | 'delivery_note' | 'cube_master' | 'transaction_certificate' | 'other'
 }
 
 export default function WarehouseReceivePage() {
@@ -36,7 +36,7 @@ export default function WarehouseReceivePage() {
   const [commercialInvoiceAttachment, setCommercialInvoiceAttachment] = useState<Attachment | null>(null)
   const [deliveryNoteAttachment, setDeliveryNoteAttachment] = useState<Attachment | null>(null)
   const [cubeMasterAttachment, setCubeMasterAttachment] = useState<Attachment | null>(null)
-  const [transportCertificateAttachment, setTransportCertificateAttachment] = useState<Attachment | null>(null)
+  const [transactionCertificateAttachment, setTransactionCertificateAttachment] = useState<Attachment | null>(null)
   const [items, setItems] = useState([
     { 
       id: 1, 
@@ -154,8 +154,8 @@ export default function WarehouseReceivePage() {
         case 'cube_master':
           setCubeMasterAttachment(attachment)
           break
-        case 'transport_certificate':
-          setTransportCertificateAttachment(attachment)
+        case 'transaction_certificate':
+          setTransactionCertificateAttachment(attachment)
           break
         default:
           setAttachments([...attachments, attachment])
@@ -172,7 +172,7 @@ export default function WarehouseReceivePage() {
       case 'commercial_invoice': return 'Commercial Invoice'
       case 'delivery_note': return 'Delivery Note'
       case 'cube_master': return 'Cube Master Stacking Style'
-      case 'transport_certificate': return 'Transport Certificate'
+      case 'transaction_certificate': return 'Transaction Certificate'
       case 'other': return 'Other Document'
     }
   }
@@ -191,8 +191,8 @@ export default function WarehouseReceivePage() {
       case 'cube_master':
         setCubeMasterAttachment(null)
         break
-      case 'transport_certificate':
-        setTransportCertificateAttachment(null)
+      case 'transaction_certificate':
+        setTransactionCertificateAttachment(null)
         break
     }
   }
@@ -408,7 +408,7 @@ export default function WarehouseReceivePage() {
     if (commercialInvoiceAttachment) allAttachments.push(commercialInvoiceAttachment)
     if (deliveryNoteAttachment) allAttachments.push(deliveryNoteAttachment)
     if (cubeMasterAttachment) allAttachments.push(cubeMasterAttachment)
-    if (transportCertificateAttachment) allAttachments.push(transportCertificateAttachment)
+    if (transactionCertificateAttachment) allAttachments.push(transactionCertificateAttachment)
     allAttachments.push(...attachments)
     
     try {
@@ -485,7 +485,7 @@ export default function WarehouseReceivePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  TC # (for GRS)
+                  TC # GRS
                 </label>
                 <input
                   type="text"
@@ -493,7 +493,7 @@ export default function WarehouseReceivePage() {
                   onChange={(e) => setTcNumber(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="e.g., TC-2024-123"
-                  title="Enter Transport Certificate number for GRS"
+                  title="Enter Transaction Certificate number GRS"
                 />
               </div>
               <div>
@@ -948,27 +948,27 @@ export default function WarehouseReceivePage() {
                 )}
               </div>
 
-              {/* Transport Certificate for GRS */}
+              {/* Transaction Certificate for GRS */}
               <div className="border rounded-lg p-4 bg-green-50">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h4 className="font-medium text-sm">Transport Certificate (TC) for GRS</h4>
-                    <p className="text-xs text-gray-600">Required for Goods Receipt Slip processing</p>
+                    <h4 className="font-medium text-sm">Transaction Certificate (TC) GRS</h4>
+                    <p className="text-xs text-gray-600">Goods Receipt Slip</p>
                   </div>
-                  {transportCertificateAttachment && (
+                  {transactionCertificateAttachment && (
                     <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
                   )}
                 </div>
-                {transportCertificateAttachment ? (
+                {transactionCertificateAttachment ? (
                   <div className="flex items-center justify-between bg-white p-2 rounded border">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-700">{transportCertificateAttachment.name}</span>
-                      <span className="text-xs text-gray-500">({(transportCertificateAttachment.size / 1024).toFixed(1)} KB)</span>
+                      <span className="text-sm text-gray-700">{transactionCertificateAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(transactionCertificateAttachment.size / 1024).toFixed(1)} KB)</span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeSpecificAttachment('transport_certificate')}
+                      onClick={() => removeSpecificAttachment('transaction_certificate')}
                       className="text-red-600 hover:text-red-800"
                     >
                       <X className="h-4 w-4" />
@@ -983,7 +983,7 @@ export default function WarehouseReceivePage() {
                     <input
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                      onChange={(e) => handleFileUpload(e, 'transport_certificate')}
+                      onChange={(e) => handleFileUpload(e, 'transaction_certificate')}
                       className="hidden"
                     />
                   </label>
