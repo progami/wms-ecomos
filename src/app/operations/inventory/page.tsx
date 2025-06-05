@@ -941,7 +941,7 @@ export default function UnifiedInventoryPage() {
                           }}
                           className="flex items-center gap-1 hover:text-gray-700 transition-colors"
                         >
-                          Transaction Date
+                          Creation Date
                           {sortOrder === 'desc' ? (
                             <ArrowDown className="h-3 w-3" />
                           ) : (

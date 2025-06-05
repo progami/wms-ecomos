@@ -258,6 +258,7 @@ export async function POST(request: NextRequest) {
           containerNumber: type === 'RECEIVE' ? containerNumber : null,
           attachments: type === 'RECEIVE' && attachments ? attachments : null,
           transactionDate: new Date(date),
+          pickupDate: new Date(date), // Set pickup date same as transaction date
           createdById: session.user.id,
         }
       })
