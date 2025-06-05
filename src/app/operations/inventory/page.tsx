@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3, HelpCircle, X } from 'lucide-react'
+import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3, X } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -59,7 +59,6 @@ export default function UnifiedInventoryPage() {
   const [viewMode, setViewMode] = useState<'live' | 'point-in-time'>('live')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // Default: latest first
-  const [showHelp, setShowHelp] = useState(false)
   
   
   
@@ -317,69 +316,6 @@ export default function UnifiedInventoryPage() {
     setActiveTab(tab)
   }
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return
-      }
-
-      // Alt+1/2/3 for tab switching
-      if (e.altKey) {
-        switch (e.key) {
-          case '1':
-            setActiveTab('balances')
-            break
-          case '2':
-            setActiveTab('transactions')
-            break
-          case '3':
-            setActiveTab('storage')
-            break
-        }
-      }
-
-      // Ctrl/Cmd + E for export
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault()
-        handleExport()
-      }
-
-      // Ctrl/Cmd + R for receive
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-        e.preventDefault()
-        router.push('/operations/receive')
-      }
-
-      // Ctrl/Cmd + S for ship
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        router.push('/operations/ship')
-      }
-
-      // / for search focus
-      if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault()
-        const searchInput = document.querySelector('input[type="text"][placeholder*="Search"]') as HTMLInputElement
-        searchInput?.focus()
-      }
-
-      // ? for help
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault()
-        setShowHelp(true)
-      }
-
-      // Escape to close help
-      if (e.key === 'Escape' && showHelp) {
-        setShowHelp(false)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyPress)
-    return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [router, activeTab, showHelp])
 
   const getTransactionColor = (type: string) => {
     switch (type) {
@@ -425,7 +361,6 @@ export default function UnifiedInventoryPage() {
               <Link
                 href="/operations/receive"
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
-                title="Receive Goods (Ctrl+R)"
               >
                 <Package2 className="h-4 w-4 mr-2" />
                 Receive Goods
@@ -433,7 +368,6 @@ export default function UnifiedInventoryPage() {
               <Link
                 href="/operations/ship"
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
-                title="Ship Goods (Ctrl+S)"
               >
                 <Package2 className="h-4 w-4 mr-2" />
                 Ship Goods
@@ -442,18 +376,10 @@ export default function UnifiedInventoryPage() {
                 type="button"
                 onClick={handleExport}
                 className="secondary-button"
-                title="Export (Ctrl+E)"
+                title="Export"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowHelp(true)}
-                className="p-2 text-gray-400 hover:text-gray-500"
-                title="Keyboard shortcuts (?)"
-              >
-                <HelpCircle className="h-5 w-5" />
               </button>
             </div>
           }
@@ -1247,93 +1173,6 @@ export default function UnifiedInventoryPage() {
         </div>
       </div>
 
-      {/* Keyboard Shortcuts Help Dialog */}
-      {showHelp && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={() => setShowHelp(false)}
-            />
-            
-            <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-              <div className="bg-white px-4 pb-4 pt-5 sm:p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <HelpCircle className="h-6 w-6 text-primary" />
-                    <h3 className="text-lg font-semibold leading-6 text-gray-900">
-                      Keyboard Shortcuts
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowHelp(false)}
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Navigation</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Switch to Current Balances</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Alt + 1</kbd>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Switch to Ledger</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Alt + 2</kbd>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Switch to Storage Ledger</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Alt + 3</kbd>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Actions</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Export Data</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Ctrl/⌘ + E</kbd>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Receive Goods</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Ctrl/⌘ + R</kbd>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Ship Goods</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Ctrl/⌘ + S</kbd>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">General</h4>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Focus Search</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">/</kbd>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Show Help</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">?</kbd>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Close Dialog</span>
-                        <kbd className="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Esc</kbd>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </DashboardLayout>
   )
 }

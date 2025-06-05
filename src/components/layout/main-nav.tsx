@@ -46,10 +46,10 @@ const navigation = {
     {
       title: 'Operations',
       items: [
+        { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
         { name: 'Ledger', href: '/operations/inventory', icon: BookOpen },
         { name: 'Receive Goods', href: '/operations/receive', icon: Package },
         { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
-        { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
       ]
     },
     {
@@ -94,10 +94,10 @@ const navigation = {
     {
       title: 'Operations',
       items: [
+        { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
         { name: 'Ledger', href: '/operations/inventory', icon: BookOpen },
         { name: 'Receive Goods', href: '/operations/receive', icon: Package },
         { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
-        { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
       ]
     },
     {
