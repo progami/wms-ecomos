@@ -40,20 +40,26 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: 'credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        emailOrUsername: { label: 'Email or Username', type: 'text' },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        console.log('Auth attempt for:', credentials?.email)
+        console.log('Auth attempt for:', credentials?.emailOrUsername)
         
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.emailOrUsername || !credentials?.password) {
           console.log('Missing credentials')
           throw new Error('Invalid credentials')
         }
 
-        const user = await prisma.user.findUnique({
+        // Check if input is email or username
+        const isEmail = credentials.emailOrUsername.includes('@')
+        
+        const user = await prisma.user.findFirst({
           where: {
-            email: credentials.email,
+            OR: [
+              { email: credentials.emailOrUsername },
+              { username: credentials.emailOrUsername }
+            ]
           },
           include: {
             warehouse: true,
@@ -61,7 +67,7 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user || !user.isActive) {
-          console.log('User not found or inactive:', credentials.email)
+          console.log('User not found or inactive:', credentials.emailOrUsername)
           throw new Error('Invalid credentials')
         }
 
@@ -71,7 +77,7 @@ export const authOptions: NextAuthOptions = {
         )
 
         if (!isPasswordValid) {
-          console.log('Invalid password for:', credentials.email)
+          console.log('Invalid password for:', credentials.emailOrUsername)
           throw new Error('Invalid credentials')
         }
         

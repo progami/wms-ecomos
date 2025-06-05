@@ -13,7 +13,7 @@ export default function LoginPage() {
   
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
-    email: '',
+    emailOrUsername: '',
     password: '',
   })
 
@@ -23,13 +23,13 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        email: formData.email,
+        emailOrUsername: formData.emailOrUsername,
         password: formData.password,
         redirect: false,
       })
 
       if (result?.error) {
-        toast.error('Invalid email or password')
+        toast.error('Invalid email/username or password')
       } else {
         toast.success('Login successful!')
         router.push(callbackUrl)
@@ -63,20 +63,20 @@ export default function LoginPage() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
+              <label htmlFor="emailOrUsername" className="sr-only">
+                Email or Username
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="emailOrUsername"
+                name="emailOrUsername"
+                type="text"
+                autoComplete="username email"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                placeholder="Email address"
-                value={formData.email}
+                placeholder="Email or Username"
+                value={formData.emailOrUsername}
                 onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
+                  setFormData({ ...formData, emailOrUsername: e.target.value })
                 }
               />
             </div>
@@ -116,8 +116,9 @@ export default function LoginPage() {
 
           <div className="text-center text-sm text-gray-600 dark:text-gray-400">
             <p>Demo credentials:</p>
-            <p>Admin: admin@warehouse.com / admin123</p>
-            <p>Staff: staff@warehouse.com / staff123</p>
+            <p>Admin: admin@warehouse.com (or admin) / admin123</p>
+            <p>Staff: hashar@warehouse.com (or hashar) / staff123</p>
+            <p>Staff: umair@warehouse.com (or umair) / staff123</p>
           </div>
         </form>
       </div>
