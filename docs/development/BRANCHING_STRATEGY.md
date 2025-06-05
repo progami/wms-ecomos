@@ -335,15 +335,12 @@ main <- staging <- feature branches
 ```
 
 ### 3. Module-specific Test Suites
-Each module should have its own test command:
-```json
-{
-  "scripts": {
-    "test:ops": "jest src/app/operations",
-    "test:fin": "jest src/app/finance",
-    "test:cfg": "jest src/app/config"
-  }
-}
+Run tests for specific modules using pattern matching:
+```bash
+npm test -- --testPathPattern="operations"
+npm test -- --testPathPattern="finance"
+npm test -- --testPathPattern="config"
+npm test -- --testPathPattern="analytics"
 ```
 
 ### 4. API Versioning

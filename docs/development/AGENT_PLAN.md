@@ -1,42 +1,49 @@
 # Agent Coordination Plan
 
-## Current Sprint: Initial Development
-**Updated**: 2025-06-05
-**Sprint Goal**: Set up core functionality for each module
+## Current Sprint: System Enhancement
+**Updated**: 2025-01-06
+**Sprint Goal**: Enhance existing functionality and fix known issues
 
 ## Active Tasks
 
 ### Operations Agent
-- [ ] Implement improved inventory tracking
-- [ ] Add batch validation for receiving goods
-- **Questions for Finance**: How should we handle storage cost calculations?
+- [ ] Verify receive goods page TC # GRS field functionality
+- [ ] Test all attachment categories (bill_of_lading, transaction_certificate, custom_declaration)
+- [ ] Ensure inventory ledger shows "Creation Date" and "Pickup Date" correctly
+- [ ] Validate storage ledger calculations and export functionality
 
 ### Finance Agent  
-- [ ] Create invoice reconciliation workflow
-- [ ] Build cost aggregation reports
-- **Questions for Operations**: Need inventory movement data structure
+- [ ] Test invoice reconciliation workflow with current data
+- [ ] Verify cost aggregation matches expected calculations
+- [ ] Check financial dashboard metrics accuracy
+- [ ] Test billing report generation and exports
 
 ### Configuration Agent
-- [ ] Set up product catalog management
-- [ ] Configure warehouse rate settings
-- **Note to All**: New rate structure will affect calculations
+- [ ] Verify username login works for all users
+- [ ] Test rate overlap detection and effective date handling
+- [ ] Validate warehouse configuration persistence
+- [ ] Check Amazon FBA warehouse settings exclusion from operations
 
 ### Analytics Agent
-- [ ] Build inventory movement reports
-- [ ] Set up Amazon FBA integration
-- **Blocked by**: Waiting for Operations inventory structure
+- [ ] Enhance dashboard visualizations with trend indicators
+- [ ] Add more export formats for reports
+- [ ] Implement KPI tracking for key metrics
+- [ ] Test Amazon integration comparison views
 
 ## Inter-Agent Messages
 
-### 2025-06-05 - Template
+### 2025-01-06 - Example Format
 Agent → Target: Message
 Response: (Target to respond)
 
 ## Completed Tasks
-- ✓ Set up worktree structure (PR Master)
-- ✓ Initialize agent branches (All)
+- ✓ Set up worktree structure with proper branches (PR Master)
+- ✓ Configure separate ports for each agent (PR Master)
+- ✓ Add username login capability (merged to main)
+- ✓ Update receive goods page with new fields (merged to main)
+- ✓ Fix inventory ledger date columns (merged to main)
 
 ## Notes
-- Commit and push regularly
-- Check this file before starting work
-- Update when blocked or need input
+- All agents have npm run dev configured with their ports
+- Use docs/development/AGENT_INSTRUCTIONS.md for detailed tasks
+- Update this file when blocked or need coordination

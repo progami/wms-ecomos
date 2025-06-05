@@ -2,7 +2,40 @@
 
 All notable changes to the Warehouse Management System will be documented in this file.
 
-## [1.3.0] - 2025-06-03
+## [Unreleased] - 2025-01-06
+
+### Added
+- **Multi-Agent Development Setup**
+  - Git worktrees configured for 4 agents (Operations, Finance, Configuration, Analytics)
+  - Each worktree has its own .env.local with unique PORT configuration
+  - Custom dev script to read PORT from .env.local files
+  - Consolidated agent instructions in single AGENT_INSTRUCTIONS.md file
+
+### Changed
+- **Authentication Updates**  
+  - Added username login capability alongside email
+  - Users can now login with email or username
+  
+- **Receive Goods Page**
+  - Split "PI / CI / PO Number" into separate "Commercial Invoice #" and "Packing List #" fields
+  - Added "TC # GRS" field for Transaction Certificate
+  - Added new attachment categories: bill_of_lading, transaction_certificate, custom_declaration
+  
+- **Inventory Ledger**
+  - Default tab changed to "Inventory Ledger" instead of "Current Balances"
+  - "Transaction Date" renamed to "Creation Date" 
+  - Added "Pickup Date" column for actual transaction dates
+  - Updated all 174 existing transactions to have pickupDate = transactionDate
+
+### Fixed
+- **Documentation**
+  - Updated all documentation with correct login credentials
+  - Fixed references to deleted scripts
+  - Updated test commands to use pattern matching
+  - Corrected dates in changelog (was showing 2025 instead of 2024)
+  - Organized all documentation into proper folder structure
+
+## [1.3.0] - 2024-06-03
 
 ### Added
 - **Documentation Updates**
@@ -35,7 +68,7 @@ All notable changes to the Warehouse Management System will be documented in thi
 - Removed references to non-existent scripts in documentation
 - Fixed test suite to remove references to deleted pages
 
-## [1.2.0] - 2025-06-03
+## [1.2.0] - 2024-06-03
 
 ### Added
 - **Inventory Ledger Enhancements**
@@ -68,7 +101,7 @@ All notable changes to the Warehouse Management System will be documented in thi
 - Added database-level enforcement of chronological transaction order
 - Immutable ledger triggers prevent transaction manipulation
 
-## [1.1.0] - 2025-06-02
+## [1.1.0] - 2024-06-02
 
 ### Storage Ledger Features
 - **Full Storage Ledger Implementation**
@@ -107,10 +140,6 @@ All notable changes to the Warehouse Management System will be documented in thi
     - Added data caching to prevent unnecessary re-fetches when switching tabs
     - Separated initial loading state from tab switching to maintain smooth transitions
 
-- **Admin Credentials**
-  - Updated admin login for easier testing:
-    - Email: admin@admin.com
-    - Password: admin
 
 ### Technical Improvements
 - **API Enhancements**
@@ -130,7 +159,7 @@ All notable changes to the Warehouse Management System will be documented in thi
   - Proper async/await handling in API routes
   - Consistent button types to prevent accidental form submissions
 
-## [Previous] - 2025-06-03
+## [Previous] - 2024-06-01
 
 ### Added
 - **Pallet Columns in Inventory Ledger**
@@ -197,7 +226,7 @@ All notable changes to the Warehouse Management System will be documented in thi
   - Fixed duplicate variable declarations
   - Resolved syntax errors in component structure
 
-## [1.0.0] - 2025-05-15
+## [1.0.0] - 2024-05-15
 
 ### Initial Release
 - Multi-warehouse inventory management

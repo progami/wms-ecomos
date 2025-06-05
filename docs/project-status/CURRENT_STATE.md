@@ -1,13 +1,13 @@
 # Warehouse Management System - Current State
-*Last Updated: June 5, 2025*
+*Last Updated: January 6, 2025*
 
 ## Recent Changes Merged to Main
 
 ### Authentication & User Management
 - **Username Login**: Users can now login with either email or username
-  - admin / admin123
-  - hashar / staff123  
-  - umair / staff123
+  - admin@warehouse.com or admin / admin123
+  - hashar@warehouse.com or hashar / staff123  
+  - umair@warehouse.com or umair / staff123
 
 ### Receive Goods Page Updates
 - Changed reference field from "PI / CI / PO Number" to separate fields:
@@ -62,11 +62,11 @@
 
 2. **Make Changes**:
    - Only modify files in your designated directories
-   - Test locally with `npm run dev -- -p [port]`
-     - Operations: 3001
-     - Finance: 3002
-     - Configuration: 3003
-     - Analytics: 3004
+   - Test locally with `npm run dev`
+     - Operations: Port 3001 (configured in .env.local)
+     - Finance: Port 3002 (configured in .env.local)
+     - Configuration: Port 3003 (configured in .env.local)
+     - Analytics: Port 3004 (configured in .env.local)
 
 3. **Commit & Push**:
    ```bash
@@ -109,9 +109,10 @@
 - **Authentication**: Session-based with JWT tokens
 - **File Uploads**: Max 5MB per file, stored as base64 in database
 
-## Known Issues
-- npm audit shows 2 vulnerabilities (1 high, 1 critical)
-- Configuration worktree may have uncommitted changes
+## Environment Setup
+- Each worktree has its own `.env.local` with unique PORT configuration
+- All worktrees share the same database connection
+- npm dependencies installed separately in each worktree
 
 ## Next Steps
 Agents can now work on their assigned features. Key areas for improvement:

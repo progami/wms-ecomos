@@ -76,11 +76,11 @@ Visit http://localhost:3000
 
 ## 6. Login Credentials
 
-After seeding, use these credentials:
+After seeding, use these credentials (email or username / password):
 
-- **Admin**: admin@admin.com / admin
-- **Staff (Finance)**: hashar@warehouse.com / staff123
-- **Staff (Operations)**: umair@warehouse.com / staff123
+- **Admin**: admin@warehouse.com (or admin) / admin123
+- **Staff (Finance)**: hashar@warehouse.com (or hashar) / staff123
+- **Staff (Operations)**: umair@warehouse.com (or umair) / staff123
 
 ## Common Issues
 
@@ -91,8 +91,11 @@ After seeding, use these credentials:
 
 ### Port 3000 Already in Use
 ```bash
-# Run on different port
-PORT=3001 npm run dev
+# Update PORT in .env.local
+PORT=3001
+
+# Then run normally
+npm run dev
 ```
 
 ### Module Not Found Errors

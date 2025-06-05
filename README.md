@@ -203,14 +203,14 @@ warehouse_management/
 After seeding the database, you can login with:
 
 **Admin Account:**
-- Email: admin@admin.com
-- Password: admin
+- Email: admin@warehouse.com or Username: admin
+- Password: admin123
 
 **Staff Accounts:**
-- Email: hashar@warehouse.com (Finance Manager)
+- Email: hashar@warehouse.com or Username: hashar (Finance Manager)
 - Password: staff123
 
-- Email: umair@warehouse.com (Operations Manager)
+- Email: umair@warehouse.com or Username: umair (Operations Manager)
 - Password: staff123
 
 ## 📊 Key Features Walkthrough
@@ -294,16 +294,13 @@ npm run test:coverage
 npx tsx scripts/create-users.ts
 npx tsx scripts/create-staff-users.ts
 
-# Update role permissions
-node scripts/update-role-checks.js
-
 # Development/Debug scripts (not for production use)
 npx tsx scripts/check-dashboard-data.ts
 npx tsx scripts/check-system-imports.ts
 npx tsx scripts/verify-amazon-exclusion.ts
 ```
 
-**Note**: Data import from Excel should be done through the Admin Import page at `/admin/import` after logging in as an admin.
+**Note**: The system has been pre-loaded with 174 transactions from Excel. All new data entry should be done through the web interface.
 
 ## 🚀 Development Commands
 
@@ -422,11 +419,11 @@ docs(cfg): Update rate configuration guide
 ### Testing Requirements
 - All new features must have tests
 - Tests must pass before PR approval
-- Use module-specific test commands:
+- Run tests with pattern matching:
   ```bash
-  npm run test:ops  # Operations tests
-  npm run test:fin  # Finance tests
-  npm run test:cfg  # Config tests
+  npm test -- --testPathPattern="operations"
+  npm test -- --testPathPattern="finance"
+  npm test -- --testPathPattern="config"
   ```
 
 ## 🤝 Contributing

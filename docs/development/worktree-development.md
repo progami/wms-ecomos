@@ -38,37 +38,37 @@ npm run dev  # Port 3000
 ### Operations Agent
 ```bash
 cd /Users/jarraramjad/Documents/warehouse_management_ops
-# Already on ops/current-work branch
+# Already on ops/feature branch
 git pull origin main  # Get latest changes
 # Work on operations files only
-PORT=3001 npm run dev  # If you want to test
+npm run dev  # Runs on port 3001 (from .env.local)
 ```
 
 ### Finance Agent
 ```bash
 cd /Users/jarraramjad/Documents/warehouse_management_fin
-# Already on fin/current-work branch
+# Already on fin/feature branch
 git pull origin main
 # Work on finance files only
-PORT=3002 npm run dev  # If you want to test
+npm run dev  # Runs on port 3002 (from .env.local)
 ```
 
 ### Configuration Agent
 ```bash
 cd /Users/jarraramjad/Documents/warehouse_management_cfg
-# Already on cfg/current-work branch
+# Already on cfg/feature branch
 git pull origin main
 # Work on configuration files only
-PORT=3003 npm run dev  # If you want to test
+npm run dev  # Runs on port 3003 (from .env.local)
 ```
 
 ### Analytics Agent
 ```bash
 cd /Users/jarraramjad/Documents/warehouse_management_ana
-# Already on ana/current-work branch
+# Already on ana/feature branch
 git pull origin main
 # Work on analytics files only
-PORT=3004 npm run dev  # If you want to test
+npm run dev  # Runs on port 3004 (from .env.local)
 ```
 
 ## Module Boundaries
@@ -104,7 +104,7 @@ Each agent owns specific directories:
    # In main warehouse_management directory
    git checkout main
    git pull origin main
-   git merge origin/ops/current-work
+   git merge origin/ops/feature
    git push origin main
    ```
 
