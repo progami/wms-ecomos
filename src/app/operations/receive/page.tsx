@@ -19,7 +19,7 @@ interface Attachment {
   type: string
   size: number
   data?: string
-  category: 'packing_list' | 'commercial_invoice' | 'bill_of_lading' | 'delivery_note' | 'cube_master' | 'transaction_certificate' | 'other'
+  category: 'packing_list' | 'commercial_invoice' | 'bill_of_lading' | 'delivery_note' | 'cube_master' | 'transaction_certificate' | 'custom_declaration' | 'other'
 }
 
 export default function WarehouseReceivePage() {
@@ -40,6 +40,7 @@ export default function WarehouseReceivePage() {
   const [deliveryNoteAttachment, setDeliveryNoteAttachment] = useState<Attachment | null>(null)
   const [cubeMasterAttachment, setCubeMasterAttachment] = useState<Attachment | null>(null)
   const [transactionCertificateAttachment, setTransactionCertificateAttachment] = useState<Attachment | null>(null)
+  const [customDeclarationAttachment, setCustomDeclarationAttachment] = useState<Attachment | null>(null)
   const [items, setItems] = useState([
     { 
       id: 1, 
@@ -163,6 +164,9 @@ export default function WarehouseReceivePage() {
         case 'transaction_certificate':
           setTransactionCertificateAttachment(attachment)
           break
+        case 'custom_declaration':
+          setCustomDeclarationAttachment(attachment)
+          break
         default:
           setAttachments([...attachments, attachment])
       }
@@ -180,6 +184,7 @@ export default function WarehouseReceivePage() {
       case 'delivery_note': return 'Delivery Note'
       case 'cube_master': return 'Cube Master Stacking Style'
       case 'transaction_certificate': return 'Transaction Certificate'
+      case 'custom_declaration': return 'Custom Declaration Document'
       case 'other': return 'Other Document'
     }
   }
@@ -203,6 +208,9 @@ export default function WarehouseReceivePage() {
         break
       case 'transaction_certificate':
         setTransactionCertificateAttachment(null)
+        break
+      case 'custom_declaration':
+        setCustomDeclarationAttachment(null)
         break
     }
   }
@@ -421,6 +429,7 @@ export default function WarehouseReceivePage() {
     if (deliveryNoteAttachment) allAttachments.push(deliveryNoteAttachment)
     if (cubeMasterAttachment) allAttachments.push(cubeMasterAttachment)
     if (transactionCertificateAttachment) allAttachments.push(transactionCertificateAttachment)
+    if (customDeclarationAttachment) allAttachments.push(customDeclarationAttachment)
     allAttachments.push(...attachments)
     
     try {
@@ -1053,6 +1062,48 @@ export default function WarehouseReceivePage() {
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                       onChange={(e) => handleFileUpload(e, 'transaction_certificate')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Custom Declaration Document */}
+              <div className="border rounded-lg p-4 bg-yellow-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Custom Declaration Document (CDS)</h4>
+                    <p className="text-xs text-gray-600">Customs clearance documentation</p>
+                  </div>
+                  {customDeclarationAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {customDeclarationAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{customDeclarationAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(customDeclarationAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('custom_declaration')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'custom_declaration')}
                       className="hidden"
                     />
                   </label>
