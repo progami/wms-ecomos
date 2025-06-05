@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { 
+  getBillingPeriod, 
+  calculateAllCosts,
+  type BillingPeriod 
+} from '@/lib/calculations/cost-aggregation'
 
 export async function GET() {
   try {
@@ -10,52 +15,46 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get current billing period (16th to 15th)
-    const today = new Date()
-    const billingStart = today.getDate() >= 16 
-      ? new Date(today.getFullYear(), today.getMonth(), 16)
-      : new Date(today.getFullYear(), today.getMonth() - 1, 16)
-    const billingEnd = new Date(billingStart)
-    billingEnd.setMonth(billingEnd.getMonth() + 1)
-    billingEnd.setDate(15)
+    // Get current billing period
+    const currentBillingPeriod = getBillingPeriod(new Date())
+    
+    // Get previous billing period for comparison
+    const prevDate = new Date()
+    prevDate.setMonth(prevDate.getMonth() - 1)
+    const previousBillingPeriod = getBillingPeriod(prevDate)
 
-    // Previous billing period for comparison
-    const prevBillingStart = new Date(billingStart)
-    prevBillingStart.setMonth(prevBillingStart.getMonth() - 1)
-    const prevBillingEnd = new Date(prevBillingStart)
-    prevBillingEnd.setMonth(prevBillingEnd.getMonth() + 1)
-    prevBillingEnd.setDate(15)
-
-    // Get current period costs
-    const currentCosts = await prisma.calculatedCost.aggregate({
-      where: {
-        billingPeriodStart: {
-          gte: billingStart,
-          lte: billingEnd,
-        },
-      },
-      _sum: {
-        finalExpectedCost: true,
-      },
+    // Get all warehouses
+    const warehouses = await prisma.warehouse.findMany({
+      where: { isActive: true }
     })
 
-    // Get previous period costs
-    const previousCosts = await prisma.calculatedCost.aggregate({
-      where: {
-        billingPeriodStart: {
-          gte: prevBillingStart,
-          lte: prevBillingEnd,
-        },
-      },
-      _sum: {
-        finalExpectedCost: true,
-      },
-    })
+    // Calculate current period costs for all warehouses
+    let currentTotalRevenue = 0
+    const currentCostsByCategory = new Map<string, number>()
+    
+    for (const warehouse of warehouses) {
+      const costs = await calculateAllCosts(warehouse.id, currentBillingPeriod)
+      for (const cost of costs) {
+        currentTotalRevenue += cost.amount
+        const categoryKey = cost.costCategory
+        currentCostsByCategory.set(
+          categoryKey, 
+          (currentCostsByCategory.get(categoryKey) || 0) + cost.amount
+        )
+      }
+    }
 
-    const currentRevenue = Number(currentCosts._sum.finalExpectedCost || 0)
-    const previousRevenue = Number(previousCosts._sum.finalExpectedCost || 0)
-    const revenueChange = previousRevenue > 0 
-      ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 
+    // Calculate previous period costs for comparison
+    let previousTotalRevenue = 0
+    for (const warehouse of warehouses) {
+      const costs = await calculateAllCosts(warehouse.id, previousBillingPeriod)
+      for (const cost of costs) {
+        previousTotalRevenue += cost.amount
+      }
+    }
+
+    const revenueChange = previousTotalRevenue > 0 
+      ? ((currentTotalRevenue - previousTotalRevenue) / previousTotalRevenue) * 100 
       : 0
 
     // Get invoice stats
@@ -63,8 +62,8 @@ export async function GET() {
       by: ['status'],
       where: {
         billingPeriodStart: {
-          gte: billingStart,
-          lte: billingEnd,
+          gte: currentBillingPeriod.start,
+          lte: currentBillingPeriod.end,
         },
       },
       _count: true,
@@ -75,119 +74,130 @@ export async function GET() {
 
     const paidInvoices = invoiceStats.find(s => s.status === 'paid') || { _count: 0, _sum: { totalAmount: 0 } }
     const pendingInvoices = invoiceStats.find(s => s.status === 'pending') || { _count: 0, _sum: { totalAmount: 0 } }
-    // Calculate overdue invoices separately (pending invoices > 30 days old)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const disputedInvoices = invoiceStats.find(s => s.status === 'disputed') || { _count: 0, _sum: { totalAmount: 0 } }
     
-    const overdueCount = await prisma.invoice.count({
+    // Calculate overdue invoices separately (pending invoices with due date passed)
+    const today = new Date()
+    
+    const overdueInvoices = await prisma.invoice.findMany({
       where: {
         status: 'pending',
-        invoiceDate: {
-          lt: thirtyDaysAgo,
+        dueDate: {
+          lt: today,
         },
         billingPeriodStart: {
-          gte: billingStart,
-          lte: billingEnd,
+          gte: currentBillingPeriod.start,
+          lte: currentBillingPeriod.end,
         },
       },
     })
     
-    const overdueSum = await prisma.invoice.aggregate({
-      where: {
-        status: 'pending',
-        invoiceDate: {
-          lt: thirtyDaysAgo,
-        },
-        billingPeriodStart: {
-          gte: billingStart,
-          lte: billingEnd,
-        },
-      },
-      _sum: {
-        totalAmount: true,
-      },
-    })
-    
-    const overdueInvoices = { _count: overdueCount, _sum: { totalAmount: overdueSum._sum.totalAmount || 0 } }
+    const overdueCount = overdueInvoices.length
+    const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0)
 
-    // Get cost breakdown by cost type (through cost rates)
-    const costBreakdownRaw = await prisma.calculatedCost.findMany({
-      where: {
-        billingPeriodStart: {
-          gte: billingStart,
-          lte: billingEnd,
-        },
-      },
-      include: {
-        costRate: true,
-      },
-    })
-    
-    // Group by costName from costRate
-    const costBreakdownMap = new Map<string, number>()
-    for (const cost of costBreakdownRaw) {
-      const category = cost.costRate.costName
-      const currentAmount = costBreakdownMap.get(category) || 0
-      costBreakdownMap.set(category, currentAmount + Number(cost.finalExpectedCost))
-    }
-    
-    const costBreakdown = Array.from(costBreakdownMap.entries()).map(([category, amount]) => ({
-      costCategory: category,
-      _sum: { finalExpectedCost: amount }
+    // Cost breakdown by category
+    const costBreakdown = Array.from(currentCostsByCategory.entries()).map(([category, amount]) => ({
+      category,
+      amount,
     }))
 
     // Calculate cost variance (compare invoiced vs calculated)
-    const invoicedAmount = await prisma.invoice.aggregate({
-      where: {
-        billingPeriodStart: {
-          gte: billingStart,
-          lte: billingEnd,
-        },
-        status: {
-          in: ['paid', 'pending'],
-        },
-      },
-      _sum: {
-        totalAmount: true,
-      },
-    })
-
-    const totalInvoiced = Number(invoicedAmount._sum.totalAmount || 0)
-    const costVariance = currentRevenue > 0 
-      ? ((totalInvoiced - currentRevenue) / currentRevenue) * 100 
+    const totalInvoiced = Number(paidInvoices._sum.totalAmount || 0) + 
+                         Number(pendingInvoices._sum.totalAmount || 0) +
+                         Number(disputedInvoices._sum.totalAmount || 0)
+    
+    const costVariance = currentTotalRevenue > 0 
+      ? ((totalInvoiced - currentTotalRevenue) / currentTotalRevenue) * 100 
       : 0
 
     // Collection rate
-    const totalBilled = Number(paidInvoices._sum.totalAmount || 0) + 
-                       Number(pendingInvoices._sum.totalAmount || 0) + 
-                       Number(overdueInvoices._sum.totalAmount || 0)
+    const totalBilled = totalInvoiced + overdueAmount
     const collectionRate = totalBilled > 0 
       ? (Number(paidInvoices._sum.totalAmount || 0) / totalBilled) * 100 
       : 0
 
-    // Recent activity
-    const recentActivity = await prisma.invoice.findMany({
+    // Get recent financial activity
+    const recentInvoices = await prisma.invoice.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
         warehouse: true,
+        disputes: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
       },
     })
 
+    // Get recent disputes
+    const recentDisputes = await prisma.invoiceDispute.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        invoice: {
+          include: {
+            warehouse: true,
+          },
+        },
+      },
+    })
+
+    // Combine and sort activities
+    const activities = [
+      ...recentInvoices.map(invoice => ({
+        id: invoice.id,
+        type: 'invoice' as const,
+        title: `Invoice #${invoice.invoiceNumber} ${
+          invoice.status === 'paid' ? 'paid' : 
+          invoice.status === 'disputed' ? 'disputed' : 
+          'processed'
+        }`,
+        amount: Number(invoice.totalAmount),
+        time: invoice.createdAt,
+        status: invoice.status === 'paid' ? 'success' : 
+                invoice.status === 'disputed' ? 'warning' : 'info',
+        warehouse: invoice.warehouse.name,
+      })),
+      ...recentDisputes.map(dispute => ({
+        id: dispute.id,
+        type: 'dispute' as const,
+        title: `Dispute raised for Invoice #${dispute.invoice.invoiceNumber}`,
+        amount: Number(dispute.disputedAmount),
+        time: dispute.createdAt,
+        status: 'warning' as const,
+        warehouse: dispute.invoice.warehouse.name,
+      })),
+    ].sort((a, b) => b.time.getTime() - a.time.getTime()).slice(0, 5)
+
+    // Get reconciliation stats
+    const reconStats = await prisma.invoiceReconciliation.groupBy({
+      by: ['status'],
+      where: {
+        invoice: {
+          billingPeriodStart: {
+            gte: currentBillingPeriod.start,
+            lte: currentBillingPeriod.end,
+          },
+        },
+      },
+      _count: true,
+    })
+
+    const matchedItems = reconStats.find(s => s.status === 'match')?._count || 0
+    const overbilledItems = reconStats.find(s => s.status === 'overbilled')?._count || 0
+    const underbilledItems = reconStats.find(s => s.status === 'underbilled')?._count || 0
+
     return NextResponse.json({
       kpis: {
-        totalRevenue: currentRevenue.toFixed(2),
+        totalRevenue: currentTotalRevenue.toFixed(2),
         revenueChange: revenueChange.toFixed(1),
-        outstandingAmount: (Number(pendingInvoices._sum.totalAmount || 0) + Number(overdueInvoices._sum.totalAmount || 0)).toFixed(2),
-        outstandingCount: pendingInvoices._count + overdueInvoices._count,
+        outstandingAmount: (Number(pendingInvoices._sum.totalAmount || 0) + overdueAmount).toFixed(2),
+        outstandingCount: pendingInvoices._count + overdueCount,
         costVariance: costVariance.toFixed(1),
-        costSavings: Math.abs(totalInvoiced - currentRevenue).toFixed(2),
+        costSavings: Math.abs(totalInvoiced - currentTotalRevenue).toFixed(2),
         collectionRate: collectionRate.toFixed(1),
       },
-      costBreakdown: costBreakdown.map(item => ({
-        category: item.costCategory,
-        amount: item._sum.finalExpectedCost,
-      })),
+      costBreakdown,
       invoiceStatus: {
         paid: {
           count: paidInvoices._count,
@@ -198,26 +208,24 @@ export async function GET() {
           amount: Number(pendingInvoices._sum.totalAmount || 0),
         },
         overdue: {
-          count: overdueInvoices._count,
-          amount: Number(overdueInvoices._sum.totalAmount || 0),
+          count: overdueCount,
+          amount: overdueAmount,
         },
         disputed: {
-          count: 0,
-          amount: 0,
+          count: disputedInvoices._count,
+          amount: Number(disputedInvoices._sum.totalAmount || 0),
         },
       },
-      recentActivity: recentActivity.map(activity => ({
-        id: activity.id,
-        type: 'invoice',
-        title: `Invoice #${activity.invoiceNumber} processed`,
-        amount: Number(activity.totalAmount),
-        time: activity.createdAt,
-        status: activity.status === 'paid' ? 'success' : activity.status === 'pending' ? 'warning' : 'info',
-        warehouse: activity.warehouse.name,
-      })),
+      reconciliationStats: {
+        matched: matchedItems,
+        overbilled: overbilledItems,
+        underbilled: underbilledItems,
+        total: matchedItems + overbilledItems + underbilledItems,
+      },
+      recentActivity: activities,
       billingPeriod: {
-        start: billingStart,
-        end: billingEnd,
+        start: currentBillingPeriod.start,
+        end: currentBillingPeriod.end,
       },
     })
   } catch (error) {
