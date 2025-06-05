@@ -33,6 +33,19 @@ echo "📊 Creating Analytics worktree..."
 git worktree add "$PARENT_DIR/${REPO_NAME}_ana" -b ana/current-work || git worktree add "$PARENT_DIR/${REPO_NAME}_ana" ana/current-work
 
 echo ""
+echo "📋 Copying environment files to worktrees..."
+for worktree in ops fin cfg ana; do
+  if [ -f .env ]; then
+    cp .env "$PARENT_DIR/${REPO_NAME}_${worktree}/"
+    echo "   ✓ Copied .env to ${REPO_NAME}_${worktree}"
+  fi
+  if [ -f .env.local ]; then
+    cp .env.local "$PARENT_DIR/${REPO_NAME}_${worktree}/"
+    echo "   ✓ Copied .env.local to ${REPO_NAME}_${worktree}"
+  fi
+done
+
+echo ""
 echo "✅ Worktrees created successfully!"
 echo ""
 echo "📂 Directory structure:"

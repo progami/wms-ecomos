@@ -19,7 +19,7 @@ interface Attachment {
   type: string
   size: number
   data?: string
-  category: 'packing_list' | 'commercial_invoice' | 'delivery_note' | 'cube_master' | 'other'
+  category: 'packing_list' | 'commercial_invoice' | 'delivery_note' | 'cube_master' | 'transport_certificate' | 'other'
 }
 
 export default function WarehouseReceivePage() {
@@ -30,11 +30,13 @@ export default function WarehouseReceivePage() {
   const [skuLoading, setSkuLoading] = useState(true)
   const [shipName, setShipName] = useState('')
   const [containerNumber, setContainerNumber] = useState('')
+  const [tcNumber, setTcNumber] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [packingListAttachment, setPackingListAttachment] = useState<Attachment | null>(null)
   const [commercialInvoiceAttachment, setCommercialInvoiceAttachment] = useState<Attachment | null>(null)
   const [deliveryNoteAttachment, setDeliveryNoteAttachment] = useState<Attachment | null>(null)
   const [cubeMasterAttachment, setCubeMasterAttachment] = useState<Attachment | null>(null)
+  const [transportCertificateAttachment, setTransportCertificateAttachment] = useState<Attachment | null>(null)
   const [items, setItems] = useState([
     { 
       id: 1, 
@@ -152,6 +154,9 @@ export default function WarehouseReceivePage() {
         case 'cube_master':
           setCubeMasterAttachment(attachment)
           break
+        case 'transport_certificate':
+          setTransportCertificateAttachment(attachment)
+          break
         default:
           setAttachments([...attachments, attachment])
       }
@@ -167,6 +172,7 @@ export default function WarehouseReceivePage() {
       case 'commercial_invoice': return 'Commercial Invoice'
       case 'delivery_note': return 'Delivery Note'
       case 'cube_master': return 'Cube Master Stacking Style'
+      case 'transport_certificate': return 'Transport Certificate'
       case 'other': return 'Other Document'
     }
   }
@@ -184,6 +190,9 @@ export default function WarehouseReceivePage() {
         break
       case 'cube_master':
         setCubeMasterAttachment(null)
+        break
+      case 'transport_certificate':
+        setTransportCertificateAttachment(null)
         break
     }
   }
@@ -390,6 +399,7 @@ export default function WarehouseReceivePage() {
     if (supplier) fullNotes += `Supplier: ${supplier}. `
     if (shipName) fullNotes += `Ship: ${shipName}. `
     if (containerNumber) fullNotes += `Container: ${containerNumber}. `
+    if (tcNumber) fullNotes += `TC #: ${tcNumber}. `
     if (notes) fullNotes += notes
     
     // Combine all attachments
@@ -398,6 +408,7 @@ export default function WarehouseReceivePage() {
     if (commercialInvoiceAttachment) allAttachments.push(commercialInvoiceAttachment)
     if (deliveryNoteAttachment) allAttachments.push(deliveryNoteAttachment)
     if (cubeMasterAttachment) allAttachments.push(cubeMasterAttachment)
+    if (transportCertificateAttachment) allAttachments.push(transportCertificateAttachment)
     allAttachments.push(...attachments)
     
     try {
@@ -458,18 +469,31 @@ export default function WarehouseReceivePage() {
           {/* Header Information */}
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">Shipment Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  PI / CI / PO Number
+                  CI #
                 </label>
                 <input
                   type="text"
                   name="referenceNumber"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., PO-2024-001, PI-2024-123, CI-2024-456"
-                  title="Enter Purchase Order (PO), Proforma Invoice (PI), or Commercial Invoice (CI) number"
+                  placeholder="e.g., CI-2024-456"
+                  title="Enter Commercial Invoice (CI) number"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  TC # (for GRS)
+                </label>
+                <input
+                  type="text"
+                  value={tcNumber}
+                  onChange={(e) => setTcNumber(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="e.g., TC-2024-123"
+                  title="Enter Transport Certificate number for GRS"
                 />
               </div>
               <div>
@@ -918,6 +942,48 @@ export default function WarehouseReceivePage() {
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                       onChange={(e) => handleFileUpload(e, 'cube_master')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Transport Certificate for GRS */}
+              <div className="border rounded-lg p-4 bg-green-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Transport Certificate (TC) for GRS</h4>
+                    <p className="text-xs text-gray-600">Required for Goods Receipt Slip processing</p>
+                  </div>
+                  {transportCertificateAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {transportCertificateAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{transportCertificateAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(transportCertificateAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('transport_certificate')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'transport_certificate')}
                       className="hidden"
                     />
                   </label>
