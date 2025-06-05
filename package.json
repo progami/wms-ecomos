@@ -6,7 +6,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "next dev -p $PORT",
+    "dev": "node scripts/dev-with-port.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
