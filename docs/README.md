@@ -1,23 +1,28 @@
 # Documentation
 
-## Development Guides
-- **[AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md)** - Instructions for all 4 agents
-- **[AGENT_PLAN.md](AGENT_PLAN.md)** - Multi-agent development strategy
-- **[worktree-development.md](worktree-development.md)** - Git worktree setup
-- **[BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md)** - Git workflow
+## 📁 Folder Structure
 
-## Architecture
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture overview
-- **[architecture/](architecture/)** - Detailed architecture docs
+### development/
+- **AGENT_INSTRUCTIONS.md** - Instructions for all 4 agents
+- **AGENT_PLAN.md** - Multi-agent development strategy
+- **worktree-development.md** - Git worktree setup guide
+- **BRANCHING_STRATEGY.md** - Git workflow and PR process
 
-## Setup & Configuration
-- **[setup/quick-start.md](setup/quick-start.md)** - Quick start guide
-- **[setup/amazon-integration.md](setup/amazon-integration.md)** - Amazon FBA setup
+### architecture/
+- **ARCHITECTURE.md** - System architecture overview
+- **web-app-architecture.md** - Next.js application structure
+- **modularization-roadmap.md** - Module separation plan
+- **module-structure-example.md** - Example module organization
 
-## Excel Templates
-- **[excel-to-system-mapping.md](excel-to-system-mapping.md)** - Excel to system mapping
-- **[excel-templates/](excel-templates/)** - Excel template documentation
+### setup/
+- **quick-start.md** - Getting started quickly
+- **amazon-integration.md** - Amazon FBA integration guide
 
-## Project Status
-- **[CURRENT_STATE.md](CURRENT_STATE.md)** - Current system state
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+### excel-templates/
+- **excel-to-system-mapping.md** - Maps Excel to system features
+- **excel-setup-guide.md** - Overview of Excel templates
+- Template-specific documentation for each Excel sheet
+
+### project-status/
+- **CURRENT_STATE.md** - Current system state and recent changes
+- **CHANGELOG.md** - Version history and release notes
