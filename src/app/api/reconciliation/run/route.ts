@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
 
     if (period) {
       const [year, month] = period.split('-')
-      const startDate = new Date(parseInt(year), parseInt(month) - 1, 16)
-      const endDate = new Date(parseInt(year), parseInt(month), 15, 23, 59, 59, 999)
-      billingPeriod = { startDate, endDate }
+      const start = new Date(parseInt(year), parseInt(month) - 1, 16)
+      const end = new Date(parseInt(year), parseInt(month), 15, 23, 59, 59, 999)
+      billingPeriod = { start, end }
     } else {
       // Default to current billing period
       billingPeriod = getBillingPeriod(new Date())
@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
     // Build where clause for invoices
     const invoiceWhere: any = {
       billingPeriodStart: {
-        gte: billingPeriod.startDate,
-        lte: billingPeriod.endDate
+        gte: billingPeriod.start,
+        lte: billingPeriod.end
       },
       status: { in: ['pending', 'reconciled', 'disputed'] }
     }
@@ -74,20 +74,18 @@ export async function POST(req: NextRequest) {
 
       // Create reconciliation records
       const reconciliations = []
+      const processedCosts = new Set<string>()
 
       // Match invoice line items with calculated costs
       for (const lineItem of invoice.lineItems) {
         // Find matching calculated cost
-        const matchingKey = Array.from(calculatedCostsSummary.keys()).find(key => {
-          const cost = calculatedCostsSummary.get(key)
-          return cost && 
-            cost.costCategory === lineItem.costCategory && 
-            cost.costName === lineItem.costName
-        })
+        const matchingCost = calculatedCostsSummary.find(cost => 
+          cost.costCategory === lineItem.costCategory && 
+          cost.costName === lineItem.costName
+        )
 
-        if (matchingKey) {
-          const calculatedCost = calculatedCostsSummary.get(matchingKey)!
-          const expectedAmount = calculatedCost.totalAmount
+        if (matchingCost) {
+          const expectedAmount = matchingCost.totalAmount
           const difference = Number(lineItem.amount) - Number(expectedAmount)
           let status: 'match' | 'overbilled' | 'underbilled' = 'match'
           
@@ -104,13 +102,13 @@ export async function POST(req: NextRequest) {
             invoicedAmount: lineItem.amount,
             difference,
             status,
-            expectedQuantity: calculatedCost.quantity,
+            expectedQuantity: matchingCost.totalQuantity,
             invoicedQuantity: lineItem.quantity || 0,
-            unitRate: calculatedCost.unitRate
+            unitRate: matchingCost.unitRate
           })
 
           // Mark as processed
-          calculatedCostsSummary.delete(matchingKey)
+          processedCosts.add(`${matchingCost.costCategory}-${matchingCost.costName}`)
         } else {
           // No matching calculated cost found - this charge shouldn't exist
           reconciliations.push({
@@ -131,8 +129,9 @@ export async function POST(req: NextRequest) {
 
       // Check for any calculated costs that don't have matching line items
       // These are costs we expected but weren't billed
-      for (const [key, calculatedCost] of calculatedCostsSummary) {
-        if (calculatedCost.totalAmount > 0) {
+      for (const calculatedCost of calculatedCostsSummary) {
+        const key = `${calculatedCost.costCategory}-${calculatedCost.costName}`
+        if (!processedCosts.has(key) && calculatedCost.totalAmount > 0) {
           reconciliations.push({
             invoiceId: invoice.id,
             costCategory: calculatedCost.costCategory,
@@ -141,7 +140,7 @@ export async function POST(req: NextRequest) {
             invoicedAmount: 0,
             difference: -calculatedCost.totalAmount,
             status: 'underbilled' as const,
-            expectedQuantity: calculatedCost.quantity,
+            expectedQuantity: calculatedCost.totalQuantity,
             invoicedQuantity: 0,
             unitRate: calculatedCost.unitRate
           })
@@ -184,8 +183,8 @@ export async function POST(req: NextRequest) {
         reconciliationsCreated: createdReconciliations,
         discrepanciesFound: totalDiscrepancies,
         period: {
-          start: billingPeriod.startDate.toISOString(),
-          end: billingPeriod.endDate.toISOString()
+          start: billingPeriod.start.toISOString(),
+          end: billingPeriod.end.toISOString()
         }
       }
     })

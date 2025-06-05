@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma';
 import { CostCategory } from '@prisma/client';
-import { startOfDay, endOfDay, parseISO } from 'date-fns';
 
 export interface AggregatedCost {
   warehouseId: string;
@@ -9,10 +8,12 @@ export interface AggregatedCost {
   costName: string;
   quantity: number;
   unitRate: number;
-  totalAmount: number;
-  details: {
+  unit: string;
+  amount: number;
+  details?: {
     skuId?: string;
-    skuName?: string;
+    skuCode?: string;
+    description?: string;
     batchLot?: string;
     transactionType?: string;
     count?: number;
@@ -20,8 +21,8 @@ export interface AggregatedCost {
 }
 
 export interface BillingPeriod {
-  startDate: Date;
-  endDate: Date;
+  start: Date;
+  end: Date;
 }
 
 /**
@@ -32,20 +33,20 @@ export function getBillingPeriod(date: Date): BillingPeriod {
   const month = date.getMonth();
   const day = date.getDate();
 
-  let startDate: Date;
-  let endDate: Date;
+  let start: Date;
+  let end: Date;
 
   if (day >= 16) {
     // Current month's billing period
-    startDate = new Date(year, month, 16);
-    endDate = new Date(year, month + 1, 15, 23, 59, 59, 999);
+    start = new Date(year, month, 16);
+    end = new Date(year, month + 1, 15, 23, 59, 59, 999);
   } else {
     // Previous month's billing period
-    startDate = new Date(year, month - 1, 16);
-    endDate = new Date(year, month, 15, 23, 59, 59, 999);
+    start = new Date(year, month - 1, 16);
+    end = new Date(year, month, 15, 23, 59, 59, 999);
   }
 
-  return { startDate, endDate };
+  return { start, end };
 }
 
 /**
@@ -59,82 +60,79 @@ export async function calculateStorageCosts(
   const storageEntries = await prisma.storageLedger.findMany({
     where: {
       warehouseId,
-      weekEnding: {
-        gte: billingPeriod.startDate,
-        lte: billingPeriod.endDate,
+      billingPeriodStart: {
+        gte: billingPeriod.start,
+      },
+      billingPeriodEnd: {
+        lte: billingPeriod.end,
       },
     },
     include: {
-      productSku: true,
+      sku: true,
       warehouse: true,
     },
   });
 
-  // Get storage rates for the warehouse
-  const storageRates = await prisma.costRate.findMany({
-    where: {
-      warehouseId,
-      category: CostCategory.STORAGE,
-      effectiveFrom: {
-        lte: billingPeriod.endDate,
-      },
-      OR: [
-        { effectiveTo: null },
-        { effectiveTo: { gte: billingPeriod.startDate } },
-      ],
-    },
-    orderBy: {
-      effectiveFrom: 'desc',
-    },
-  });
-
-  // Group storage costs by SKU and batch
+  // Group storage costs by SKU and aggregate
   const costsBySku = new Map<string, AggregatedCost>();
 
   for (const entry of storageEntries) {
-    const key = `${entry.skuId}-${entry.batchLot || 'NO_BATCH'}`;
+    const key = `${entry.skuId}-${entry.batchLot}`;
     
-    // Find applicable rate
-    const rate = storageRates.find(r => 
-      r.effectiveFrom <= entry.weekEnding &&
-      (!r.effectiveTo || r.effectiveTo >= entry.weekEnding)
-    );
-
-    if (!rate) continue;
-
     const existingCost = costsBySku.get(key);
-    const palletWeeks = entry.palletsCharged;
-    const weeklyAmount = palletWeeks * rate.rate;
+    const weeklyAmount = Number(entry.calculatedWeeklyCost);
 
     if (existingCost) {
-      existingCost.quantity += palletWeeks;
-      existingCost.totalAmount += weeklyAmount;
-      existingCost.details.push({
-        skuId: entry.skuId,
-        skuName: entry.productSku.name,
-        batchLot: entry.batchLot || undefined,
-        count: palletWeeks,
-      });
+      existingCost.quantity += entry.storagePalletsCharged;
+      existingCost.amount += weeklyAmount;
+      if (existingCost.details) {
+        existingCost.details.push({
+          skuId: entry.skuId,
+          skuCode: entry.sku.skuCode,
+          description: entry.sku.description,
+          batchLot: entry.batchLot,
+          count: entry.storagePalletsCharged,
+        });
+      }
     } else {
       costsBySku.set(key, {
         warehouseId: entry.warehouseId,
         warehouseName: entry.warehouse.name,
-        costCategory: CostCategory.STORAGE,
-        costName: rate.name,
-        quantity: palletWeeks,
-        unitRate: rate.rate,
-        totalAmount: weeklyAmount,
+        costCategory: CostCategory.Storage,
+        costName: 'Weekly Pallet Storage',
+        quantity: entry.storagePalletsCharged,
+        unitRate: Number(entry.applicableWeeklyRate),
+        unit: 'pallet-week',
+        amount: weeklyAmount,
         details: [{
           skuId: entry.skuId,
-          skuName: entry.productSku.name,
-          batchLot: entry.batchLot || undefined,
-          count: palletWeeks,
+          skuCode: entry.sku.skuCode,
+          description: entry.sku.description,
+          batchLot: entry.batchLot,
+          count: entry.storagePalletsCharged,
         }],
       });
     }
   }
 
-  return Array.from(costsBySku.values());
+  // Aggregate by cost name for summary
+  const aggregatedCosts: AggregatedCost[] = [];
+  const totalsByCostName = new Map<string, AggregatedCost>();
+
+  for (const cost of costsBySku.values()) {
+    const existing = totalsByCostName.get(cost.costName);
+    if (existing) {
+      existing.quantity += cost.quantity;
+      existing.amount += cost.amount;
+      if (existing.details && cost.details) {
+        existing.details.push(...cost.details);
+      }
+    } else {
+      totalsByCostName.set(cost.costName, { ...cost });
+    }
+  }
+
+  return Array.from(totalsByCostName.values());
 }
 
 /**
@@ -149,15 +147,15 @@ export async function calculateTransactionCosts(
     where: {
       warehouseId,
       transactionDate: {
-        gte: billingPeriod.startDate,
-        lte: billingPeriod.endDate,
+        gte: billingPeriod.start,
+        lte: billingPeriod.end,
       },
-      type: {
+      transactionType: {
         in: ['RECEIVE', 'SHIP'],
       },
     },
     include: {
-      productSku: true,
+      sku: true,
       warehouse: true,
     },
   });
@@ -166,16 +164,16 @@ export async function calculateTransactionCosts(
   const costRates = await prisma.costRate.findMany({
     where: {
       warehouseId,
-      category: {
-        in: [CostCategory.CONTAINER, CostCategory.CARTON, CostCategory.PALLET, 
-             CostCategory.UNIT, CostCategory.SHIPMENT],
+      costCategory: {
+        in: [CostCategory.Container, CostCategory.Carton, CostCategory.Pallet, 
+             CostCategory.Unit, CostCategory.Shipment],
       },
-      effectiveFrom: {
-        lte: billingPeriod.endDate,
+      effectiveDate: {
+        lte: billingPeriod.end,
       },
       OR: [
-        { effectiveTo: null },
-        { effectiveTo: { gte: billingPeriod.startDate } },
+        { endDate: null },
+        { endDate: { gte: billingPeriod.start } },
       ],
     },
   });
@@ -183,24 +181,24 @@ export async function calculateTransactionCosts(
   const aggregatedCosts: AggregatedCost[] = [];
 
   // Process inbound transactions (RECEIVE)
-  const inboundTransactions = transactions.filter(t => t.type === 'RECEIVE');
+  const inboundTransactions = transactions.filter(t => t.transactionType === 'RECEIVE');
   
-  // Container unloading (one per receive batch)
-  const containerDates = new Set(
-    inboundTransactions.map(t => t.transactionDate.toDateString())
-  );
+  // Container unloading (one per receive batch with container)
+  const containerTransactions = inboundTransactions.filter(t => t.containerNumber);
+  const uniqueContainers = new Set(containerTransactions.map(t => t.containerNumber));
   
-  const containerRate = costRates.find(r => r.category === CostCategory.CONTAINER);
-  if (containerRate && containerDates.size > 0) {
+  const containerRate = costRates.find(r => r.costCategory === CostCategory.Container);
+  if (containerRate && uniqueContainers.size > 0) {
     aggregatedCosts.push({
       warehouseId,
       warehouseName: transactions[0]?.warehouse.name || '',
-      costCategory: CostCategory.CONTAINER,
-      costName: containerRate.name,
-      quantity: containerDates.size,
-      unitRate: containerRate.rate,
-      totalAmount: containerDates.size * containerRate.rate,
-      details: Array.from(containerDates).map(date => ({
+      costCategory: CostCategory.Container,
+      costName: containerRate.costName,
+      quantity: uniqueContainers.size,
+      unitRate: Number(containerRate.costValue),
+      unit: containerRate.unitOfMeasure,
+      amount: uniqueContainers.size * Number(containerRate.costValue),
+      details: Array.from(uniqueContainers).map(containerNumber => ({
         transactionType: 'RECEIVE',
         count: 1,
       })),
@@ -209,124 +207,162 @@ export async function calculateTransactionCosts(
 
   // Inbound carton handling
   const inboundCartonRate = costRates.find(r => 
-    r.category === CostCategory.CARTON && r.name.toLowerCase().includes('inbound')
+    r.costCategory === CostCategory.Carton && r.costName.toLowerCase().includes('inbound')
   );
   if (inboundCartonRate) {
     const totalInboundCartons = inboundTransactions.reduce(
-      (sum, t) => sum + t.cartons, 0
+      (sum, t) => sum + t.cartonsIn, 0
     );
     if (totalInboundCartons > 0) {
       aggregatedCosts.push({
         warehouseId,
         warehouseName: transactions[0]?.warehouse.name || '',
-        costCategory: CostCategory.CARTON,
-        costName: inboundCartonRate.name,
+        costCategory: CostCategory.Carton,
+        costName: inboundCartonRate.costName,
         quantity: totalInboundCartons,
-        unitRate: inboundCartonRate.rate,
-        totalAmount: totalInboundCartons * inboundCartonRate.rate,
-        details: inboundTransactions.map(t => ({
-          skuId: t.skuId,
-          skuName: t.productSku.name,
-          batchLot: t.batchLot || undefined,
-          transactionType: 'RECEIVE',
-          count: t.cartons,
-        })),
+        unitRate: Number(inboundCartonRate.costValue),
+        unit: inboundCartonRate.unitOfMeasure,
+        amount: totalInboundCartons * Number(inboundCartonRate.costValue),
+        details: inboundTransactions
+          .filter(t => t.cartonsIn > 0)
+          .map(t => ({
+            skuId: t.skuId,
+            skuCode: t.sku.skuCode,
+            description: t.sku.description,
+            batchLot: t.batchLot,
+            transactionType: 'RECEIVE',
+            count: t.cartonsIn,
+          })),
+      });
+    }
+  }
+
+  // Inbound pallet handling
+  const inboundPalletRate = costRates.find(r => 
+    r.costCategory === CostCategory.Pallet && r.costName.toLowerCase().includes('inbound')
+  );
+  if (inboundPalletRate) {
+    const totalInboundPallets = inboundTransactions.reduce(
+      (sum, t) => sum + t.storagePalletsIn, 0
+    );
+    if (totalInboundPallets > 0) {
+      aggregatedCosts.push({
+        warehouseId,
+        warehouseName: transactions[0]?.warehouse.name || '',
+        costCategory: CostCategory.Pallet,
+        costName: inboundPalletRate.costName,
+        quantity: totalInboundPallets,
+        unitRate: Number(inboundPalletRate.costValue),
+        unit: inboundPalletRate.unitOfMeasure,
+        amount: totalInboundPallets * Number(inboundPalletRate.costValue),
+        details: inboundTransactions
+          .filter(t => t.storagePalletsIn > 0)
+          .map(t => ({
+            skuId: t.skuId,
+            skuCode: t.sku.skuCode,
+            description: t.sku.description,
+            batchLot: t.batchLot,
+            transactionType: 'RECEIVE',
+            count: t.storagePalletsIn,
+          })),
       });
     }
   }
 
   // Process outbound transactions (SHIP)
-  const outboundTransactions = transactions.filter(t => t.type === 'SHIP');
+  const outboundTransactions = transactions.filter(t => t.transactionType === 'SHIP');
 
   // Outbound by pallet
-  const palletRate = costRates.find(r => 
-    r.category === CostCategory.PALLET && r.name.toLowerCase().includes('outbound')
+  const outboundPalletRate = costRates.find(r => 
+    r.costCategory === CostCategory.Pallet && r.costName.toLowerCase().includes('outbound')
   );
-  if (palletRate) {
-    const totalPallets = outboundTransactions.reduce(
-      (sum, t) => sum + (t.pallets || 0), 0
+  if (outboundPalletRate) {
+    const totalOutboundPallets = outboundTransactions.reduce(
+      (sum, t) => sum + t.shippingPalletsOut, 0
     );
-    if (totalPallets > 0) {
+    if (totalOutboundPallets > 0) {
       aggregatedCosts.push({
         warehouseId,
         warehouseName: transactions[0]?.warehouse.name || '',
-        costCategory: CostCategory.PALLET,
-        costName: palletRate.name,
-        quantity: totalPallets,
-        unitRate: palletRate.rate,
-        totalAmount: totalPallets * palletRate.rate,
+        costCategory: CostCategory.Pallet,
+        costName: outboundPalletRate.costName,
+        quantity: totalOutboundPallets,
+        unitRate: Number(outboundPalletRate.costValue),
+        unit: outboundPalletRate.unitOfMeasure,
+        amount: totalOutboundPallets * Number(outboundPalletRate.costValue),
         details: outboundTransactions
-          .filter(t => t.pallets && t.pallets > 0)
+          .filter(t => t.shippingPalletsOut > 0)
           .map(t => ({
             skuId: t.skuId,
-            skuName: t.productSku.name,
-            batchLot: t.batchLot || undefined,
+            skuCode: t.sku.skuCode,
+            description: t.sku.description,
+            batchLot: t.batchLot,
             transactionType: 'SHIP',
-            count: t.pallets || 0,
+            count: t.shippingPalletsOut,
           })),
       });
     }
   }
 
-  // Outbound by carton
+  // Outbound by carton (only for transactions without pallets)
   const outboundCartonRate = costRates.find(r => 
-    r.category === CostCategory.CARTON && r.name.toLowerCase().includes('outbound')
+    r.costCategory === CostCategory.Carton && r.costName.toLowerCase().includes('outbound')
   );
   if (outboundCartonRate) {
-    // Only count cartons not on pallets
     const cartonsNotOnPallets = outboundTransactions
-      .filter(t => !t.pallets || t.pallets === 0)
-      .reduce((sum, t) => sum + t.cartons, 0);
+      .filter(t => t.shippingPalletsOut === 0)
+      .reduce((sum, t) => sum + t.cartonsOut, 0);
     
     if (cartonsNotOnPallets > 0) {
       aggregatedCosts.push({
         warehouseId,
         warehouseName: transactions[0]?.warehouse.name || '',
-        costCategory: CostCategory.CARTON,
-        costName: outboundCartonRate.name,
+        costCategory: CostCategory.Carton,
+        costName: outboundCartonRate.costName,
         quantity: cartonsNotOnPallets,
-        unitRate: outboundCartonRate.rate,
-        totalAmount: cartonsNotOnPallets * outboundCartonRate.rate,
+        unitRate: Number(outboundCartonRate.costValue),
+        unit: outboundCartonRate.unitOfMeasure,
+        amount: cartonsNotOnPallets * Number(outboundCartonRate.costValue),
         details: outboundTransactions
-          .filter(t => !t.pallets || t.pallets === 0)
+          .filter(t => t.shippingPalletsOut === 0 && t.cartonsOut > 0)
           .map(t => ({
             skuId: t.skuId,
-            skuName: t.productSku.name,
-            batchLot: t.batchLot || undefined,
+            skuCode: t.sku.skuCode,
+            description: t.sku.description,
+            batchLot: t.batchLot,
             transactionType: 'SHIP',
-            count: t.cartons,
+            count: t.cartonsOut,
           })),
       });
     }
   }
 
-  // Unit picking (if applicable)
-  const unitRate = costRates.find(r => r.category === CostCategory.UNIT);
-  if (unitRate) {
-    // Assuming units are tracked in a custom field or notes
-    // This would need to be implemented based on actual business logic
-  }
-
   // Shipment charges (per shipment)
-  const shipmentRate = costRates.find(r => r.category === CostCategory.SHIPMENT);
+  const shipmentRate = costRates.find(r => r.costCategory === CostCategory.Shipment);
   if (shipmentRate) {
     // Group by date and reference to count unique shipments
-    const shipments = new Map<string, number>();
+    const shipments = new Map<string, { date: Date; referenceId: string | null }>();
     for (const t of outboundTransactions) {
-      const key = `${t.transactionDate.toDateString()}-${t.reference || 'NO_REF'}`;
-      shipments.set(key, (shipments.get(key) || 0) + 1);
+      const key = `${t.transactionDate.toDateString()}-${t.referenceId || 'NO_REF'}`;
+      if (!shipments.has(key)) {
+        shipments.set(key, {
+          date: t.transactionDate,
+          referenceId: t.referenceId,
+        });
+      }
     }
     
     if (shipments.size > 0) {
       aggregatedCosts.push({
         warehouseId,
         warehouseName: transactions[0]?.warehouse.name || '',
-        costCategory: CostCategory.SHIPMENT,
-        costName: shipmentRate.name,
+        costCategory: CostCategory.Shipment,
+        costName: shipmentRate.costName,
         quantity: shipments.size,
-        unitRate: shipmentRate.rate,
-        totalAmount: shipments.size * shipmentRate.rate,
-        details: Array.from(shipments.entries()).map(([key, count]) => ({
+        unitRate: Number(shipmentRate.costValue),
+        unit: shipmentRate.unitOfMeasure,
+        amount: shipments.size * Number(shipmentRate.costValue),
+        details: Array.from(shipments.values()).map(shipment => ({
           transactionType: 'SHIP',
           count: 1,
         })),
@@ -358,23 +394,36 @@ export async function calculateAllCosts(
 export async function getCalculatedCostsSummary(
   warehouseId: string,
   billingPeriod: BillingPeriod
-): Promise<Map<string, AggregatedCost>> {
+): Promise<{ costCategory: CostCategory; costName: string; totalQuantity: number; totalAmount: number; unitRate: number; unit: string }[]> {
   const allCosts = await calculateAllCosts(warehouseId, billingPeriod);
   
-  const summary = new Map<string, AggregatedCost>();
+  const summaryMap = new Map<string, {
+    costCategory: CostCategory;
+    costName: string;
+    totalQuantity: number;
+    totalAmount: number;
+    unitRate: number;
+    unit: string;
+  }>();
   
   for (const cost of allCosts) {
     const key = `${cost.costCategory}-${cost.costName}`;
-    const existing = summary.get(key);
+    const existing = summaryMap.get(key);
     
     if (existing) {
-      existing.quantity += cost.quantity;
-      existing.totalAmount += cost.totalAmount;
-      existing.details.push(...cost.details);
+      existing.totalQuantity += cost.quantity;
+      existing.totalAmount += cost.amount;
     } else {
-      summary.set(key, { ...cost });
+      summaryMap.set(key, {
+        costCategory: cost.costCategory,
+        costName: cost.costName,
+        totalQuantity: cost.quantity,
+        totalAmount: cost.amount,
+        unitRate: cost.unitRate,
+        unit: cost.unit,
+      });
     }
   }
   
-  return summary;
+  return Array.from(summaryMap.values());
 }
