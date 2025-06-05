@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
     if (isAdmin) {
       url.pathname = '/admin/dashboard'
     } else {
-      url.pathname = '/warehouse/dashboard'
+      url.pathname = '/dashboard'
     }
     return NextResponse.redirect(url)
   }

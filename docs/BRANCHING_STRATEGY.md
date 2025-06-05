@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the branching strategy for multi-agent development on the Warehouse Management System. Each agent works on their own branch and creates pull requests to merge into the main branch.
+This document outlines the branching strategy for the Warehouse Management System. Developers work on feature branches and create pull requests to merge into the main branch.
 
 ## Branch Naming Convention
 

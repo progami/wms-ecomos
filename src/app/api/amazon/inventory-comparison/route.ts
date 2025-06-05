@@ -80,21 +80,21 @@ export async function GET() {
       // Calculate total warehouse quantity (excluding Amazon)
       const warehouseCartons = skuBalances.reduce((sum, balance) => sum + balance.currentCartons, 0)
       
-      // Get Amazon FBA quantity
-      const amazonBalance = amazonInventory.find(balance => balance.skuId === sku.id)
-      const amazonUnits = amazonBalance?.currentUnits || 0
+      // Get Amazon FBA quantity from SKU field
+      const amazonUnits = sku.fbaStock || 0
 
       // Convert cartons to units
       const unitsPerCarton = sku.unitsPerCarton || 1
       const warehouseUnits = Math.max(0, warehouseCartons * unitsPerCarton)
-
+      
       return {
         sku: sku.skuCode,
         description: sku.description || '',
         warehouseQty: warehouseUnits, // Total from all non-Amazon warehouses
-        amazonQty: amazonUnits, // Amazon FBA units
+        amazonQty: amazonUnits, // Amazon FBA units from SKU field
         total: warehouseUnits + amazonUnits, // Combined total
-        unitsPerCarton: unitsPerCarton
+        unitsPerCarton: unitsPerCarton,
+        lastUpdated: sku.fbaStockLastUpdated
       }
     })
 

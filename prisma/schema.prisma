@@ -78,6 +78,8 @@ model Sku {
   versions              SkuVersion[]
   storageLedgerEntries  StorageLedger[]
   warehouseConfigs      WarehouseSkuConfig[]
+  fbaStock              Int                    @default(0) @map("fba_stock")
+  fbaStockLastUpdated   DateTime?              @map("fba_stock_last_updated")
 
   @@index([skuCode])
   @@map("skus")

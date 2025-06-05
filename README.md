@@ -382,7 +382,7 @@ This project is proprietary software. All rights reserved.
 
 ### Branching Strategy
 
-We follow a module-based branching strategy for multi-agent development:
+We follow a module-based branching strategy:
 
 #### Branch Naming
 - `ops/{feature}` - Operations module

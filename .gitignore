@@ -153,3 +153,12 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+backups/
+*.sql
+*.dump

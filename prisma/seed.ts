@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, CostCategory } from '@prisma/client'
+import { PrismaClient, UserRole } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -43,6 +43,8 @@ async function main() {
     },
   })
 
+  console.log('✅ Created warehouses: FMC, VGlobal, 4AS')
+
   // Create users
   const adminPassword = await bcrypt.hash('admin123', 10)
   const staffPassword = await bcrypt.hash('staff123', 10)
@@ -81,142 +83,13 @@ async function main() {
     },
   })
 
-  // Create SKUs
-  const skus = [
-    {
-      skuCode: 'CS 007',
-      description: 'Product CS 007',
-      packSize: 1,
-      unitsPerCarton: 60,
-      cartonDimensionsCm: '40 x 44 x 52.5',
-      cartonWeightKg: 21.3,
-      packagingType: 'Box',
-    },
-    {
-      skuCode: 'CS 008',
-      description: 'Product CS 008',
-      packSize: 1,
-      unitsPerCarton: 60,
-      cartonDimensionsCm: '40 x 28 x 29.5',
-      cartonWeightKg: 10.0,
-      packagingType: 'Poly bag',
-    },
-    {
-      skuCode: 'CS 009',
-      description: 'Product CS 009',
-      packSize: 1,
-      unitsPerCarton: 36,
-      cartonDimensionsCm: '38 x 44 x 52.5',
-      cartonWeightKg: 20.4,
-      packagingType: 'Box',
-    },
-    {
-      skuCode: 'CS 010',
-      description: 'Product CS 010',
-      packSize: 1,
-      unitsPerCarton: 52,
-      cartonDimensionsCm: '41 x 28 x 39.5',
-      cartonWeightKg: 21.0,
-      packagingType: 'Poly bag',
-    },
-  ]
-
-  const createdSkus = []
-  for (const sku of skus) {
-    const created = await prisma.sku.upsert({
-      where: { skuCode: sku.skuCode },
-      update: {},
-      create: sku,
-    })
-    createdSkus.push(created)
-  }
-
-  // Create warehouse configurations
-  const warehouseConfigs = [
-    { warehouseId: warehouse1.id, skuId: createdSkus[0].id, storage: 14, shipping: 16 },
-    { warehouseId: warehouse1.id, skuId: createdSkus[1].id, storage: 36, shipping: 16 },
-    { warehouseId: warehouse1.id, skuId: createdSkus[2].id, storage: 14, shipping: 16 },
-    { warehouseId: warehouse1.id, skuId: createdSkus[3].id, storage: 36, shipping: 16 },
-  ]
-
-  for (const config of warehouseConfigs) {
-    const existingConfig = await prisma.warehouseSkuConfig.findFirst({
-      where: {
-        warehouseId: config.warehouseId,
-        skuId: config.skuId,
-        effectiveDate: new Date('2024-01-01'),
-      },
-    })
-
-    if (!existingConfig) {
-      await prisma.warehouseSkuConfig.create({
-        data: {
-          warehouseId: config.warehouseId,
-          skuId: config.skuId,
-          storageCartonsPerPallet: config.storage,
-          shippingCartonsPerPallet: config.shipping,
-          maxStackingHeightCm: 160,
-          effectiveDate: new Date('2024-01-01'),
-          createdById: adminUser.id,
-        },
-      })
-    }
-  }
-
-  // Create cost rates
-  const costRates = [
-    {
-      warehouseId: warehouse1.id,
-      costCategory: CostCategory.Storage,
-      costName: 'Storage cost per pallet / week',
-      costValue: 3.9,
-      unitOfMeasure: 'pallet/week',
-    },
-    {
-      warehouseId: warehouse1.id,
-      costCategory: CostCategory.Container,
-      costName: 'Container unload',
-      costValue: 350,
-      unitOfMeasure: 'container',
-    },
-    {
-      warehouseId: warehouse1.id,
-      costCategory: CostCategory.Pallet,
-      costName: 'Pallet shipment',
-      costValue: 30,
-      unitOfMeasure: 'pallet',
-    },
-    {
-      warehouseId: warehouse2.id,
-      costCategory: CostCategory.Storage,
-      costName: 'Storage cost per pallet / week',
-      costValue: 2.6,
-      unitOfMeasure: 'pallet/week',
-    },
-  ]
-
-  for (const rate of costRates) {
-    const existingRate = await prisma.costRate.findFirst({
-      where: {
-        warehouseId: rate.warehouseId,
-        costCategory: rate.costCategory,
-        costName: rate.costName,
-        effectiveDate: new Date('2024-01-01'),
-      },
-    })
-
-    if (!existingRate) {
-      await prisma.costRate.create({
-        data: {
-          ...rate,
-          effectiveDate: new Date('2024-01-01'),
-          createdById: adminUser.id,
-        },
-      })
-    }
-  }
-
-  console.log('✅ Database seed completed!')
+  console.log('✅ Created users:')
+  console.log('   - admin@warehouse.com (password: admin123)')
+  console.log('   - hashar@warehouse.com (password: staff123)')
+  console.log('   - umair@warehouse.com (password: staff123)')
+  
+  console.log('\n✅ Database seed completed!')
+  console.log('📝 Note: SKUs, cost rates, and warehouse configurations should be imported from Excel')
 }
 
 main()

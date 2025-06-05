@@ -95,7 +95,7 @@ describe('Middleware', () => {
       { path: '/admin/users', allowedRoles: ['system_admin'] },
       { path: '/admin/settings', allowedRoles: ['system_admin'] },
       { path: '/finance/dashboard', allowedRoles: ['system_admin', 'finance_admin'] },
-      { path: '/warehouse/inventory', allowedRoles: ['system_admin', 'warehouse_staff'] },
+      { path: '/operations/inventory', allowedRoles: ['system_admin', 'warehouse_staff'] },
     ]
 
     roleBasedRoutes.forEach(({ path, allowedRoles }) => {
@@ -142,7 +142,7 @@ describe('Middleware', () => {
 
   describe('Warehouse Staff Route Restrictions', () => {
     it('should restrict warehouse staff to their assigned warehouse', async () => {
-      const request = createRequest('/warehouse/inventory?warehouseId=warehouse-2')
+      const request = createRequest('/operations/inventory?warehouseId=warehouse-2')
       ;(getToken as jest.Mock).mockResolvedValue({
         id: 'user-123',
         role: 'warehouse_staff',
@@ -178,7 +178,7 @@ describe('Middleware', () => {
       const roleDashboards = [
         { role: 'system_admin', dashboard: '/admin/dashboard' },
         { role: 'finance_admin', dashboard: '/finance/dashboard' },
-        { role: 'warehouse_staff', dashboard: '/warehouse/dashboard' },
+        { role: 'warehouse_staff', dashboard: '/dashboard' },
         { role: 'manager', dashboard: '/dashboard' },
         { role: 'viewer', dashboard: '/dashboard' },
       ]

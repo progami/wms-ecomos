@@ -30,8 +30,8 @@ export async function GET(
       )
     }
 
-    // Find the highest batch number for this SKU
-    const lastTransaction = await prisma.inventoryTransaction.findFirst({
+    // Find all batch numbers for this SKU
+    const allTransactions = await prisma.inventoryTransaction.findMany({
       where: {
         skuId: sku.id,
         batchLot: {
@@ -40,30 +40,38 @@ export async function GET(
           }
         }
       },
-      orderBy: {
-        batchLot: 'desc'
-      },
       select: {
         batchLot: true
-      }
+      },
+      distinct: ['batchLot']
     })
 
     let nextBatchNumber = 1
+    let lastBatch: string | null = null
     
-    if (lastTransaction && lastTransaction.batchLot) {
-      // Extract numeric part from batch/lot
-      const match = lastTransaction.batchLot.match(/(\d+)/)
-      if (match) {
-        const lastNumber = parseInt(match[1])
-        if (!isNaN(lastNumber)) {
-          nextBatchNumber = lastNumber + 1
-        }
+    if (allTransactions.length > 0) {
+      // Extract numeric values and find the highest
+      const batchNumbers = allTransactions
+        .map(t => {
+          const match = t.batchLot.match(/(\d+)/)
+          return match ? parseInt(match[1]) : 0
+        })
+        .filter(n => !isNaN(n) && n > 0)
+      
+      if (batchNumbers.length > 0) {
+        const maxBatch = Math.max(...batchNumbers)
+        nextBatchNumber = maxBatch + 1
+        // Find the actual batch string with the max number
+        lastBatch = allTransactions.find(t => {
+          const match = t.batchLot.match(/(\d+)/)
+          return match && parseInt(match[1]) === maxBatch
+        })?.batchLot || null
       }
     }
 
     return NextResponse.json({
       skuCode,
-      lastBatch: lastTransaction?.batchLot || null,
+      lastBatch: lastBatch,
       nextBatchNumber,
       suggestedBatchLot: `${nextBatchNumber}`
     })

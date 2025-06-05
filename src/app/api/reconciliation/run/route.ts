@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { 
+  getCalculatedCostsSummary, 
+  getBillingPeriod,
+  type BillingPeriod 
+} from '@/lib/calculations/cost-aggregation'
 
 // POST /api/reconciliation/run - Run reconciliation for a period
 export async function POST(req: NextRequest) {
@@ -15,32 +20,23 @@ export async function POST(req: NextRequest) {
     const { warehouseId, period } = body
 
     // Parse period to get date range
-    let startDate: Date
-    let endDate: Date
+    let billingPeriod: BillingPeriod
 
     if (period) {
       const [year, month] = period.split('-')
-      startDate = new Date(parseInt(year), parseInt(month) - 1, 16)
-      endDate = new Date(parseInt(year), parseInt(month), 15)
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 16)
+      const endDate = new Date(parseInt(year), parseInt(month), 15, 23, 59, 59, 999)
+      billingPeriod = { startDate, endDate }
     } else {
       // Default to current billing period
-      const now = new Date()
-      if (now.getDate() <= 15) {
-        // Current period is previous month 16th to current month 15th
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 16)
-        endDate = new Date(now.getFullYear(), now.getMonth(), 15)
-      } else {
-        // Current period is current month 16th to next month 15th
-        startDate = new Date(now.getFullYear(), now.getMonth(), 16)
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 15)
-      }
+      billingPeriod = getBillingPeriod(new Date())
     }
 
     // Build where clause for invoices
     const invoiceWhere: any = {
       billingPeriodStart: {
-        gte: startDate,
-        lte: endDate
+        gte: billingPeriod.startDate,
+        lte: billingPeriod.endDate
       },
       status: { in: ['pending', 'reconciled', 'disputed'] }
     }
@@ -54,12 +50,14 @@ export async function POST(req: NextRequest) {
       where: invoiceWhere,
       include: {
         lineItems: true,
-        reconciliations: true
+        reconciliations: true,
+        warehouse: true
       }
     })
 
     let processedCount = 0
     let createdReconciliations = 0
+    let totalDiscrepancies = 0
 
     // Process each invoice
     for (const invoice of invoices) {
@@ -68,46 +66,34 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Get calculated costs for the billing period
-      const calculatedCosts = await prisma.calculatedCost.groupBy({
-        by: ['costRateId'],
-        where: {
-          warehouseId: invoice.warehouseId,
-          billingPeriodStart: {
-            gte: invoice.billingPeriodStart,
-            lte: invoice.billingPeriodEnd
-          }
-        },
-        _sum: {
-          finalExpectedCost: true
-        }
-      })
-
-      // Get cost rate details
-      const costRateIds = calculatedCosts.map(c => c.costRateId)
-      const costRates = await prisma.costRate.findMany({
-        where: { id: { in: costRateIds } }
-      })
+      // Get calculated costs for the warehouse and billing period
+      const calculatedCostsSummary = await getCalculatedCostsSummary(
+        invoice.warehouseId,
+        billingPeriod
+      )
 
       // Create reconciliation records
       const reconciliations = []
 
+      // Match invoice line items with calculated costs
       for (const lineItem of invoice.lineItems) {
         // Find matching calculated cost
-        const matchingRate = costRates.find(r => 
-          r.costCategory === lineItem.costCategory && 
-          r.costName === lineItem.costName
-        )
+        const matchingKey = Array.from(calculatedCostsSummary.keys()).find(key => {
+          const cost = calculatedCostsSummary.get(key)
+          return cost && 
+            cost.costCategory === lineItem.costCategory && 
+            cost.costName === lineItem.costName
+        })
 
-        if (matchingRate) {
-          const calculatedSum = calculatedCosts.find(c => c.costRateId === matchingRate.id)
-          const expectedAmount = calculatedSum?._sum.finalExpectedCost || 0
-
+        if (matchingKey) {
+          const calculatedCost = calculatedCostsSummary.get(matchingKey)!
+          const expectedAmount = calculatedCost.totalAmount
           const difference = Number(lineItem.amount) - Number(expectedAmount)
           let status: 'match' | 'overbilled' | 'underbilled' = 'match'
           
           if (Math.abs(difference) > 0.01) {
             status = difference > 0 ? 'overbilled' : 'underbilled'
+            totalDiscrepancies++
           }
 
           reconciliations.push({
@@ -117,10 +103,16 @@ export async function POST(req: NextRequest) {
             expectedAmount,
             invoicedAmount: lineItem.amount,
             difference,
-            status
+            status,
+            expectedQuantity: calculatedCost.quantity,
+            invoicedQuantity: lineItem.quantity || 0,
+            unitRate: calculatedCost.unitRate
           })
+
+          // Mark as processed
+          calculatedCostsSummary.delete(matchingKey)
         } else {
-          // No matching calculated cost found
+          // No matching calculated cost found - this charge shouldn't exist
           reconciliations.push({
             invoiceId: invoice.id,
             costCategory: lineItem.costCategory,
@@ -128,33 +120,32 @@ export async function POST(req: NextRequest) {
             expectedAmount: 0,
             invoicedAmount: lineItem.amount,
             difference: lineItem.amount,
-            status: 'overbilled' as const
+            status: 'overbilled' as const,
+            expectedQuantity: 0,
+            invoicedQuantity: lineItem.quantity || 0,
+            unitRate: lineItem.unitRate || 0
           })
+          totalDiscrepancies++
         }
       }
 
       // Check for any calculated costs that don't have matching line items
-      for (const costRate of costRates) {
-        const hasLineItem = invoice.lineItems.some(item => 
-          item.costCategory === costRate.costCategory && 
-          item.costName === costRate.costName
-        )
-
-        if (!hasLineItem) {
-          const calculatedSum = calculatedCosts.find(c => c.costRateId === costRate.id)
-          const expectedAmount = Number(calculatedSum?._sum.finalExpectedCost || 0)
-
-          if (expectedAmount > 0) {
-            reconciliations.push({
-              invoiceId: invoice.id,
-              costCategory: costRate.costCategory,
-              costName: costRate.costName,
-              expectedAmount,
-              invoicedAmount: 0,
-              difference: -expectedAmount,
-              status: 'underbilled' as const
-            })
-          }
+      // These are costs we expected but weren't billed
+      for (const [key, calculatedCost] of calculatedCostsSummary) {
+        if (calculatedCost.totalAmount > 0) {
+          reconciliations.push({
+            invoiceId: invoice.id,
+            costCategory: calculatedCost.costCategory,
+            costName: calculatedCost.costName,
+            expectedAmount: calculatedCost.totalAmount,
+            invoicedAmount: 0,
+            difference: -calculatedCost.totalAmount,
+            status: 'underbilled' as const,
+            expectedQuantity: calculatedCost.quantity,
+            invoicedQuantity: 0,
+            unitRate: calculatedCost.unitRate
+          })
+          totalDiscrepancies++
         }
       }
 
@@ -166,27 +157,24 @@ export async function POST(req: NextRequest) {
         createdReconciliations += reconciliations.length
       }
 
-      processedCount++
-    }
-
-    // Update invoice statuses based on reconciliation results
-    for (const invoice of invoices) {
-      const reconciliations = await prisma.invoiceReconciliation.findMany({
-        where: { invoiceId: invoice.id }
-      })
-
-      if (reconciliations.length > 0) {
-        const hasDiscrepancies = reconciliations.some(r => r.status !== 'match')
-        
-        if (invoice.status === 'pending') {
-          await prisma.invoice.update({
-            where: { id: invoice.id },
-            data: {
-              status: hasDiscrepancies ? 'reconciled' : 'reconciled'
-            }
-          })
-        }
+      // Update invoice status based on reconciliation results
+      const hasDiscrepancies = reconciliations.some(r => r.status !== 'match')
+      
+      // Only auto-update status if invoice is pending
+      // Don't change status if it's already disputed or reconciled
+      if (invoice.status === 'pending' && reconciliations.length > 0) {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            status: hasDiscrepancies ? 'pending' : 'reconciled',
+            notes: hasDiscrepancies 
+              ? `Auto-reconciliation found ${totalDiscrepancies} discrepancies. Review required.`
+              : 'Auto-reconciliation successful - all line items match expected costs.'
+          }
+        })
       }
+
+      processedCount++
     }
 
     return NextResponse.json({
@@ -194,9 +182,10 @@ export async function POST(req: NextRequest) {
       summary: {
         invoicesProcessed: processedCount,
         reconciliationsCreated: createdReconciliations,
+        discrepanciesFound: totalDiscrepancies,
         period: {
-          start: startDate.toISOString(),
-          end: endDate.toISOString()
+          start: billingPeriod.startDate.toISOString(),
+          end: billingPeriod.endDate.toISOString()
         }
       }
     })

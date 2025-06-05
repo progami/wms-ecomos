@@ -11,7 +11,7 @@ export function getAmazonClient() {
     }
     
     spApiClient = new SellingPartnerAPI({
-      region: process.env.AMAZON_REGION || 'eu-west-1',
+      region: 'eu', // Amazon SP-API expects 'eu', 'na', or 'fe'
       refresh_token: process.env.AMAZON_REFRESH_TOKEN,
       credentials: {
         SELLING_PARTNER_APP_CLIENT_ID: process.env.AMAZON_SP_APP_CLIENT_ID,
@@ -20,7 +20,7 @@ export function getAmazonClient() {
       options: {
         auto_request_tokens: true,
         auto_request_throttled: true,
-        use_sandbox: true // Enable sandbox mode for testing
+        use_sandbox: false // Use production mode
       }
     })
   }
@@ -32,11 +32,12 @@ export async function getInventory() {
   try {
     const client = getAmazonClient()
     const response = await client.callAPI({
-      operation: 'getFbaInventorySummaries',
+      operation: 'getInventorySummaries',
       endpoint: 'fbaInventory',
       query: {
         marketplaceIds: [process.env.AMAZON_MARKETPLACE_ID],
-        details: true
+        granularityType: 'Marketplace',
+        granularityId: process.env.AMAZON_MARKETPLACE_ID
       }
     })
     return response

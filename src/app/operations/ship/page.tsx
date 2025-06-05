@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Truck, Plus, Save, X, AlertTriangle } from 'lucide-react'
+import { Truck, Plus, Save, X, AlertTriangle, Upload, FileText } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
@@ -44,6 +44,14 @@ interface ShipItem {
   palletVariance?: boolean
 }
 
+interface Attachment {
+  name: string
+  type: string
+  size: number
+  data?: string
+  category: 'proof_of_pickup' | 'other'
+}
+
 export default function WarehouseShipPage() {
   const router = useRouter()
   const { data: session } = useSession()
@@ -56,6 +64,9 @@ export default function WarehouseShipPage() {
   const [items, setItems] = useState<ShipItem[]>([
     { id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }
   ])
+  const [lastCarrier, setLastCarrier] = useState<string>('')
+  const [proofOfPickupAttachment, setProofOfPickupAttachment] = useState<Attachment | null>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
 
   const addItem = () => {
     setItems([
@@ -66,6 +77,47 @@ export default function WarehouseShipPage() {
 
   const removeItem = (id: number) => {
     setItems(items.filter(item => item.id !== id))
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, category: Attachment['category']) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Limit file size to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(`${file.name} is too large. Maximum size is 5MB.`)
+      return
+    }
+    
+    // Convert to base64
+    const reader = new FileReader()
+    reader.onload = () => {
+      const attachment: Attachment = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data: reader.result as string,
+        category
+      }
+      
+      // Update specific attachment state
+      if (category === 'proof_of_pickup') {
+        setProofOfPickupAttachment(attachment)
+      } else {
+        setAttachments([...attachments, attachment])
+      }
+      
+      toast.success(`${category === 'proof_of_pickup' ? 'Proof of Pickup' : 'Document'} uploaded`)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeProofOfPickupAttachment = () => {
+    setProofOfPickupAttachment(null)
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index))
   }
 
   const updateItem = (id: number, field: string, value: any) => {
@@ -137,7 +189,27 @@ export default function WarehouseShipPage() {
   useEffect(() => {
     fetchSkus()
     fetchWarehouses()
+    fetchLastShipmentData()
   }, [])
+
+  const fetchLastShipmentData = async () => {
+    try {
+      const response = await fetch('/api/transactions/ledger?transactionType=SHIP&limit=1')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.transactions && data.transactions.length > 0) {
+          const lastShipment = data.transactions[0]
+          // Extract carrier from notes if available
+          const carrierMatch = lastShipment.notes?.match(/Carrier: ([^.]+)/)
+          if (carrierMatch) {
+            setLastCarrier(carrierMatch[1].trim())
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching last shipment:', error)
+    }
+  }
 
   useEffect(() => {
     if (selectedWarehouseId) {
@@ -184,6 +256,10 @@ export default function WarehouseShipPage() {
       if (response.ok) {
         const data = await response.json()
         setWarehouses(data)
+        // Auto-select user's warehouse if available
+        if (session?.user.warehouseId) {
+          setSelectedWarehouseId(session.user.warehouseId)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch warehouses:', error)
@@ -287,6 +363,11 @@ export default function WarehouseShipPage() {
     // Get source warehouse name
     const sourceWarehouse = warehouses.find(w => w.id === sourceWarehouseId)
     
+    // Combine all attachments
+    const allAttachments: Attachment[] = []
+    if (proofOfPickupAttachment) allAttachments.push(proofOfPickupAttachment)
+    allAttachments.push(...attachments)
+    
     try {
       const response = await fetch('/api/transactions', {
         method: 'POST',
@@ -298,6 +379,7 @@ export default function WarehouseShipPage() {
           items: validItems,
           notes: `Source: ${sourceWarehouse?.name || 'Unknown'}. Carrier: ${carrier}. FBA Tracking: ${tracking}. Total Cartons: ${items.reduce((sum, item) => sum + item.cartons, 0)}. ${notes}`,
           warehouseId: sourceWarehouseId || session?.user.warehouseId,
+          attachments: allAttachments.length > 0 ? allAttachments : null,
         }),
       })
       
@@ -305,7 +387,7 @@ export default function WarehouseShipPage() {
       
       if (response.ok) {
         toast.success(`Shipment saved successfully! ${data.message}`)
-        router.push('/warehouse/inventory')
+        router.push('/operations/inventory')
       } else {
         toast.error(data.error || 'Failed to save shipment')
         if (data.details) {
@@ -331,7 +413,7 @@ export default function WarehouseShipPage() {
             </p>
           </div>
           <button
-            onClick={() => router.push('/warehouse/inventory')}
+            onClick={() => router.push('/operations/inventory')}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             Cancel
@@ -402,10 +484,16 @@ export default function WarehouseShipPage() {
                   name="carrier"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   required
+                  defaultValue={lastCarrier}
                 >
                   <option value="">Select Carrier...</option>
                   <option value="Amazon Partnered Carrier UPS">Amazon Partnered Carrier UPS</option>
                   <option value="Amazon Freight">Amazon Freight</option>
+                  <option value="UPS">UPS</option>
+                  <option value="FedEx">FedEx</option>
+                  <option value="DHL">DHL</option>
+                  <option value="USPS">USPS</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
               <div>
@@ -642,11 +730,114 @@ export default function WarehouseShipPage() {
             />
           </div>
 
+          {/* Attachments */}
+          <div className="border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Required Documents</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Upload proof of pickup document (Max 5MB per file)
+            </p>
+            
+            <div className="space-y-6">
+              {/* Proof of Pickup */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Proof of Pickup</h4>
+                    <p className="text-xs text-gray-600">Document confirming carrier pickup (BOL, pickup receipt, etc.)</p>
+                  </div>
+                  {proofOfPickupAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {proofOfPickupAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{proofOfPickupAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(proofOfPickupAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeProofOfPickupAttachment}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'proof_of_pickup')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Other Attachments */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-sm mb-2">Additional Documents (Optional)</h4>
+                <div className="space-y-2">
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-3 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                      <p className="text-sm text-gray-600">Click to upload additional documents</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, DOC, DOCX, XLS, XLSX</p>
+                    </div>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => {
+                        const files = e.target.files
+                        if (files) {
+                          Array.from(files).forEach(file => {
+                            const event = new Event('change') as any
+                            event.target = { files: [file] }
+                            handleFileUpload(event as React.ChangeEvent<HTMLInputElement>, 'other')
+                          })
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  
+                  {attachments.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(index)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="flex justify-end gap-4">
             <button
               type="button"
-              onClick={() => router.push('/warehouse/inventory')}
+              onClick={() => router.push('/operations/inventory')}
               className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancel

@@ -149,7 +149,7 @@ export default function NewRatePage() {
 
       if (response.ok) {
         toast.success('Rate created successfully')
-        router.push('/admin/settings/rates')
+        router.push('/config/rates')
       } else {
         const error = await response.json()
         toast.error(error.error || 'Failed to create rate')
@@ -162,7 +162,7 @@ export default function NewRatePage() {
   }
 
   const handleCancel = () => {
-    router.push('/admin/settings/rates')
+    router.push('/config/rates')
   }
 
   const handleCategoryChange = (category: string) => {

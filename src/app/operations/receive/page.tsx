@@ -249,21 +249,39 @@ export default function WarehouseReceivePage() {
       const configs = await configResponse.json()
       if (configs.length > 0) {
         const config = configs[0] // Get the most recent config
-        setItems(items.map(item => {
+        setItems(prevItems => prevItems.map(item => {
           if (item.id === itemId) {
-            const calculatedPallets = item.cartons > 0 && config.storageCartonsPerPallet > 0
-              ? Math.ceil(item.cartons / config.storageCartonsPerPallet)
+            const storageCartonsPerPallet = config.storageCartonsPerPallet || 0
+            const shippingCartonsPerPallet = config.shippingCartonsPerPallet || 0
+            const calculatedPallets = item.cartons > 0 && storageCartonsPerPallet > 0
+              ? Math.ceil(item.cartons / storageCartonsPerPallet)
               : 0
             
             return { 
               ...item, 
-              storageCartonsPerPallet: config.storageCartonsPerPallet || 0,
-              shippingCartonsPerPallet: config.shippingCartonsPerPallet || 0,
+              storageCartonsPerPallet,
+              shippingCartonsPerPallet,
               configLoaded: true,
               calculatedPallets,
               // Only auto-update pallets if user hasn't manually entered a value
               pallets: item.pallets > 0 ? item.pallets : calculatedPallets,
               palletVariance: item.pallets > 0 && item.pallets !== calculatedPallets
+            }
+          }
+          return item
+        }))
+      } else {
+        // No config found, but mark as loaded with defaults
+        setItems(prevItems => prevItems.map(item => {
+          if (item.id === itemId) {
+            return { 
+              ...item, 
+              storageCartonsPerPallet: 0,
+              shippingCartonsPerPallet: 0,
+              configLoaded: true,
+              calculatedPallets: 0,
+              pallets: 0,
+              palletVariance: false
             }
           }
           return item
@@ -403,7 +421,7 @@ export default function WarehouseReceivePage() {
       
       if (response.ok) {
         toast.success(`Receipt saved successfully! ${data.message}`)
-        router.push('/warehouse/inventory')
+        router.push('/operations/inventory')
       } else {
         toast.error(data.error || 'Failed to save receipt')
         if (data.details) {
@@ -429,7 +447,7 @@ export default function WarehouseReceivePage() {
             </p>
           </div>
           <button
-            onClick={() => router.push('/warehouse/inventory')}
+            onClick={() => router.push('/operations/inventory')}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             Cancel
@@ -631,11 +649,12 @@ export default function WarehouseReceivePage() {
                             }
                           }}
                           className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
-                            item.configLoaded ? 'bg-yellow-50' : ''
+                            item.configLoaded && item.storageCartonsPerPallet > 0 ? 'bg-yellow-50' : ''
                           }`}
                           min="1"
-                          placeholder="Loading..."
-                          title={item.configLoaded ? 'Loaded from warehouse config (editable)' : 'Enter value'}
+                          placeholder={item.configLoaded ? "Enter value" : "Loading..."}
+                          title={item.configLoaded && item.storageCartonsPerPallet > 0 ? 'Loaded from warehouse config (editable)' : 'Enter value'}
+                          required
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -644,11 +663,12 @@ export default function WarehouseReceivePage() {
                           value={item.shippingCartonsPerPallet}
                           onChange={(e) => updateItem(item.id, 'shippingCartonsPerPallet', parseInt(e.target.value) || 0)}
                           className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
-                            item.configLoaded ? 'bg-yellow-50' : ''
+                            item.configLoaded && item.shippingCartonsPerPallet > 0 ? 'bg-yellow-50' : ''
                           }`}
                           min="1"
-                          placeholder="Loading..."
-                          title={item.configLoaded ? 'Loaded from warehouse config (editable)' : 'Enter value'}
+                          placeholder={item.configLoaded ? "Enter value" : "Loading..."}
+                          title={item.configLoaded && item.shippingCartonsPerPallet > 0 ? 'Loaded from warehouse config (editable)' : 'Enter value'}
+                          required
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -736,48 +756,6 @@ export default function WarehouseReceivePage() {
             </p>
             
             <div className="space-y-6">
-              {/* Packing List */}
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h4 className="font-medium text-sm">Packing List</h4>
-                    <p className="text-xs text-gray-600">List of items, quantities, and packaging details</p>
-                  </div>
-                  {packingListAttachment && (
-                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
-                  )}
-                </div>
-                {packingListAttachment ? (
-                  <div className="flex items-center justify-between bg-white p-2 rounded border">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-700">{packingListAttachment.name}</span>
-                      <span className="text-xs text-gray-500">({(packingListAttachment.size / 1024).toFixed(1)} KB)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeSpecificAttachment('packing_list')}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer">
-                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
-                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
-                      <p className="text-xs text-gray-600">Click to upload</p>
-                    </div>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                      onChange={(e) => handleFileUpload(e, 'packing_list')}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
               {/* Commercial Invoice */}
               <div className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex items-center justify-between mb-2">
@@ -814,6 +792,48 @@ export default function WarehouseReceivePage() {
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                       onChange={(e) => handleFileUpload(e, 'commercial_invoice')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Packing List */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Packing List</h4>
+                    <p className="text-xs text-gray-600">List of items, quantities, and packaging details</p>
+                  </div>
+                  {packingListAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {packingListAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{packingListAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(packingListAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('packing_list')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'packing_list')}
                       className="hidden"
                     />
                   </label>
@@ -972,7 +992,7 @@ export default function WarehouseReceivePage() {
           <div className="flex justify-end gap-4">
             <button
               type="button"
-              onClick={() => router.push('/warehouse/inventory')}
+              onClick={() => router.push('/operations/inventory')}
               className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancel

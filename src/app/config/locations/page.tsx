@@ -181,7 +181,7 @@ export default function WarehouseSettingsPage() {
               </div>
             </Link>
             <Link
-              href="/admin/settings/rates"
+              href="/config/rates"
               className="flex items-center p-4 bg-white rounded-lg hover:shadow-md transition-shadow"
             >
               <SettingsIcon className="h-8 w-8 text-primary mr-3" />

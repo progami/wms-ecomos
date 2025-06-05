@@ -45,7 +45,7 @@ const navigation = {
     {
       title: 'Operations',
       items: [
-        { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
+        { name: 'Ledger', href: '/operations/inventory', icon: BookOpen },
         { name: 'Receive Goods', href: '/operations/receive', icon: Package },
         { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
       ]
@@ -92,7 +92,7 @@ const navigation = {
     {
       title: 'Operations',
       items: [
-        { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
+        { name: 'Ledger', href: '/operations/inventory', icon: BookOpen },
         { name: 'Receive Goods', href: '/operations/receive', icon: Package },
         { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
       ]

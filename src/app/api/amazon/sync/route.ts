@@ -59,127 +59,40 @@ async function syncInventory() {
     }
 
     let syncedCount = 0
+    let skippedCount = 0
     const errors = []
-
-    // Get or create Amazon warehouse
-    let amazonWarehouse = await prisma.warehouse.findFirst({
-      where: { code: 'AMZN-UK' }
-    })
-
-    if (!amazonWarehouse) {
-      amazonWarehouse = await prisma.warehouse.create({
-        data: {
-          code: 'AMZN-UK',
-          name: 'Amazon FBA UK',
-          address: 'Amazon Fulfillment Centers',
-          isActive: true
-        }
-      })
-    }
 
     // Process each inventory item
     for (const item of inventoryData.inventorySummaries) {
       try {
-        // Find or create SKU
+        // Only sync SKUs that already exist in our system
         let sku = await prisma.sku.findFirst({
-          where: { asin: item.asin }
+          where: {
+            OR: [
+              { asin: item.asin },
+              { skuCode: item.sellerSku }
+            ]
+          }
         })
 
         if (!sku) {
-          // Try to get product details from catalog
-          try {
-            const catalogItem = await getCatalogItem(item.asin)
-            const title = catalogItem?.item?.attributes?.title?.[0]?.value || `Product ${item.asin}`
-            
-            sku = await prisma.sku.create({
-              data: {
-                skuCode: item.sellerSku || item.asin,
-                asin: item.asin,
-                description: title,
-                packSize: 1, // Default values - should be updated manually
-                unitsPerCarton: 1,
-                cartonWeightKg: 1,
-                notes: 'Auto-imported from Amazon'
-              }
-            })
-          } catch (catalogError) {
-            console.error(`Failed to get catalog data for ${item.asin}:`, catalogError)
-            // Create with minimal data
-            sku = await prisma.sku.create({
-              data: {
-                skuCode: item.sellerSku || item.asin,
-                asin: item.asin,
-                description: `Amazon Product ${item.asin}`,
-                packSize: 1,
-                unitsPerCarton: 1,
-                cartonWeightKg: 1,
-                notes: 'Auto-imported from Amazon - Update details manually'
-              }
-            })
-          }
+          // Skip items that don't exist in our product catalog
+          console.log(`Skipping Amazon item ${item.sellerSku} (ASIN: ${item.asin}) - not in product catalog`)
+          skippedCount++
+          continue
         }
 
-        // Update inventory balance
-        const totalQuantity = (item.inventoryDetails?.fulfillableQuantity || 0) + 
-                            (item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0)
-
-        if (totalQuantity > 0) {
-          // Check current balance
-          const currentBalance = await prisma.inventoryBalance.findUnique({
-            where: {
-              warehouseId_skuId_batchLot: {
-                warehouseId: amazonWarehouse.id,
-                skuId: sku.id,
-                batchLot: 'AMAZON-FBA'
-              }
-            }
-          })
-
-          const currentCartons = currentBalance?.currentCartons || 0
-          const difference = totalQuantity - currentCartons
-
-          if (difference !== 0) {
-            // Create adjustment transaction
-            await prisma.inventoryTransaction.create({
-              data: {
-                transactionId: `AMZN-SYNC-${Date.now()}-${sku.skuCode}`,
-                warehouseId: amazonWarehouse.id,
-                skuId: sku.id,
-                batchLot: 'AMAZON-FBA',
-                transactionType: difference > 0 ? 'ADJUST_IN' : 'ADJUST_OUT',
-                referenceId: `AMZN-SYNC-${new Date().toISOString()}`,
-                cartonsIn: difference > 0 ? difference : 0,
-                cartonsOut: difference < 0 ? Math.abs(difference) : 0,
-                transactionDate: new Date(),
-                notes: `Amazon FBA sync - Fulfillable: ${item.inventoryDetails?.fulfillableQuantity || 0}, Reserved: ${item.inventoryDetails?.reservedQuantity?.totalReservedQuantity || 0}`,
-                createdById: session.user.id
-              }
-            })
-
-            // Update balance
-            if (currentBalance) {
-              await prisma.inventoryBalance.update({
-                where: { id: currentBalance.id },
-                data: {
-                  currentCartons: totalQuantity,
-                  currentUnits: totalQuantity * sku.unitsPerCarton,
-                  lastTransactionDate: new Date()
-                }
-              })
-            } else {
-              await prisma.inventoryBalance.create({
-                data: {
-                  warehouseId: amazonWarehouse.id,
-                  skuId: sku.id,
-                  batchLot: 'AMAZON-FBA',
-                  currentCartons: totalQuantity,
-                  currentUnits: totalQuantity * sku.unitsPerCarton,
-                  lastTransactionDate: new Date()
-                }
-              })
-            }
+        // Get the total quantity from Amazon
+        const totalQuantity = item.totalQuantity || 0
+        
+        // Update the SKU with FBA stock
+        await prisma.sku.update({
+          where: { id: sku.id },
+          data: {
+            fbaStock: totalQuantity,
+            fbaStockLastUpdated: new Date()
           }
-        }
+        })
 
         syncedCount++
       } catch (itemError) {
@@ -192,8 +105,9 @@ async function syncInventory() {
     }
 
     return NextResponse.json({
-      message: `Successfully synced ${syncedCount} items`,
+      message: `Successfully synced ${syncedCount} items${skippedCount > 0 ? `, skipped ${skippedCount} items not in catalog` : ''}`,
       synced: syncedCount,
+      skipped: skippedCount,
       errors: errors.length > 0 ? errors : undefined
     })
   } catch (error) {

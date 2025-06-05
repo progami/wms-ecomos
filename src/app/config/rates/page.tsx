@@ -201,7 +201,7 @@ export default function AdminRatesPage() {
           actions={
             session?.user.role === 'admin' && (
               <Link
-                href="/admin/settings/rates/new"
+                href="/config/rates/new"
                 className="action-button"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -400,7 +400,7 @@ export default function AdminRatesPage() {
                         {session?.user.role === 'admin' && (
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <Link
-                              href={`/admin/settings/rates/${rate.id}/edit`}
+                              href={`/config/rates/${rate.id}/edit`}
                               className="text-primary hover:text-primary/80"
                             >
                               <Edit2 className="h-4 w-4" />
