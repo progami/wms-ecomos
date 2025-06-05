@@ -278,7 +278,7 @@ export default function WarehouseShipPage() {
   const fetchInventory = async (warehouseId?: string) => {
     try {
       const url = warehouseId 
-        ? `/api/inventory/balances?warehouse=${warehouseId}`
+        ? `/api/inventory/balances?warehouseId=${warehouseId}`
         : '/api/inventory/balances'
       const response = await fetch(url)
       if (response.ok) {
