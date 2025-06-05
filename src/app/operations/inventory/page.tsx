@@ -51,7 +51,7 @@ interface Transaction {
 export default function UnifiedInventoryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'balances' | 'transactions' | 'storage'>('balances')
+  const [activeTab, setActiveTab] = useState<'balances' | 'transactions' | 'storage'>('transactions')
   const [viewMode, setViewMode] = useState<'live' | 'point-in-time'>('live')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // Default: latest first
