@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import { 
   Package, TrendingUp, Truck, Mail, Calendar, AlertCircle, 
   RefreshCw, ChevronRight, Clock, Building, BarChart3,
-  ArrowUp, ArrowDown, Send, FileText, Check, X
+  ArrowUp, ArrowDown, Send, FileText, Check, X, Search
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
