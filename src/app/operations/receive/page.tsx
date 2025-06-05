@@ -31,6 +31,8 @@ export default function WarehouseReceivePage() {
   const [shipName, setShipName] = useState('')
   const [containerNumber, setContainerNumber] = useState('')
   const [tcNumber, setTcNumber] = useState('')
+  const [ciNumber, setCiNumber] = useState('')
+  const [packingListNumber, setPackingListNumber] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [packingListAttachment, setPackingListAttachment] = useState<Attachment | null>(null)
   const [commercialInvoiceAttachment, setCommercialInvoiceAttachment] = useState<Attachment | null>(null)
@@ -397,6 +399,8 @@ export default function WarehouseReceivePage() {
     // Build comprehensive notes
     let fullNotes = ''
     if (supplier) fullNotes += `Supplier: ${supplier}. `
+    if (ciNumber) fullNotes += `CI #: ${ciNumber}. `
+    if (packingListNumber) fullNotes += `Packing List #: ${packingListNumber}. `
     if (shipName) fullNotes += `Ship: ${shipName}. `
     if (containerNumber) fullNotes += `Container: ${containerNumber}. `
     if (tcNumber) fullNotes += `TC #: ${tcNumber}. `
@@ -469,17 +473,32 @@ export default function WarehouseReceivePage() {
           {/* Header Information */}
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">Shipment Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  CI #
+                  Commercial Invoice #
                 </label>
                 <input
                   type="text"
-                  name="referenceNumber"
+                  value={ciNumber}
+                  onChange={(e) => setCiNumber(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="e.g., CI-2024-456"
-                  title="Enter Commercial Invoice (CI) number"
+                  title="Enter Commercial Invoice number"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Packing List #
+                </label>
+                <input
+                  type="text"
+                  value={packingListNumber}
+                  onChange={(e) => setPackingListNumber(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="e.g., PL-2024-456"
+                  title="Enter Packing List number"
                   required
                 />
               </div>
@@ -517,6 +536,18 @@ export default function WarehouseReceivePage() {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   defaultValue={new Date().toISOString().split('T')[0]}
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reference Number
+                </label>
+                <input
+                  type="text"
+                  name="referenceNumber"
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Optional reference"
+                  title="Enter any additional reference number"
                 />
               </div>
             </div>
