@@ -150,13 +150,17 @@ export default function WarehouseShipPage() {
           }
         }
         
-        // If SKU changed, update units based on unitsPerCarton
+        // If SKU changed, update units based on unitsPerCarton and reset batch
         if (field === 'skuCode' && value) {
           const selectedSku = skus.find(sku => sku.skuCode === value)
           if (selectedSku && updated.cartons) {
             updated.units = updated.cartons * selectedSku.unitsPerCarton
             updated.unitsPerCarton = selectedSku.unitsPerCarton
           }
+          // Clear batch lot when SKU changes
+          updated.batchLot = ''
+          updated.available = 0
+          updated.shippingCartonsPerPallet = null
         }
         
         // Update cartons and recalculate pallets and units
@@ -641,14 +645,33 @@ export default function WarehouseShipPage() {
                         </select>
                       </td>
                       <td className="px-4 py-3">
-                        <input
-                          type="text"
+                        <select
                           value={item.batchLot}
                           onChange={(e) => updateItem(item.id, 'batchLot', e.target.value)}
                           className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                          placeholder="Batch/Lot"
                           required
-                        />
+                          disabled={!item.skuCode}
+                        >
+                          <option value="">
+                            {!item.skuCode ? "Select SKU first..." : "Select Batch..."}
+                          </option>
+                          {item.skuCode && inventory
+                            .filter(inv => inv.sku.skuCode === item.skuCode && inv.currentCartons > 0)
+                            .sort((a, b) => b.currentCartons - a.currentCartons) // Sort by available stock (highest first)
+                            .map((inv) => (
+                              <option 
+                                key={`${inv.id}-${inv.batchLot}`} 
+                                value={inv.batchLot}
+                                className={inv.currentCartons < 10 ? 'text-orange-600' : ''}
+                              >
+                                {inv.batchLot} ({inv.currentCartons} cartons{inv.currentCartons < 10 ? ' - Low Stock' : ''})
+                              </option>
+                            ))}
+                          {item.skuCode && 
+                           inventory.filter(inv => inv.sku.skuCode === item.skuCode && inv.currentCartons > 0).length === 0 && (
+                            <option value="" disabled>No stock available for this SKU</option>
+                          )}
+                        </select>
                       </td>
                       <td className="px-4 py-3 text-right">
                         {item.available > 0 ? (
