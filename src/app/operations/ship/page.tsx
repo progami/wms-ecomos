@@ -506,8 +506,15 @@ export default function WarehouseShipPage() {
                   value={selectedWarehouseId}
                   onChange={(e) => {
                     setSelectedWarehouseId(e.target.value)
-                    // Reset items when warehouse changes
-                    setItems([{ id: 1, skuCode: '', batchLot: '', cartons: 0, pallets: 0, units: 0, available: 0 }])
+                    // Reset only batch-related fields when warehouse changes, preserve SKUs
+                    setItems(items.map(item => ({
+                      ...item,
+                      batchLot: '', // Clear batch since it's warehouse-specific
+                      available: 0, // Reset availability
+                      shippingCartonsPerPallet: null,
+                      palletVariance: false,
+                      calculatedPallets: undefined
+                    })))
                   }}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   required
