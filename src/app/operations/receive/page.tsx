@@ -19,7 +19,7 @@ interface Attachment {
   type: string
   size: number
   data?: string
-  category: 'packing_list' | 'commercial_invoice' | 'delivery_note' | 'cube_master' | 'transaction_certificate' | 'other'
+  category: 'packing_list' | 'commercial_invoice' | 'bill_of_lading' | 'delivery_note' | 'cube_master' | 'transaction_certificate' | 'other'
 }
 
 export default function WarehouseReceivePage() {
@@ -36,6 +36,7 @@ export default function WarehouseReceivePage() {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [packingListAttachment, setPackingListAttachment] = useState<Attachment | null>(null)
   const [commercialInvoiceAttachment, setCommercialInvoiceAttachment] = useState<Attachment | null>(null)
+  const [billOfLadingAttachment, setBillOfLadingAttachment] = useState<Attachment | null>(null)
   const [deliveryNoteAttachment, setDeliveryNoteAttachment] = useState<Attachment | null>(null)
   const [cubeMasterAttachment, setCubeMasterAttachment] = useState<Attachment | null>(null)
   const [transactionCertificateAttachment, setTransactionCertificateAttachment] = useState<Attachment | null>(null)
@@ -150,6 +151,9 @@ export default function WarehouseReceivePage() {
         case 'commercial_invoice':
           setCommercialInvoiceAttachment(attachment)
           break
+        case 'bill_of_lading':
+          setBillOfLadingAttachment(attachment)
+          break
         case 'delivery_note':
           setDeliveryNoteAttachment(attachment)
           break
@@ -172,6 +176,7 @@ export default function WarehouseReceivePage() {
     switch (category) {
       case 'packing_list': return 'Packing List'
       case 'commercial_invoice': return 'Commercial Invoice'
+      case 'bill_of_lading': return 'Bill of Lading'
       case 'delivery_note': return 'Delivery Note'
       case 'cube_master': return 'Cube Master Stacking Style'
       case 'transaction_certificate': return 'Transaction Certificate'
@@ -186,6 +191,9 @@ export default function WarehouseReceivePage() {
         break
       case 'commercial_invoice':
         setCommercialInvoiceAttachment(null)
+        break
+      case 'bill_of_lading':
+        setBillOfLadingAttachment(null)
         break
       case 'delivery_note':
         setDeliveryNoteAttachment(null)
@@ -392,7 +400,6 @@ export default function WarehouseReceivePage() {
     
     setLoading(true)
     
-    const referenceNumber = formData.get('referenceNumber') as string
     const supplier = formData.get('supplier') as string
     const notes = formData.get('notes') as string
     
@@ -410,6 +417,7 @@ export default function WarehouseReceivePage() {
     const allAttachments: Attachment[] = []
     if (packingListAttachment) allAttachments.push(packingListAttachment)
     if (commercialInvoiceAttachment) allAttachments.push(commercialInvoiceAttachment)
+    if (billOfLadingAttachment) allAttachments.push(billOfLadingAttachment)
     if (deliveryNoteAttachment) allAttachments.push(deliveryNoteAttachment)
     if (cubeMasterAttachment) allAttachments.push(cubeMasterAttachment)
     if (transactionCertificateAttachment) allAttachments.push(transactionCertificateAttachment)
@@ -421,7 +429,7 @@ export default function WarehouseReceivePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'RECEIVE',
-          referenceNumber,
+          referenceNumber: ciNumber, // Use CI number as reference
           date: receiptDate,
           items: validItems,
           notes: fullNotes,
@@ -536,18 +544,6 @@ export default function WarehouseReceivePage() {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   defaultValue={new Date().toISOString().split('T')[0]}
                   required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reference Number
-                </label>
-                <input
-                  type="text"
-                  name="referenceNumber"
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Optional reference"
-                  title="Enter any additional reference number"
                 />
               </div>
             </div>
@@ -847,6 +843,48 @@ export default function WarehouseReceivePage() {
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                       onChange={(e) => handleFileUpload(e, 'commercial_invoice')}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Bill of Lading */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">Bill of Lading</h4>
+                    <p className="text-xs text-gray-600">Shipping document issued by carrier</p>
+                  </div>
+                  {billOfLadingAttachment && (
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  )}
+                </div>
+                {billOfLadingAttachment ? (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">{billOfLadingAttachment.name}</span>
+                      <span className="text-xs text-gray-500">({(billOfLadingAttachment.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSpecificAttachment('bill_of_lading')}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded p-2 text-center hover:border-gray-400 transition-colors">
+                      <Upload className="h-5 w-5 text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Click to upload</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => handleFileUpload(e, 'bill_of_lading')}
                       className="hidden"
                     />
                   </label>
