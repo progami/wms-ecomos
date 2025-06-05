@@ -1,28 +1,18 @@
 # Documentation
 
-## 📁 Folder Structure
+## Essential Docs
 
 ### development/
-- **AGENT_INSTRUCTIONS.md** - Instructions for all 4 agents
-- **AGENT_PLAN.md** - Multi-agent development strategy
-- **worktree-development.md** - Git worktree setup guide
-- **BRANCHING_STRATEGY.md** - Git workflow and PR process
+- **AGENT_INSTRUCTIONS.md** - Tasks and guidelines for all 4 agents
 
 ### architecture/
 - **ARCHITECTURE.md** - System architecture overview
-- **web-app-architecture.md** - Next.js application structure
-- **modularization-roadmap.md** - Module separation plan
-- **module-structure-example.md** - Example module organization
+- **web-app-architecture.md** - Technical stack and design decisions
 
 ### setup/
-- **quick-start.md** - Getting started quickly
-- **amazon-integration.md** - Amazon FBA integration guide
+- **quick-start.md** - Getting started guide
 
 ### excel-templates/
-- **excel-to-system-mapping.md** - Maps Excel to system features
+- **excel-to-system-mapping.md** - How Excel data maps to database
 - **excel-setup-guide.md** - Overview of Excel templates
-- Template-specific documentation for each Excel sheet
-
-### project-status/
-- **CURRENT_STATE.md** - Current system state and recent changes
-- **CHANGELOG.md** - Version history and release notes
+- Individual template documentation for reference
