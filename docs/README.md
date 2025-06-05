@@ -1,39 +1,23 @@
-# Documentation Index
+# Documentation
 
-## Development Workflow
-- [Worktree Development Guide](./worktree-development.md) - How to use Git worktrees for parallel development
-- [Agent Instructions](./worktree-agents.md) - Specific instructions for each development agent
-- [Branching Strategy](./BRANCHING_STRATEGY.md) - Git branch naming and PR conventions
+## Development Guides
+- **[AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md)** - Instructions for all 4 agents
+- **[AGENT_PLAN.md](AGENT_PLAN.md)** - Multi-agent development strategy
+- **[worktree-development.md](worktree-development.md)** - Git worktree setup
+- **[BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md)** - Git workflow
 
-## System Documentation
-- [Architecture Overview](./ARCHITECTURE.md) - High-level system architecture
-- [Changelog](./CHANGELOG.md) - Version history and changes
-- [Documentation Status](./DOCUMENTATION_STATUS.md) - Current state of documentation
+## Architecture
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture overview
+- **[architecture/](architecture/)** - Detailed architecture docs
 
-## Technical Guides
-- [Excel Integration](./excel-to-system-mapping.md) - How Excel sheets map to system features
-- [Excel Templates](./excel-templates/) - Template documentation for Excel sheets
-- [Architecture Details](./architecture/) - Detailed architecture documentation
-- [Setup Guides](./setup/) - Quick start and setup instructions
+## Setup & Configuration
+- **[setup/quick-start.md](setup/quick-start.md)** - Quick start guide
+- **[setup/amazon-integration.md](setup/amazon-integration.md)** - Amazon FBA setup
 
-## Quick Links for Agents
+## Excel Templates
+- **[excel-to-system-mapping.md](excel-to-system-mapping.md)** - Excel to system mapping
+- **[excel-templates/](excel-templates/)** - Excel template documentation
 
-### Operations Agent
-- Working directory: `warehouse_management_ops`
-- Read: [worktree-agents.md](./worktree-agents.md#operations-agent)
-
-### Finance Agent  
-- Working directory: `warehouse_management_fin`
-- Read: [worktree-agents.md](./worktree-agents.md#finance-agent)
-
-### Configuration Agent
-- Working directory: `warehouse_management_cfg`
-- Read: [worktree-agents.md](./worktree-agents.md#configuration-agent)
-
-### Analytics Agent
-- Working directory: `warehouse_management_ana`
-- Read: [worktree-agents.md](./worktree-agents.md#analytics-agent)
-
-### PR Master
-- Working directory: `warehouse_management`
-- Read: [worktree-development.md](./worktree-development.md)
+## Project Status
+- **[CURRENT_STATE.md](CURRENT_STATE.md)** - Current system state
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
