@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Truck, Plus, Save, X, AlertTriangle, Upload, FileText } from 'lucide-react'
+import { Truck, Plus, Save, X, AlertTriangle, Upload, FileText, Mail, Check } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
@@ -67,6 +67,8 @@ export default function WarehouseShipPage() {
   const [lastCarrier, setLastCarrier] = useState<string>('')
   const [proofOfPickupAttachment, setProofOfPickupAttachment] = useState<Attachment | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [lastShipmentData, setLastShipmentData] = useState<any>(null)
 
   const addItem = () => {
     setItems([
@@ -190,7 +192,41 @@ export default function WarehouseShipPage() {
     fetchSkus()
     fetchWarehouses()
     fetchLastShipmentData()
+    checkForShipmentPlan()
   }, [])
+
+  const checkForShipmentPlan = () => {
+    // Check if there's a shipment plan from the planning page
+    const planData = sessionStorage.getItem('shipmentPlan')
+    if (planData) {
+      try {
+        const plan = JSON.parse(planData)
+        if (plan.source === 'fba-planning' && plan.items) {
+          // Show a notification
+          toast.success('Shipment plan loaded from FBA planning')
+          
+          // Pre-populate items after SKUs are loaded
+          setTimeout(() => {
+            const newItems = plan.items.map((planItem: any, index: number) => ({
+              id: Date.now() + index,
+              skuCode: planItem.skuCode,
+              batchLot: '', // Will need to be selected
+              cartons: planItem.suggestedCartons,
+              pallets: 0,
+              units: 0,
+              available: 0
+            }))
+            setItems(newItems)
+          }, 1000)
+          
+          // Clear the session storage
+          sessionStorage.removeItem('shipmentPlan')
+        }
+      } catch (error) {
+        console.error('Error loading shipment plan:', error)
+      }
+    }
+  }
 
   const fetchLastShipmentData = async () => {
     try {
@@ -387,7 +423,27 @@ export default function WarehouseShipPage() {
       
       if (response.ok) {
         toast.success(`Shipment saved successfully! ${data.message}`)
-        router.push('/operations/inventory')
+        
+        // Store shipment data for email
+        const shipmentData = {
+          orderNumber: referenceNumber,
+          fbaTrackingId: tracking,
+          shipDate: date,
+          carrier,
+          warehouse: sourceWarehouse,
+          items: validItems.map(item => {
+            const sku = skus.find(s => s.skuCode === item.skuCode)
+            return {
+              ...item,
+              description: sku?.description || ''
+            }
+          }),
+          totalCartons: items.reduce((sum, item) => sum + item.cartons, 0),
+          totalPallets: items.reduce((sum, item) => sum + item.pallets, 0),
+          notes
+        }
+        setLastShipmentData(shipmentData)
+        setShowEmailModal(true)
       } else {
         toast.error(data.error || 'Failed to save shipment')
         if (data.details) {
@@ -862,6 +918,190 @@ export default function WarehouseShipPage() {
           </div>
         </form>
       </div>
+
+      {/* Email Modal */}
+      {showEmailModal && lastShipmentData && (
+        <EmailModal 
+          shipmentData={lastShipmentData}
+          onClose={() => {
+            setShowEmailModal(false)
+            router.push('/operations/inventory')
+          }}
+        />
+      )}
     </DashboardLayout>
+  )
+}
+
+// Email Modal Component
+function EmailModal({ shipmentData, onClose }: { shipmentData: any; onClose: () => void }) {
+  const [emailContent, setEmailContent] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    generateEmail()
+  }, [])
+
+  const generateEmail = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/shipments/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(shipmentData)
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setEmailContent(data.email)
+      } else {
+        toast.error('Failed to generate email')
+      }
+    } catch (error) {
+      toast.error('Error generating email')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      toast.success('Copied to clipboard!')
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      toast.error('Failed to copy')
+    }
+  }
+
+  const openEmailClient = () => {
+    if (!emailContent) return
+    
+    const mailtoLink = `mailto:${emailContent.to}?subject=${encodeURIComponent(emailContent.subject)}&body=${encodeURIComponent(emailContent.body)}`
+    window.open(mailtoLink, '_blank')
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-full items-center justify-center p-4 text-center">
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        />
+        
+        <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl">
+          <div className="bg-white px-4 pb-4 pt-5 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Mail className="h-6 w-6 text-primary" />
+                <h3 className="text-lg font-semibold leading-6 text-gray-900">
+                  Send Shipment Email
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md bg-white text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+              </div>
+            ) : emailContent ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">To:</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={emailContent.to}
+                      readOnly
+                      className="flex-1 px-3 py-2 border rounded-md bg-gray-50"
+                    />
+                    <button
+                      onClick={() => copyToClipboard(emailContent.to)}
+                      className="px-3 py-2 border rounded-md hover:bg-gray-50"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject:</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={emailContent.subject}
+                      readOnly
+                      className="flex-1 px-3 py-2 border rounded-md bg-gray-50"
+                    />
+                    <button
+                      onClick={() => copyToClipboard(emailContent.subject)}
+                      className="px-3 py-2 border rounded-md hover:bg-gray-50"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Message:</label>
+                  <div className="relative">
+                    <textarea
+                      value={emailContent.body}
+                      readOnly
+                      rows={12}
+                      className="w-full px-3 py-2 border rounded-md bg-gray-50 font-mono text-sm"
+                    />
+                    <button
+                      onClick={() => copyToClipboard(emailContent.body)}
+                      className="absolute top-2 right-2 px-3 py-1 bg-white border rounded-md hover:bg-gray-50"
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <FileText className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>References stored:</strong> Order #{emailContent.references.orderNumber} | 
+                    FBA: {emailContent.references.fbaTrackingId}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          
+          <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+            <button
+              type="button"
+              onClick={openEmailClient}
+              className="inline-flex w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 sm:ml-3 sm:w-auto"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Open in Email Client
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+            >
+              Skip & Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
