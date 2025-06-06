@@ -20,6 +20,7 @@ export function AdminReportsClient() {
   const [customReportType, setCustomReportType] = useState('monthly-inventory')
   const [customPeriod, setCustomPeriod] = useState(new Date().toISOString().slice(0, 7))
   const [customWarehouseId, setCustomWarehouseId] = useState('')
+  const [customFormat, setCustomFormat] = useState('xlsx')
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [generatingCustom, setGeneratingCustom] = useState(false)
 
@@ -102,6 +103,7 @@ export function AdminReportsClient() {
           reportType: customReportType,
           period: customPeriod,
           warehouseId: customWarehouseId || undefined,
+          format: customFormat
         }),
       })
 
@@ -113,7 +115,7 @@ export function AdminReportsClient() {
       const contentDisposition = response.headers.get('content-disposition')
       const filename = contentDisposition
         ? contentDisposition.split('filename=')[1].replace(/"/g, '')
-        : `${customReportType}-${customPeriod}.xlsx`
+        : `${customReportType}-${customPeriod}.${customFormat}`
 
       // Download the file
       const blob = await response.blob()
@@ -238,6 +240,8 @@ export function AdminReportsClient() {
                 <option value="reconciliation">Invoice Reconciliation</option>
                 <option value="cost-analysis">Cost Analysis</option>
                 <option value="monthly-billing">Monthly Billing Summary</option>
+                <option value="analytics-summary">Analytics Summary</option>
+                <option value="performance-metrics">Performance Metrics</option>
               </select>
             </div>
             <div>
@@ -263,6 +267,18 @@ export function AdminReportsClient() {
                   {warehouse.name}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Export Format</label>
+            <select 
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              value={customFormat}
+              onChange={(e) => setCustomFormat(e.target.value)}
+            >
+              <option value="xlsx">Excel (.xlsx)</option>
+              <option value="csv">CSV (.csv)</option>
+              <option value="pdf">PDF (.pdf)</option>
             </select>
           </div>
           <button
