@@ -205,8 +205,15 @@ When you need data from another module:
 Mark completed tasks with ✅ and add completion date:
 
 ### Operations Tasks Completed
-- [ ] Task 1
-- [ ] Task 2
+- [x] Verify CI # and Packing List # fields are separate in Receive Goods Page - ✅ 2025-01-06
+- [x] Verify TC # GRS field for Transaction Certificate in Receive Goods Page - ✅ 2025-01-06
+- [x] Check attachment categories work correctly in Receive Goods Page - ✅ 2025-01-06
+- [x] Verify 'Creation Date' displays correctly in Inventory Ledger - ✅ 2025-01-06
+- [x] Ensure Pickup Date shows the actual transaction date in Inventory Ledger - ✅ 2025-01-06
+- [x] Confirm default tab is 'Inventory Ledger' - ✅ 2025-01-06
+- [x] Check Storage Ledger calculations are accurate - ✅ 2025-01-06
+- [x] Verify immutable ledger functionality - ✅ 2025-01-06
+- [x] Test export functionality - ✅ 2025-01-06
 
 ### Finance Tasks Completed
 - [ ] Task 1
