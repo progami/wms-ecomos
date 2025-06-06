@@ -30,18 +30,24 @@
 *(None at this time)*
 
 ### ⚠️ CRITICAL STATUS
-- Finance Agent: ~40% complete, core functionality pending
-- Analytics Agent: ~20% complete, dashboard improvements submitted
+- Finance Agent: ~40% complete, security fixes done, core UI pending
+- Analytics Agent: ~30% complete, dashboard done, reports pending
+- Operations Agent: Need to address storage ledger population
 
 ---
 
 ## Cross-Module Dependencies
 
 ### Active Issues
-1. **Finance ← Configuration**: Cost calculations with batch-based units/carton
-   - Status: PENDING Finance response
+1. **Operations ← Analytics**: Storage ledger table population
+   - Status: PENDING Operations response
    - Priority: HIGH
-   - Impact: Financial accuracy
+   - Impact: Dashboard storage cost charts show no data
+   - Details: Need to populate `storage_ledger` table with weekly snapshots
+
+2. **Finance ← Configuration**: Cost calculations with batch-based units/carton
+   - Status: RESOLVED by Finance
+   - Finance confirmed system already handles batch variations
 
 ### Resolved Issues
 1. **Operations ← Configuration**: Batch-based attributes ✅
@@ -54,9 +60,9 @@
 
 | Agent | Status | PRs Submitted | Current Task |
 |-------|--------|---------------|--------------|
-| Operations | ✅ ACTIVE | 3 (1 pending) | PR #4 review |
-| Configuration | ✅ ACTIVE | 1 | Monitoring |
-| Finance | ⏳ PENDING | 0 | Cost calculations |
+| Operations | ✅ COMPLETE* | 4 | *Need storage ledger fix |
+| Configuration | ✅ COMPLETE | 1 | Monitoring |
+| Finance | 🔄 ACTIVE | 1 | Working on invoice UI |
 | Analytics | 🔄 ACTIVE | 1 | Working on reports |
 
 ---
