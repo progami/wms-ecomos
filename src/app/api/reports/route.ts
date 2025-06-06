@@ -3,7 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { reportType, period, warehouseId } = await request.json()
+    const { reportType, period, warehouseId, format: outputFormat = 'xlsx' } = await request.json()
 
     let data: any[] = []
     let fileName = ''
@@ -63,26 +65,52 @@ export async function POST(request: NextRequest) {
         data = await generateMonthlyBillingReport(period, warehouseId)
         fileName = `monthly_billing_${period}`
         break
+
+      case 'analytics-summary':
+        data = await generateAnalyticsSummaryReport(period, warehouseId)
+        fileName = `analytics_summary_${period}`
+        break
+
+      case 'performance-metrics':
+        data = await generatePerformanceMetricsReport(period, warehouseId)
+        fileName = `performance_metrics_${period}`
+        break
         
       default:
         return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
     }
 
-    // Create workbook
-    const wb = XLSX.utils.book_new()
-    const ws = XLSX.utils.json_to_sheet(data)
-    XLSX.utils.book_append_sheet(wb, ws, 'Report')
-
-    // Generate buffer
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-
-    // Return file
-    return new NextResponse(buf, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="${fileName}.xlsx"`,
-      },
-    })
+    // Generate file based on format
+    if (outputFormat === 'pdf') {
+      const pdfBuffer = await generatePDF(data, reportType, period)
+      return new NextResponse(pdfBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${fileName}.pdf"`,
+        },
+      })
+    } else if (outputFormat === 'csv') {
+      const csv = generateCSV(data)
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="${fileName}.csv"`,
+        },
+      })
+    } else {
+      // Default to Excel
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(data)
+      XLSX.utils.book_append_sheet(wb, ws, 'Report')
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+      
+      return new NextResponse(buf, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${fileName}.xlsx"`,
+        },
+      })
+    }
   } catch (error) {
     console.error('Report generation error:', error)
     return NextResponse.json({ error: 'Report generation failed' }, { status: 500 })
@@ -483,4 +511,267 @@ async function generateMonthlyBillingReport(period: string, warehouseId?: string
   )
 
   return billingData
+}
+
+async function generateAnalyticsSummaryReport(period: string, warehouseId?: string) {
+  const [year, month] = period.split('-').map(Number)
+  const startDate = startOfMonth(new Date(year, month - 1))
+  const endDate = endOfMonth(new Date(year, month - 1))
+  const prevStartDate = startOfMonth(subMonths(startDate, 1))
+  const prevEndDate = endOfMonth(subMonths(startDate, 1))
+
+  // Current period metrics
+  const currentMetrics = await getMetricsForPeriod(startDate, endDate, warehouseId)
+  // Previous period metrics for comparison
+  const previousMetrics = await getMetricsForPeriod(prevStartDate, prevEndDate, warehouseId)
+
+  const warehouses = warehouseId 
+    ? await prisma.warehouse.findMany({ where: { id: warehouseId } })
+    : await prisma.warehouse.findMany({
+        where: {
+          NOT: {
+            OR: [
+              { code: 'AMZN' },
+              { code: 'AMZN-UK' }
+            ]
+          }
+        }
+      })
+
+  const analyticsData = await Promise.all(
+    warehouses.map(async (warehouse) => {
+      const currentWarehouseMetrics = currentMetrics.get(warehouse.id) || {}
+      const previousWarehouseMetrics = previousMetrics.get(warehouse.id) || {}
+
+      const inventoryTurnover = currentWarehouseMetrics.shipments && currentWarehouseMetrics.avgInventory
+        ? (currentWarehouseMetrics.shipments / currentWarehouseMetrics.avgInventory) * 12
+        : 0
+
+      const growthRate = previousWarehouseMetrics.totalTransactions
+        ? ((currentWarehouseMetrics.totalTransactions - previousWarehouseMetrics.totalTransactions) / previousWarehouseMetrics.totalTransactions) * 100
+        : 0
+
+      return {
+        'Warehouse': warehouse.name,
+        'Total Transactions': currentWarehouseMetrics.totalTransactions || 0,
+        'Growth Rate': `${growthRate.toFixed(1)}%`,
+        'Avg Inventory (Cartons)': Math.round(currentWarehouseMetrics.avgInventory || 0),
+        'Inventory Turnover': inventoryTurnover.toFixed(2),
+        'Storage Utilization': `${((currentWarehouseMetrics.avgInventory || 0) / 10000 * 100).toFixed(1)}%`,
+        'Total SKUs': currentWarehouseMetrics.totalSkus || 0,
+        'Active SKUs': currentWarehouseMetrics.activeSkus || 0,
+        'Period': format(startDate, 'MMMM yyyy'),
+      }
+    })
+  )
+
+  return analyticsData
+}
+
+async function generatePerformanceMetricsReport(period: string, warehouseId?: string) {
+  const [year, month] = period.split('-').map(Number)
+  const startDate = startOfMonth(new Date(year, month - 1))
+  const endDate = endOfMonth(new Date(year, month - 1))
+
+  const transactions = await prisma.inventoryTransaction.findMany({
+    where: {
+      ...(warehouseId ? { warehouseId } : {}),
+      transactionDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    include: {
+      warehouse: true,
+    },
+  })
+
+  // Group by warehouse and calculate metrics
+  const warehouseMetrics = transactions.reduce((acc, trans) => {
+    if (!acc[trans.warehouseId]) {
+      acc[trans.warehouseId] = {
+        warehouseName: trans.warehouse.name,
+        totalTransactions: 0,
+        receiveTransactions: 0,
+        shipTransactions: 0,
+        totalCartonsReceived: 0,
+        totalCartonsShipped: 0,
+        uniqueSkus: new Set(),
+        transactionDates: [],
+      }
+    }
+
+    const metrics = acc[trans.warehouseId]
+    metrics.totalTransactions++
+    
+    if (trans.transactionType === 'RECEIVE') {
+      metrics.receiveTransactions++
+      metrics.totalCartonsReceived += trans.cartonsIn
+    } else if (trans.transactionType === 'SHIP') {
+      metrics.shipTransactions++
+      metrics.totalCartonsShipped += trans.cartonsOut
+    }
+    
+    metrics.uniqueSkus.add(trans.skuId)
+    metrics.transactionDates.push(trans.transactionDate)
+
+    return acc
+  }, {} as any)
+
+  return Object.values(warehouseMetrics).map((metrics: any) => {
+    const avgTransactionsPerDay = metrics.totalTransactions / 30
+    const receiveToShipRatio = metrics.shipTransactions > 0 
+      ? (metrics.receiveTransactions / metrics.shipTransactions).toFixed(2)
+      : 'N/A'
+
+    return {
+      'Warehouse': metrics.warehouseName,
+      'Total Transactions': metrics.totalTransactions,
+      'Avg Daily Transactions': avgTransactionsPerDay.toFixed(1),
+      'Receive Transactions': metrics.receiveTransactions,
+      'Ship Transactions': metrics.shipTransactions,
+      'Receive/Ship Ratio': receiveToShipRatio,
+      'Total Cartons Received': metrics.totalCartonsReceived,
+      'Total Cartons Shipped': metrics.totalCartonsShipped,
+      'Unique SKUs Handled': metrics.uniqueSkus.size,
+      'Period': format(startDate, 'MMMM yyyy'),
+    }
+  })
+}
+
+async function getMetricsForPeriod(startDate: Date, endDate: Date, warehouseId?: string) {
+  const transactions = await prisma.inventoryTransaction.groupBy({
+    by: ['warehouseId', 'transactionType'],
+    where: {
+      ...(warehouseId ? { warehouseId } : {}),
+      transactionDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    _count: true,
+    _sum: {
+      cartonsIn: true,
+      cartonsOut: true,
+    },
+  })
+
+  const inventoryStats = await prisma.inventoryBalance.groupBy({
+    by: ['warehouseId'],
+    where: warehouseId ? { warehouseId } : {},
+    _avg: {
+      currentCartons: true,
+    },
+    _count: {
+      skuId: true,
+    },
+  })
+
+  const activeSkus = await prisma.inventoryBalance.groupBy({
+    by: ['warehouseId'],
+    where: {
+      ...(warehouseId ? { warehouseId } : {}),
+      currentCartons: { gt: 0 },
+    },
+    _count: {
+      skuId: true,
+    },
+  })
+
+  const metrics = new Map()
+
+  // Process transactions
+  transactions.forEach(t => {
+    if (!metrics.has(t.warehouseId)) {
+      metrics.set(t.warehouseId, {})
+    }
+    const m = metrics.get(t.warehouseId)
+    
+    m.totalTransactions = (m.totalTransactions || 0) + t._count
+    if (t.transactionType === 'SHIP') {
+      m.shipments = (m.shipments || 0) + (t._sum.cartonsOut || 0)
+    }
+  })
+
+  // Process inventory stats
+  inventoryStats.forEach(stat => {
+    if (!metrics.has(stat.warehouseId)) {
+      metrics.set(stat.warehouseId, {})
+    }
+    const m = metrics.get(stat.warehouseId)
+    m.avgInventory = stat._avg.currentCartons || 0
+    m.totalSkus = stat._count.skuId
+  })
+
+  // Process active SKUs
+  activeSkus.forEach(stat => {
+    if (!metrics.has(stat.warehouseId)) {
+      metrics.set(stat.warehouseId, {})
+    }
+    const m = metrics.get(stat.warehouseId)
+    m.activeSkus = stat._count.skuId
+  })
+
+  return metrics
+}
+
+function generateCSV(data: any[]): string {
+  if (data.length === 0) return ''
+  
+  const headers = Object.keys(data[0])
+  const csvRows = []
+  
+  // Add headers
+  csvRows.push(headers.join(','))
+  
+  // Add data rows
+  for (const row of data) {
+    const values = headers.map(header => {
+      const value = row[header]
+      // Escape commas and quotes
+      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+        return `"${value.replace(/"/g, '""')}"`
+      }
+      return value
+    })
+    csvRows.push(values.join(','))
+  }
+  
+  return csvRows.join('\n')
+}
+
+async function generatePDF(data: any[], reportType: string, period: string): Promise<Buffer> {
+  const doc = new jsPDF()
+  
+  // Add title
+  const title = reportType.split('-').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ')
+  
+  doc.setFontSize(20)
+  doc.text(title, 14, 22)
+  
+  // Add period
+  doc.setFontSize(12)
+  doc.text(`Period: ${period}`, 14, 32)
+  
+  // Add generation date
+  doc.setFontSize(10)
+  doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 40)
+  
+  // Add table
+  if (data.length > 0) {
+    const headers = Object.keys(data[0])
+    const rows = data.map(item => headers.map(header => String(item[header])))
+    
+    ;(doc as any).autoTable({
+      head: [headers],
+      body: rows,
+      startY: 50,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [66, 133, 244] },
+    })
+  }
+  
+  return Buffer.from(doc.output('arraybuffer'))
 }

@@ -265,6 +265,18 @@ export function AdminReportsClient() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Export Format</label>
+            <select 
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              value={customFormat}
+              onChange={(e) => setCustomFormat(e.target.value)}
+            >
+              <option value="xlsx">Excel (.xlsx)</option>
+              <option value="csv">CSV (.csv)</option>
+              <option value="pdf">PDF (.pdf)</option>
+            </select>
+          </div>
           <button
             onClick={generateCustomReport}
             disabled={generatingCustom}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
-import { Package2, RefreshCw, Loader2, Search } from 'lucide-react'
+import { Package2, RefreshCw, Loader2, Search, TrendingUp, AlertTriangle, BarChart3 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 interface InventoryComparison {
@@ -15,6 +15,8 @@ interface InventoryComparison {
   amazonQty: number
   total: number
   lastUpdated?: string
+  trend?: 'up' | 'down' | 'stable'
+  percentChange?: number
 }
 
 export default function AmazonIntegrationPage() {
@@ -24,6 +26,8 @@ export default function AmazonIntegrationPage() {
   const [inventory, setInventory] = useState<InventoryComparison[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [selectedView, setSelectedView] = useState<'all' | 'warehouse' | 'amazon' | 'lowstock'>('all')
+  const [sortBy, setSortBy] = useState<'sku' | 'total' | 'trend'>('sku')
 
   useEffect(() => {
     const fetchAndSyncInventory = async () => {
@@ -85,16 +89,40 @@ export default function AmazonIntegrationPage() {
     }
   }, [status, session])
 
-  const filteredInventory = inventory.filter(item =>
-    item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredInventory = inventory
+    .filter(item => {
+      const matchesSearch = item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      switch (selectedView) {
+        case 'warehouse':
+          return matchesSearch && item.warehouseQty > 0
+        case 'amazon':
+          return matchesSearch && item.amazonQty > 0
+        case 'lowstock':
+          return matchesSearch && item.total < 50
+        default:
+          return matchesSearch
+      }
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'total':
+          return b.total - a.total
+        case 'trend':
+          return (b.percentChange || 0) - (a.percentChange || 0)
+        default:
+          return a.sku.localeCompare(b.sku)
+      }
+    })
 
   const totalWarehouse = inventory.reduce((sum, item) => sum + item.warehouseQty, 0)
   const totalAmazon = inventory.reduce((sum, item) => sum + item.amazonQty, 0)
   const totalCombined = totalWarehouse + totalAmazon
   const skusWithStock = inventory.filter(item => item.total > 0).length
   const totalSkus = inventory.length
+  const lowStockSkus = inventory.filter(item => item.total > 0 && item.total < 50).length
+  const outOfStockSkus = inventory.filter(item => item.total === 0).length
 
   if (status === 'loading') {
     return (
@@ -208,24 +236,112 @@ export default function AmazonIntegrationPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-600">Total Warehouse Stock</h3>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {totalWarehouse.toLocaleString()} units
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-600">Warehouse Stock</h3>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {totalWarehouse.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">units</p>
+              </div>
+              <Package2 className="h-8 w-8 text-gray-400" />
+            </div>
           </div>
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-600">Combined Total</h3>
-            <p className="text-2xl font-bold text-blue-600 mt-1">
-              {totalCombined.toLocaleString()} units
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-600">Amazon FBA</h3>
+                <p className="text-2xl font-bold text-orange-600 mt-1">
+                  {totalAmazon.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">units</p>
+              </div>
+              <Package2 className="h-8 w-8 text-orange-400" />
+            </div>
           </div>
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-600">Last Updated</h3>
-            <p className="text-lg font-medium text-gray-900 mt-1">
-              {lastRefresh ? lastRefresh.toLocaleString() : 'Never'}
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-600">Combined Total</h3>
+                <p className="text-2xl font-bold text-blue-600 mt-1">
+                  {totalCombined.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">units across all locations</p>
+              </div>
+              <BarChart3 className="h-8 w-8 text-blue-400" />
+            </div>
+          </div>
+          <div className="bg-white border rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-600">Stock Alerts</h3>
+                <p className="text-2xl font-bold text-red-600 mt-1">
+                  {lowStockSkus}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">SKUs low/out of stock</p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* View Filters */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedView('all')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                selectedView === 'all'
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              All SKUs ({totalSkus})
+            </button>
+            <button
+              onClick={() => setSelectedView('warehouse')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                selectedView === 'warehouse'
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Warehouse Only
+            </button>
+            <button
+              onClick={() => setSelectedView('amazon')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                selectedView === 'amazon'
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Amazon FBA Only
+            </button>
+            <button
+              onClick={() => setSelectedView('lowstock')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                selectedView === 'lowstock'
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Low Stock ({lowStockSkus})
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Sort by:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-1 border rounded-md text-sm"
+              >
+                <option value="sku">SKU</option>
+                <option value="total">Total Stock</option>
+                <option value="trend">Trend</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -268,10 +384,23 @@ export default function AmazonIntegrationPage() {
                 ) : (
                   filteredInventory.map((item) => {
                     const hasNoStock = item.total === 0
+                    const isLowStock = item.total > 0 && item.total < 50
                     return (
                       <tr key={item.sku} className={`hover:bg-gray-50 ${hasNoStock ? 'opacity-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.sku}
+                          <div className="flex items-center gap-2">
+                            {item.sku}
+                            {isLowStock && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Low Stock
+                              </span>
+                            )}
+                            {hasNoStock && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Out of Stock
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {item.description}
@@ -287,9 +416,20 @@ export default function AmazonIntegrationPage() {
                           {item.amazonQty.toLocaleString()}
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
-                          item.total === 0 ? 'text-gray-400' : 'text-blue-600'
+                          item.total === 0 ? 'text-gray-400' : isLowStock ? 'text-red-600' : 'text-blue-600'
                         }`}>
-                          {item.total.toLocaleString()}
+                          <div className="flex items-center justify-end gap-2">
+                            {item.total.toLocaleString()}
+                            {item.trend && (
+                              <TrendingUp 
+                                className={`h-4 w-4 ${
+                                  item.trend === 'up' ? 'text-green-500' : 
+                                  item.trend === 'down' ? 'text-red-500' : 
+                                  'text-gray-400'
+                                }`}
+                              />
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -300,12 +440,42 @@ export default function AmazonIntegrationPage() {
           </div>
         </div>
 
-        {/* Info Note */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> This page displays inventory levels across all warehouse locations. Showing {skusWithStock} of {totalSkus} SKUs with stock.
-            The total column shows the combined inventory across all locations.
-          </p>
+        {/* Analytics Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="font-semibold text-blue-900 mb-2">Inventory Distribution</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">SKUs with stock:</span>
+                <span className="font-medium">{skusWithStock} / {totalSkus}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Warehouse coverage:</span>
+                <span className="font-medium">{((totalWarehouse / totalCombined) * 100).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Amazon FBA coverage:</span>
+                <span className="font-medium">{((totalAmazon / totalCombined) * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg p-4">
+            <h3 className="font-semibold text-red-900 mb-2">Stock Health</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Low stock SKUs:</span>
+                <span className="font-medium text-orange-600">{lowStockSkus}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Out of stock SKUs:</span>
+                <span className="font-medium text-red-600">{outOfStockSkus}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Healthy stock SKUs:</span>
+                <span className="font-medium text-green-600">{skusWithStock - lowStockSkus}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Amazon API Status */}

@@ -1,9 +1,10 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { BarChart3, TrendingUp, Package2, Users, Activity, PieChart } from 'lucide-react'
+import { BarChart3, TrendingUp, Package2, Users, Activity, PieChart, Download } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { prisma } from '@/lib/prisma'
+import { ExportButton } from '@/components/common/export-button'
 
 export default async function AnalyticsPage() {
   const session = await getServerSession(authOptions)
@@ -43,11 +44,19 @@ export default async function AnalyticsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">
-            Operational insights and performance metrics
-          </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+            <p className="text-muted-foreground">
+              Operational insights and performance metrics
+            </p>
+          </div>
+          <ExportButton
+            endpoint="/api/reports"
+            fileName="analytics_summary"
+            buttonText="Export Analytics"
+            formats={['xlsx', 'csv', 'pdf']}
+          />
         </div>
 
         {/* KPI Cards */}
