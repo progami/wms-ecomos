@@ -115,6 +115,68 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     }
   }
 
+  const handleAcceptInvoice = async () => {
+    const paymentMethod = prompt('Enter payment method (e.g., Bank Transfer, Check, Wire):')
+    if (!paymentMethod) return
+
+    const paymentReference = prompt('Enter payment reference number:')
+    if (!paymentReference) return
+
+    try {
+      const response = await fetch(`/api/invoices/${params.id}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          paymentMethod,
+          paymentReference,
+          paymentDate: new Date().toISOString(),
+          notes: 'Accepted via invoice detail page'
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to accept invoice')
+      }
+      
+      const result = await response.json()
+      await fetchInvoice()
+      alert(`Invoice accepted and marked for payment! ${result.acceptedItems} items accepted.`)
+    } catch (error: any) {
+      console.error('Error accepting invoice:', error)
+      alert(error.message || 'Failed to accept invoice')
+    }
+  }
+
+  const handleDisputeInvoice = async () => {
+    const reason = prompt('Enter dispute reason:')
+    if (!reason) return
+
+    try {
+      const response = await fetch(`/api/invoices/${params.id}/dispute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          generalDisputeReason: reason,
+          notes: 'Disputed via invoice detail page',
+          contactWarehouse: true
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to dispute invoice')
+      }
+      
+      const result = await response.json()
+      await fetchInvoice()
+      alert(`Invoice disputed successfully! ${result.disputedItems} items disputed totaling ${formatCurrency(result.totalDisputedAmount)}`)
+    } catch (error: any) {
+      console.error('Error disputing invoice:', error)
+      alert(error.message || 'Failed to dispute invoice')
+    }
+  }
+
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) return
 
@@ -239,6 +301,33 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
               <Download className="h-4 w-4 mr-2" />
               Export
             </button>
+            {invoice.status === 'reconciled' && (
+              <>
+                <button
+                  onClick={handleAcceptInvoice}
+                  className="action-button"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Accept & Pay
+                </button>
+                <button
+                  onClick={handleDisputeInvoice}
+                  className="secondary-button"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Dispute
+                </button>
+              </>
+            )}
+            {invoice.status === 'pending' && (
+              <button
+                onClick={handleDisputeInvoice}
+                className="secondary-button"
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Dispute
+              </button>
+            )}
             {invoice.status !== 'paid' && (
               <>
                 <Link

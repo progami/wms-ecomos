@@ -141,22 +141,63 @@ export default function FinanceInvoicesPage() {
   }
 
   const handlePayInvoice = async (invoiceId: string) => {
-    if (!confirm('Mark this invoice as paid?')) return
+    const paymentMethod = prompt('Enter payment method (e.g., Bank Transfer, Check, Wire):')
+    if (!paymentMethod) return
+
+    const paymentReference = prompt('Enter payment reference number:')
+    if (!paymentReference) return
 
     try {
-      const response = await fetch(`/api/invoices?id=${invoiceId}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/invoices/${invoiceId}/accept`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paid' })
+        body: JSON.stringify({ 
+          paymentMethod,
+          paymentReference,
+          paymentDate: new Date().toISOString(),
+          notes: 'Accepted via invoice list'
+        })
       })
 
-      if (!response.ok) throw new Error('Failed to update invoice')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to accept invoice')
+      }
       
       await fetchInvoices()
-      alert('Invoice marked as paid!')
-    } catch (error) {
-      console.error('Error updating invoice:', error)
-      alert('Failed to update invoice')
+      alert('Invoice accepted and marked for payment!')
+    } catch (error: any) {
+      console.error('Error accepting invoice:', error)
+      alert(error.message || 'Failed to accept invoice')
+    }
+  }
+
+  const handleDisputeInvoice = async (invoiceId: string) => {
+    const reason = prompt('Enter dispute reason:')
+    if (!reason) return
+
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/dispute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          generalDisputeReason: reason,
+          notes: 'Disputed via invoice list',
+          contactWarehouse: true
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to dispute invoice')
+      }
+      
+      const result = await response.json()
+      await fetchInvoices()
+      alert(`Invoice disputed successfully! ${result.disputedItems} items disputed totaling ${formatCurrency(result.totalDisputedAmount)}`)
+    } catch (error: any) {
+      console.error('Error disputing invoice:', error)
+      alert(error.message || 'Failed to dispute invoice')
     }
   }
 
@@ -369,21 +410,39 @@ export default function FinanceInvoicesPage() {
                         <span className="ml-1">View</span>
                       </button>
                       {invoice.status === 'pending' && (
-                        <button 
-                          onClick={() => handleProcessInvoice(invoice.id)}
-                          className="text-primary hover:text-primary/80"
-                        >
-                          Process
-                        </button>
+                        <>
+                          <button 
+                            onClick={() => handleProcessInvoice(invoice.id)}
+                            className="text-primary hover:text-primary/80 mr-3"
+                          >
+                            Process
+                          </button>
+                          <button 
+                            onClick={() => handleDisputeInvoice(invoice.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4 inline" />
+                            <span className="ml-1">Dispute</span>
+                          </button>
+                        </>
                       )}
                       {invoice.status === 'reconciled' && (
-                        <button 
-                          onClick={() => handlePayInvoice(invoice.id)}
-                          className="text-green-600 hover:text-green-700"
-                        >
-                          <CreditCard className="h-4 w-4 inline" />
-                          <span className="ml-1">Pay</span>
-                        </button>
+                        <>
+                          <button 
+                            onClick={() => handlePayInvoice(invoice.id)}
+                            className="text-green-600 hover:text-green-700 mr-3"
+                          >
+                            <Check className="h-4 w-4 inline" />
+                            <span className="ml-1">Accept</span>
+                          </button>
+                          <button 
+                            onClick={() => handleDisputeInvoice(invoice.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4 inline" />
+                            <span className="ml-1">Dispute</span>
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
