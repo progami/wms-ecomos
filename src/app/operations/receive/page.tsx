@@ -50,6 +50,7 @@ export default function WarehouseReceivePage() {
       pallets: 0, 
       calculatedPallets: 0,
       units: 0,
+      unitsPerCarton: 1, // Now editable per batch
       storageCartonsPerPallet: 0,
       shippingCartonsPerPallet: 0,
       configLoaded: false,
@@ -110,6 +111,7 @@ export default function WarehouseReceivePage() {
         pallets: 0, 
         calculatedPallets: 0,
         units: 0,
+        unitsPerCarton: 1, // Now editable per batch
         storageCartonsPerPallet: 0,
         shippingCartonsPerPallet: 0,
         configLoaded: false,
@@ -224,38 +226,70 @@ export default function WarehouseReceivePage() {
       item.id === id ? { ...item, [field]: value } : item
     ))
     
-    // If SKU code changed, fetch warehouse config, update units, and get next batch number
+    // If SKU code changed, fetch warehouse config and get next batch number
     if (field === 'skuCode' && value) {
-      const selectedSku = skus.find(sku => sku.skuCode === value)
-      if (selectedSku) {
-        // Update units based on SKU's unitsPerCarton
-        setItems(items.map(item => {
-          if (item.id === id) {
-            const units = item.cartons * (selectedSku.unitsPerCarton || 1)
-            return { ...item, units }
-          }
-          return item
-        }))
-      }
-      await fetchWarehouseConfig(id, value)
+      // Don't auto-update units anymore - let user control unitsPerCarton
+      await fetchLastBatchDefaults(id, value)
       await fetchNextBatchNumber(id, value)
     }
     
-    // If cartons changed, recalculate units
-    if (field === 'cartons') {
+    // If cartons or unitsPerCarton changed, recalculate units
+    if (field === 'cartons' || field === 'unitsPerCarton') {
       const item = items.find(i => i.id === id)
-      if (item && item.skuCode) {
-        const selectedSku = skus.find(sku => sku.skuCode === item.skuCode)
-        if (selectedSku) {
-          const units = value * (selectedSku.unitsPerCarton || 1)
-          setItems(items.map(i => 
-            i.id === id ? { ...i, units } : i
-          ))
-        }
+      if (item) {
+        const cartons = field === 'cartons' ? value : item.cartons
+        const unitsPerCarton = field === 'unitsPerCarton' ? value : item.unitsPerCarton
+        const units = cartons * unitsPerCarton
+        setItems(items.map(i => 
+          i.id === id ? { ...i, units } : i
+        ))
       }
     }
   }
   
+  const fetchLastBatchDefaults = async (itemId: number, skuCode: string) => {
+    try {
+      const warehouseId = session?.user.warehouseId
+      if (!warehouseId) return
+      
+      // Get the last transaction for this SKU to fetch previous batch values
+      const response = await fetch(`/api/transactions/ledger?warehouse=${warehouseId}&skuCode=${skuCode}&transactionType=RECEIVE&limit=1`)
+      if (!response.ok) return
+      
+      const data = await response.json()
+      if (data.transactions && data.transactions.length > 0) {
+        const lastTransaction = data.transactions[0]
+        
+        // Get the inventory balance for pallet configs
+        const balanceResponse = await fetch(`/api/inventory/balances?warehouseId=${warehouseId}&skuCode=${skuCode}`)
+        const balances = await balanceResponse.json()
+        const lastBatch = balances.find((b: any) => b.batchLot === lastTransaction.batchLot) || balances[0]
+        
+        setItems(prevItems => prevItems.map(item => {
+          if (item.id === itemId) {
+            // Calculate units per carton from last transaction if available
+            let unitsPerCarton = 1
+            if (lastTransaction.cartonsIn > 0 && lastTransaction.sku?.unitsPerCarton) {
+              // For now use SKU master until we have units stored per transaction
+              unitsPerCarton = lastTransaction.sku.unitsPerCarton
+            }
+            
+            return {
+              ...item,
+              unitsPerCarton,
+              storageCartonsPerPallet: lastBatch?.storageCartonsPerPallet || 1,
+              shippingCartonsPerPallet: lastBatch?.shippingCartonsPerPallet || 1,
+              configLoaded: true
+            }
+          }
+          return item
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching last batch defaults:', error)
+    }
+  }
+
   const fetchWarehouseConfig = async (itemId: number, skuCode: string) => {
     try {
       const warehouseId = session?.user.warehouseId
@@ -612,6 +646,9 @@ export default function WarehouseReceivePage() {
                       Cartons
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Units/Carton
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Storage Cartons/Pallet
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -686,6 +723,23 @@ export default function WarehouseReceivePage() {
                           }}
                           className="w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary"
                           min="0"
+                          required
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={item.unitsPerCarton}
+                          onChange={(e) => {
+                            const newValue = parseInt(e.target.value) || 1
+                            updateItem(item.id, 'unitsPerCarton', newValue)
+                          }}
+                          className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
+                            item.configLoaded && item.unitsPerCarton > 1 ? 'bg-yellow-50' : ''
+                          }`}
+                          min="1"
+                          placeholder="1"
+                          title={item.configLoaded && item.unitsPerCarton > 1 ? 'Loaded from last batch (editable)' : 'Enter units per carton'}
                           required
                         />
                       </td>
