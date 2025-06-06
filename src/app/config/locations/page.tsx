@@ -50,7 +50,7 @@ export default function WarehouseSettingsPage() {
   }
 
   const handleEdit = (warehouseId: string) => {
-    router.push(`/admin/settings/warehouses/${warehouseId}/edit`)
+    router.push(`/config/locations/${warehouseId}/edit`)
   }
 
   const handleDelete = async (warehouse: Warehouse) => {
@@ -107,7 +107,7 @@ export default function WarehouseSettingsPage() {
               </p>
             </div>
             <Link
-              href="/admin/settings/warehouses/new"
+              href="/config/locations/new"
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -164,43 +164,6 @@ export default function WarehouseSettingsPage() {
               />
             ))
           )}
-        </div>
-
-        {/* Quick Links */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Related Settings</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link
-              href="/admin/settings/skus"
-              className="flex items-center p-4 bg-white rounded-lg hover:shadow-md transition-shadow"
-            >
-              <Package className="h-8 w-8 text-primary mr-3" />
-              <div>
-                <p className="font-medium">SKU Management</p>
-                <p className="text-sm text-gray-600">Configure product SKUs</p>
-              </div>
-            </Link>
-            <Link
-              href="/config/rates"
-              className="flex items-center p-4 bg-white rounded-lg hover:shadow-md transition-shadow"
-            >
-              <SettingsIcon className="h-8 w-8 text-primary mr-3" />
-              <div>
-                <p className="font-medium">Cost Rates</p>
-                <p className="text-sm text-gray-600">Set warehouse pricing</p>
-              </div>
-            </Link>
-            <Link
-              href="/admin/users"
-              className="flex items-center p-4 bg-white rounded-lg hover:shadow-md transition-shadow"
-            >
-              <Building2 className="h-8 w-8 text-primary mr-3" />
-              <div>
-                <p className="font-medium">User Access</p>
-                <p className="text-sm text-gray-600">Assign warehouse staff</p>
-              </div>
-            </Link>
-          </div>
         </div>
       </div>
     </DashboardLayout>

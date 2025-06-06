@@ -105,7 +105,7 @@ export default function AdminSkusPage() {
   }
 
   const handleEditSKU = (skuId: string) => {
-    router.push(`/admin/settings/skus/${skuId}/edit`)
+    router.push(`/config/products/${skuId}/edit`)
   }
 
   const filteredSkus = skus.filter(sku => {
@@ -135,7 +135,7 @@ export default function AdminSkusPage() {
           textColor="text-indigo-800"
           actions={
             <Link 
-              href="/admin/settings/skus/new"
+              href="/config/products/new"
               className="action-button"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -219,7 +219,7 @@ export default function AdminSkusPage() {
                         : "Start by adding your first SKU to begin tracking inventory."}
                       action={!searchTerm && !showInactive ? {
                         label: "Add First SKU",
-                        onClick: () => router.push('/admin/settings/skus/new')
+                        onClick: () => router.push('/config/products/new')
                       } : undefined}
                     />
                   </td>

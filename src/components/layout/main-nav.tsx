@@ -22,6 +22,7 @@ import {
   BookOpen,
   Calendar,
   Cloud,
+  Eye,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -64,9 +65,9 @@ const navigation = {
       title: 'Configuration',
       items: [
         { name: 'Products (SKUs)', href: '/config/products', icon: Package },
+        { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
         { name: 'Locations', href: '/config/locations', icon: Building },
         { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
-        { name: 'Warehouse Configs', href: '/config/warehouse-configs', icon: Warehouse },
       ]
     },
     {
@@ -111,9 +112,9 @@ const navigation = {
       title: 'Configuration',
       items: [
         { name: 'Products (SKUs)', href: '/config/products', icon: Package },
+        { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
         { name: 'Locations', href: '/config/locations', icon: Building },
         { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
-        { name: 'Warehouse Configs', href: '/config/warehouse-configs', icon: Warehouse },
       ]
     },
     {
