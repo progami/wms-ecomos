@@ -3,14 +3,17 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon, Loader2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon, Loader2, Map } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { WarehouseMapSimple } from '@/components/warehouse/warehouse-map-simple'
 
 interface Warehouse {
   id: string
   code: string
   name: string
   address?: string
+  latitude?: number | null
+  longitude?: number | null
   contactEmail?: string
   contactPhone?: string
   isActive: boolean
@@ -26,6 +29,7 @@ export default function WarehouseSettingsPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [loading, setLoading] = useState(true)
   const [showInactive, setShowInactive] = useState(false)
+  const [showMap, setShowMap] = useState(true)
 
   useEffect(() => {
     fetchWarehouses()
@@ -131,16 +135,38 @@ export default function WarehouseSettingsPage() {
           <h2 className="text-xl font-semibold">
             {showInactive ? 'All Warehouses' : 'Active Warehouses'}
           </h2>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-            />
-            <span className="ml-2 text-sm text-gray-700">Show inactive</span>
-          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={showMap}
+                onChange={(e) => setShowMap(e.target.checked)}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <span className="ml-2 text-sm text-gray-700">Show map</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <span className="ml-2 text-sm text-gray-700">Show inactive</span>
+            </label>
+          </div>
         </div>
+
+        {/* Warehouse Map */}
+        {showMap && !loading && (
+          <div className="bg-white border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Map className="h-5 w-5 text-gray-600" />
+              <h3 className="text-lg font-semibold">Warehouse Locations</h3>
+            </div>
+            <WarehouseMapSimple warehouses={warehouses} />
+          </div>
+        )}
 
         {/* Warehouses List */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
