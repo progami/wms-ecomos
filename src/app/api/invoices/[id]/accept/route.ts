@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { canAccessInvoice } from '@/lib/auth-utils';
 import prisma from '@/lib/prisma';
 
 interface RouteParams {
@@ -44,6 +45,14 @@ export async function POST(
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
+      );
+    }
+
+    // Check warehouse access
+    if (!canAccessInvoice(session, invoice)) {
+      return NextResponse.json(
+        { error: 'Access denied to this invoice' },
+        { status: 403 }
       );
     }
 
