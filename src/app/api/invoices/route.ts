@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getWarehouseFilter } from '@/lib/auth-utils'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -48,8 +49,14 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
+    // Get warehouse filter based on user role
+    const warehouseFilter = getWarehouseFilter(session, warehouseId)
+    if (warehouseFilter === null) {
+      return NextResponse.json({ error: 'No warehouse access' }, { status: 403 })
+    }
+
     // Build where clause
-    const where: any = {}
+    const where: any = { ...warehouseFilter }
     
     if (search) {
       where.OR = [
@@ -57,10 +64,6 @@ export async function GET(req: NextRequest) {
         { warehouse: { name: { contains: search, mode: 'insensitive' } } },
         { totalAmount: { equals: parseFloat(search) || undefined } }
       ]
-    }
-
-    if (warehouseId) {
-      where.warehouseId = warehouseId
     }
 
     if (status) {
@@ -146,20 +149,19 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const validatedData = createInvoiceSchema.parse(body)
 
-    // Check if invoice number already exists
-    const existingInvoice = await prisma.invoice.findUnique({
-      where: { invoiceNumber: validatedData.invoiceNumber }
-    })
-
-    if (existingInvoice) {
+    // Validate warehouse access
+    const warehouseFilter = getWarehouseFilter(session, validatedData.warehouseId)
+    if (warehouseFilter === null || (warehouseFilter.warehouseId && warehouseFilter.warehouseId !== validatedData.warehouseId)) {
       return NextResponse.json(
-        { error: 'Invoice number already exists' },
-        { status: 400 }
+        { error: 'Access denied to this warehouse' },
+        { status: 403 }
       )
     }
 
     // Create invoice with line items
-    const invoice = await prisma.invoice.create({
+    // The unique constraint on invoiceNumber will prevent duplicates
+    try {
+      const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber: validatedData.invoiceNumber,
         warehouseId: validatedData.warehouseId,
@@ -195,6 +197,16 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json(invoice, { status: 201 })
+    } catch (prismaError: any) {
+      // Handle unique constraint violation
+      if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('invoiceNumber')) {
+        return NextResponse.json(
+          { error: 'Invoice number already exists' },
+          { status: 400 }
+        )
+      }
+      throw prismaError
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

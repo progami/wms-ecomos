@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { canAccessInvoice } from '@/lib/auth-utils';
+import { Money } from '@/lib/financial-utils';
 import prisma from '@/lib/prisma';
 
 interface RouteParams {
@@ -52,6 +54,14 @@ export async function POST(
       );
     }
 
+    // Check warehouse access
+    if (!canAccessInvoice(session, invoice)) {
+      return NextResponse.json(
+        { error: 'Access denied to this invoice' },
+        { status: 403 }
+      );
+    }
+
     // Check if invoice is already paid
     if (invoice.status === 'paid') {
       return NextResponse.json(
@@ -93,7 +103,7 @@ export async function POST(
             });
 
             disputedCount++;
-            totalDisputedAmount += Math.abs(Number(reconciliation.difference));
+            totalDisputedAmount += Money.fromPrismaDecimal(reconciliation.difference).abs().toNumber();
             disputeDetails.push({
               reconciliationId: item.reconciliationId,
               reason: item.reason,
@@ -119,7 +129,7 @@ export async function POST(
             },
           });
 
-          totalDisputedAmount += Math.abs(Number(recon.difference));
+          totalDisputedAmount += Money.fromPrismaDecimal(recon.difference).abs().toNumber();
         }
 
         disputedCount = allReconciliations.length;
@@ -204,6 +214,14 @@ export async function GET(
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
+      );
+    }
+
+    // Check warehouse access
+    if (!canAccessInvoice(session, invoice)) {
+      return NextResponse.json(
+        { error: 'Access denied to this invoice' },
+        { status: 403 }
       );
     }
 

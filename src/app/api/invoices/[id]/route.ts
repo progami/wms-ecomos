@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { canAccessInvoice } from '@/lib/auth-utils'
+import { Money } from '@/lib/financial-utils'
 import prisma from '@/lib/prisma'
 
 // GET /api/invoices/[id] - Get invoice details
@@ -59,16 +61,32 @@ export async function GET(
       )
     }
 
-    // Calculate summary statistics
+    // Check warehouse access
+    if (!canAccessInvoice(session, invoice)) {
+      return NextResponse.json(
+        { error: 'Access denied to this invoice' },
+        { status: 403 }
+      )
+    }
+
+    // Calculate summary statistics using Money class for precision
+    const totalExpected = Money.sum(invoice.reconciliations.map(r => r.expectedAmount));
+    const totalInvoiced = Money.sum(invoice.reconciliations.map(r => r.invoicedAmount));
+    const totalDifference = Money.sum(invoice.reconciliations.map(r => r.difference));
+
     const summary = {
       totalLineItems: invoice.lineItems.length,
       totalReconciliations: invoice.reconciliations.length,
       matchedItems: invoice.reconciliations.filter(r => r.status === 'match').length,
       overbilledItems: invoice.reconciliations.filter(r => r.status === 'overbilled').length,
       underbilledItems: invoice.reconciliations.filter(r => r.status === 'underbilled').length,
-      totalExpected: invoice.reconciliations.reduce((sum, r) => sum + Number(r.expectedAmount), 0),
-      totalInvoiced: invoice.reconciliations.reduce((sum, r) => sum + Number(r.invoicedAmount), 0),
-      totalDifference: invoice.reconciliations.reduce((sum, r) => sum + Number(r.difference), 0)
+      totalExpected: totalExpected.toString(),
+      totalInvoiced: totalInvoiced.toString(),
+      totalDifference: totalDifference.toString(),
+      // Keep numeric versions for backward compatibility
+      totalExpectedNum: totalExpected.toNumber(),
+      totalInvoicedNum: totalInvoiced.toNumber(),
+      totalDifferenceNum: totalDifference.toNumber()
     }
 
     return NextResponse.json({
@@ -106,6 +124,14 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
+      )
+    }
+
+    // Check warehouse access
+    if (!canAccessInvoice(session, existingInvoice)) {
+      return NextResponse.json(
+        { error: 'Access denied to this invoice' },
+        { status: 403 }
       )
     }
 
@@ -194,6 +220,14 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
+      )
+    }
+
+    // Check warehouse access
+    if (!canAccessInvoice(session, invoice)) {
+      return NextResponse.json(
+        { error: 'Access denied to this invoice' },
+        { status: 403 }
       )
     }
 
