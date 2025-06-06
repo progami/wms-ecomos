@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { Money, calculateReconciliationDifference } from '@/lib/financial-utils'
 import { 
   getCalculatedCostsSummary, 
   getBillingPeriod,
@@ -86,11 +87,12 @@ export async function POST(req: NextRequest) {
 
         if (matchingCost) {
           const expectedAmount = matchingCost.totalAmount
-          const difference = Number(lineItem.amount) - Number(expectedAmount)
-          let status: 'match' | 'overbilled' | 'underbilled' = 'match'
+          const { difference, status } = calculateReconciliationDifference(
+            lineItem.amount,
+            expectedAmount
+          )
           
-          if (Math.abs(difference) > 0.01) {
-            status = difference > 0 ? 'overbilled' : 'underbilled'
+          if (status !== 'match') {
             totalDiscrepancies++
           }
 
@@ -100,7 +102,7 @@ export async function POST(req: NextRequest) {
             costName: lineItem.costName,
             expectedAmount,
             invoicedAmount: lineItem.amount,
-            difference,
+            difference: difference.toDecimal(),
             status,
             expectedQuantity: matchingCost.totalQuantity,
             invoicedQuantity: lineItem.quantity || 0,
@@ -111,13 +113,14 @@ export async function POST(req: NextRequest) {
           processedCosts.add(`${matchingCost.costCategory}-${matchingCost.costName}`)
         } else {
           // No matching calculated cost found - this charge shouldn't exist
+          const invoicedMoney = new Money(lineItem.amount);
           reconciliations.push({
             invoiceId: invoice.id,
             costCategory: lineItem.costCategory,
             costName: lineItem.costName,
             expectedAmount: 0,
             invoicedAmount: lineItem.amount,
-            difference: lineItem.amount,
+            difference: invoicedMoney.toDecimal(),
             status: 'overbilled' as const,
             expectedQuantity: 0,
             invoicedQuantity: lineItem.quantity || 0,
@@ -132,13 +135,14 @@ export async function POST(req: NextRequest) {
       for (const calculatedCost of calculatedCostsSummary) {
         const key = `${calculatedCost.costCategory}-${calculatedCost.costName}`
         if (!processedCosts.has(key) && calculatedCost.totalAmount > 0) {
+          const expectedMoney = new Money(calculatedCost.totalAmount);
           reconciliations.push({
             invoiceId: invoice.id,
             costCategory: calculatedCost.costCategory,
             costName: calculatedCost.costName,
             expectedAmount: calculatedCost.totalAmount,
             invoicedAmount: 0,
-            difference: -calculatedCost.totalAmount,
+            difference: expectedMoney.multiply(-1).toDecimal(),
             status: 'underbilled' as const,
             expectedQuantity: calculatedCost.totalQuantity,
             invoicedQuantity: 0,
