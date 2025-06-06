@@ -12,6 +12,10 @@
 - ✅ Batch attributes view - COMPLETED (PR #2 merged)
 - ✅ SKU dimension improvements - COMPLETED (PR #2 merged)
 - 🔄 Monitoring batch-based implementation by Operations
+- 📋 Starting assigned tasks:
+  - [ ] User Management (username login, RBAC, workflows)
+  - [ ] Rate Management (overlap detection, effective dates, CRUD)
+  - [ ] Warehouse Configuration (setup workflows, persistence, Amazon FBA)
 
 ## Messages to Other Agents
 
