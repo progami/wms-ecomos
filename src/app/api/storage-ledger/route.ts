@@ -109,12 +109,21 @@ export async function GET(request: NextRequest) {
       snapshot.cost += Number(entry.calculatedWeeklyCost)
       
       // Add item details
+      // For proper display, we need to get the actual configuration
+      // The stored data shows result (1 pallet for 1 carton) but not the config used
+      const actualConfig = await getActualPalletConfig(
+        entry.warehouseId, 
+        entry.skuId, 
+        entry.batchLot,
+        new Date(entry.weekEndingDate)
+      )
+      
       snapshot.items.push({
         sku: entry.sku,
         batchLot: entry.batchLot,
         cartons: entry.cartonsEndOfMonday,
         pallets: entry.storagePalletsCharged,
-        cartonsPerPallet: Math.ceil(entry.cartonsEndOfMonday / entry.storagePalletsCharged) || 1,
+        cartonsPerPallet: actualConfig || Math.ceil(entry.cartonsEndOfMonday / entry.storagePalletsCharged) || 1,
         cost: Number(entry.calculatedWeeklyCost)
       })
     }
@@ -144,4 +153,40 @@ export async function GET(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 })
   }
+}
+
+// Helper function to get actual pallet configuration
+async function getActualPalletConfig(
+  warehouseId: string,
+  skuId: string,
+  batchLot: string,
+  date: Date
+): Promise<number | null> {
+  // First check inventory balance
+  const balance = await prisma.inventoryBalance.findFirst({
+    where: {
+      warehouseId,
+      skuId,
+      batchLot
+    }
+  })
+  
+  if (balance?.storageCartonsPerPallet) {
+    return balance.storageCartonsPerPallet
+  }
+  
+  // Then check warehouse SKU config
+  const config = await prisma.warehouseSkuConfig.findFirst({
+    where: {
+      warehouseId,
+      skuId,
+      effectiveDate: { lte: date },
+      OR: [
+        { endDate: null },
+        { endDate: { gte: date } }
+      ]
+    }
+  })
+  
+  return config?.storageCartonsPerPallet || null
 }
