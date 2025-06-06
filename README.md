@@ -176,8 +176,7 @@ warehouse_management/
 │   ├── schema.prisma      # Database schema
 │   └── migrations/        # Database migrations
 ├── docs/                  # Documentation
-│   ├── architecture/      # System architecture
-│   └── BRANCHING_STRATEGY.md
+│   └── architecture/      # System architecture
 └── tests/                # Test files
 ```
 
@@ -406,7 +405,6 @@ Each module has specific directories it can modify:
 - Integrations: `/integrations`, `/api/amazon`
 - Admin: `/admin`, `/api/users`, `/api/admin`
 
-See `docs/BRANCHING_STRATEGY.md` for complete details.
 
 ### Commit Messages
 Follow conventional commits:
@@ -429,9 +427,10 @@ docs(cfg): Update rate configuration guide
 ## 🤝 Contributing
 
 Please refer to:
-- `docs/BRANCHING_STRATEGY.md` - Development workflow
 - `docs/architecture/` - System architecture
-- `ARCHITECTURE.md` - Module overview
+- `docs/ARCHITECTURE.md` - Module overview
+- Create feature branches from `main`
+- Submit pull requests for code review
 
 ## 📞 Support
 

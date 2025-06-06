@@ -12,12 +12,12 @@
 ## Active Engineers
 
 ### Engineer 1
-- **Worktree**: `/Users/jarraramjad/Documents/warehouse_management_engineer1`
+- **Worktree**: `../warehouse_management_engineer1`
 - **Branch**: engineer1/feature
 - **Current Tasks**: (To be assigned)
 
 ### Engineer 2
-- **Worktree**: `/Users/jarraramjad/Documents/warehouse_management_engineer2`
+- **Worktree**: `../warehouse_management_engineer2`
 - **Branch**: engineer2/feature
 - **Current Tasks**: (To be assigned)
 
@@ -25,9 +25,8 @@
 
 ## PR Status
 
-### Merged PRs
-- All previous agent PRs (#1-#12) have been merged
-- System is currently feature-complete
+### Recent PRs
+*(None at this time)*
 
 ### Pending PRs
 *(None at this time)*
@@ -51,7 +50,8 @@ When conflicts arise between Engineer 1 and Engineer 2:
 
 ---
 
-## Notes
+## Development Guidelines
 - Engineers have full access to entire codebase
 - No module boundaries or restrictions
 - Focus on collaboration and code quality
+- Follow conventions in `/docs/DEVELOPMENT_GUIDE.md`
