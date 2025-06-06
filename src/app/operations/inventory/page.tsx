@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3, X } from 'lucide-react'
+import { Search, Filter, Download, Package2, Calendar, Eye, Clock, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3, X, FileText, Upload } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/lib/utils'
 import { StorageLedgerTab } from '@/components/operations/storage-ledger-tab'
 import { InventoryTabs } from '@/components/operations/inventory-tabs'
+import DocumentUploadModal from '@/components/operations/document-upload-modal'
 
 interface InventoryBalance {
   id: string
@@ -50,6 +51,7 @@ interface Transaction {
   containerNumber?: string | null
   storageCartonsPerPallet?: number | null
   shippingCartonsPerPallet?: number | null
+  attachments?: any
 }
 
 export default function UnifiedInventoryPage() {
@@ -59,7 +61,8 @@ export default function UnifiedInventoryPage() {
   const [viewMode, setViewMode] = useState<'live' | 'point-in-time'>('live')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // Default: latest first
-  
+  const [showDocumentModal, setShowDocumentModal] = useState(false)
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   
   
   // Data states
@@ -928,6 +931,9 @@ export default function UnifiedInventoryPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Notes
                       </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Docs
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -1110,11 +1116,33 @@ export default function UnifiedInventoryPage() {
                             {transaction.notes || '-'}
                           </div>
                         </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => {
+                              setSelectedTransactionId(transaction.transactionId)
+                              setShowDocumentModal(true)
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-gray-100 transition-colors"
+                            title="Upload or view documents"
+                          >
+                            {transaction.attachments && transaction.attachments.length > 0 ? (
+                              <>
+                                <FileText className="h-3 w-3 text-blue-600" />
+                                <span className="text-blue-600 font-medium">{transaction.attachments.length}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-3 w-3 text-gray-400" />
+                                <span className="text-gray-400">0</span>
+                              </>
+                            )}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={viewMode === 'point-in-time' ? 17 : 16} className="px-6 py-12">
+                        <td colSpan={viewMode === 'point-in-time' ? 18 : 17} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"
@@ -1172,6 +1200,30 @@ export default function UnifiedInventoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Document Upload Modal */}
+      {showDocumentModal && selectedTransactionId && (
+        <DocumentUploadModal
+          isOpen={showDocumentModal}
+          onClose={() => {
+            setShowDocumentModal(false)
+            setSelectedTransactionId(null)
+          }}
+          transactionId={selectedTransactionId}
+          onUploadComplete={(attachments) => {
+            // Update the transaction with new attachments
+            setTransactions(prev => prev.map(t => 
+              t.transactionId === selectedTransactionId 
+                ? { ...t, attachments } 
+                : t
+            ))
+            toast.success('Documents updated successfully')
+          }}
+          existingAttachments={
+            transactions.find(t => t.transactionId === selectedTransactionId)?.attachments || []
+          }
+        />
+      )}
 
     </DashboardLayout>
   )

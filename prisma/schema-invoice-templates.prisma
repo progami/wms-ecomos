@@ -1,0 +1,65 @@
+// Add these models to your existing schema.prisma file
+
+model InvoiceTemplate {
+  id                String                      @id @default(uuid())
+  name              String
+  warehouseId       String                      @map("warehouse_id")
+  description       String?
+  isActive          Boolean                     @default(true) @map("is_active")
+  isDefault         Boolean                     @default(false) @map("is_default")
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  updatedAt         DateTime                    @updatedAt @map("updated_at")
+  createdById       String                      @map("created_by")
+  warehouse         Warehouse                   @relation(fields: [warehouseId], references: [id])
+  createdBy         User                        @relation(fields: [createdById], references: [id])
+  rules             InvoiceTemplateRule[]
+  generatedInvoices Invoice[]                   @relation("TemplateInvoices")
+
+  @@unique([warehouseId, name])
+  @@index([warehouseId, isActive])
+  @@map("invoice_templates")
+}
+
+model InvoiceTemplateRule {
+  id                   String              @id @default(uuid())
+  templateId           String              @map("template_id")
+  transactionType      TransactionType     @map("transaction_type")
+  costCategory         CostCategory        @map("cost_category")
+  costName             String              @map("cost_name")
+  calculationType      CalculationType     @map("calculation_type")
+  rateValue            Decimal?            @map("rate_value") @db.Decimal(12, 4)
+  rateMultiplier       Decimal?            @map("rate_multiplier") @db.Decimal(6, 4)
+  minCharge            Decimal?            @map("min_charge") @db.Decimal(12, 2)
+  maxCharge            Decimal?            @map("max_charge") @db.Decimal(12, 2)
+  unitOfMeasure        String              @map("unit_of_measure")
+  includeInInvoice     Boolean             @default(true) @map("include_in_invoice")
+  applyToAllSkus       Boolean             @default(true) @map("apply_to_all_skus")
+  specificSkuIds       String[]            @map("specific_sku_ids")
+  priority             Int                 @default(0)
+  conditions           Json?               @db.JsonB
+  notes                String?
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  template             InvoiceTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, transactionType])
+  @@index([templateId, priority])
+  @@map("invoice_template_rules")
+}
+
+enum CalculationType {
+  FIXED_RATE          // Fixed rate per unit
+  PERCENTAGE          // Percentage of base cost
+  TIERED              // Tiered pricing based on volume
+  CUSTOM_FORMULA      // Custom calculation formula
+  RATE_TABLE          // Use rate from cost_rates table
+}
+
+// Update the Invoice model to include template reference
+// Add this field to the existing Invoice model:
+// templateId        String?              @map("template_id")
+// template          InvoiceTemplate?     @relation("TemplateInvoices", fields: [templateId], references: [id])
+
+// Update the User model to include created templates
+// Add this field to the existing User model:
+// createdTemplates  InvoiceTemplate[]

@@ -276,11 +276,18 @@ export default function FinanceInvoicesPage() {
                 Export
               </button>
               <Link 
+                href="/finance/invoices/generate"
+                className="primary-button"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Generate from Template
+              </Link>
+              <Link 
                 href="/finance/invoices/new"
                 className="action-button"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                New Invoice
+                Manual Entry
               </Link>
             </div>
           </div>

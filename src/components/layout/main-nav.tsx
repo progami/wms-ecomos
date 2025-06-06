@@ -68,6 +68,7 @@ const navigation = {
         { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
         { name: 'Locations', href: '/config/locations', icon: Building },
         { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
+        { name: 'Invoice Templates', href: '/config/invoice-templates', icon: FileText },
       ]
     },
     {
@@ -115,6 +116,7 @@ const navigation = {
         { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
         { name: 'Locations', href: '/config/locations', icon: Building },
         { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
+        { name: 'Invoice Templates', href: '/config/invoice-templates', icon: FileText },
       ]
     },
     {
