@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getWarehouseFilter } from '@/lib/auth-utils'
+import { Money, parseMoney, calculateReconciliationDifference } from '@/lib/financial-utils'
 import prisma from '@/lib/prisma'
 import { parse } from 'csv-parse/sync'
 import * as XLSX from 'xlsx'
@@ -90,62 +92,65 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check if invoice already exists
-    const existingInvoice = await prisma.invoice.findUnique({
-      where: { invoiceNumber: invoiceData.invoiceNumber }
-    })
-
-    if (existingInvoice) {
+    // Validate warehouse access
+    const warehouseFilter = getWarehouseFilter(session, warehouse.id)
+    if (warehouseFilter === null || (warehouseFilter.warehouseId && warehouseFilter.warehouseId !== warehouse.id)) {
       return NextResponse.json(
-        { 
-          error: 'Invoice already exists',
-          existingInvoice: {
-            id: existingInvoice.id,
-            invoiceNumber: existingInvoice.invoiceNumber,
-            status: existingInvoice.status
-          }
-        },
-        { status: 400 }
+        { error: 'Access denied to this warehouse' },
+        { status: 403 }
       )
     }
 
-    // Create invoice with line items
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber: invoiceData.invoiceNumber,
-        warehouseId: warehouse.id,
-        billingPeriodStart: new Date(invoiceData.billingPeriodStart),
-        billingPeriodEnd: new Date(invoiceData.billingPeriodEnd),
-        invoiceDate: new Date(invoiceData.invoiceDate),
-        dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : null,
-        totalAmount: invoiceData.totalAmount,
-        createdById: session.user.id,
-        lineItems: {
-          create: invoiceData.lineItems.map(item => ({
-            costCategory: item.costCategory as any,
-            costName: item.costName,
-            quantity: item.quantity,
-            unitRate: item.unitRate,
-            amount: item.amount,
-            notes: item.notes
-          }))
+    // Use transaction to ensure atomicity
+    // The unique constraint on invoiceNumber will prevent duplicates
+    const result = await prisma.$transaction(async (tx) => {
+      // Create invoice with line items
+      const invoice = await tx.invoice.create({
+        data: {
+          invoiceNumber: invoiceData.invoiceNumber,
+          warehouseId: warehouse.id,
+          billingPeriodStart: new Date(invoiceData.billingPeriodStart),
+          billingPeriodEnd: new Date(invoiceData.billingPeriodEnd),
+          invoiceDate: new Date(invoiceData.invoiceDate),
+          dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : null,
+          totalAmount: invoiceData.totalAmount,
+          createdById: session.user.id,
+          lineItems: {
+            create: invoiceData.lineItems.map(item => ({
+              costCategory: item.costCategory as any,
+              costName: item.costName,
+              quantity: item.quantity,
+              unitRate: item.unitRate,
+              amount: item.amount,
+              notes: item.notes
+            }))
+          }
+        },
+        include: {
+          warehouse: true,
+          lineItems: true
         }
-      },
-      include: {
-        warehouse: true,
-        lineItems: true
-      }
-    })
+      })
 
-    // Automatically start reconciliation process
-    await startReconciliation(invoice.id)
+      // Start reconciliation within the transaction
+      await startReconciliationInTransaction(tx, invoice.id)
+      
+      return invoice
+    })
 
     return NextResponse.json({
       message: 'Invoice uploaded successfully',
-      invoice,
+      invoice: result,
       reconciliationStarted: true
     })
-  } catch (error) {
+  } catch (error: any) {
+    // Handle unique constraint violation
+    if (error.code === 'P2002' && error.meta?.target?.includes('invoiceNumber')) {
+      return NextResponse.json(
+        { error: 'Invoice number already exists' },
+        { status: 400 }
+      )
+    }
     console.error('Error uploading invoice:', error)
     return NextResponse.json(
       { error: 'Failed to upload invoice' },
@@ -180,13 +185,13 @@ async function parseCSV(buffer: Buffer): Promise<InvoiceUploadData | null> {
       billingPeriodEnd: headerInfo.billingPeriodEnd || headerInfo['Billing Period End'] || '',
       invoiceDate: headerInfo.invoiceDate || headerInfo['Invoice Date'] || '',
       dueDate: headerInfo.dueDate || headerInfo['Due Date'],
-      totalAmount: parseFloat(headerInfo.totalAmount || headerInfo['Total Amount'] || '0'),
+      totalAmount: parseMoney(headerInfo.totalAmount || headerInfo['Total Amount']).toNumber(),
       lineItems: lineItems.map((item: any) => ({
         costCategory: item.costCategory || item['Cost Category'],
         costName: item.costName || item['Cost Name'] || item['Description'],
-        quantity: parseFloat(item.quantity || item['Quantity'] || '0'),
-        unitRate: item.unitRate ? parseFloat(item.unitRate) : undefined,
-        amount: parseFloat(item.amount || item['Amount'] || '0'),
+        quantity: parseMoney(item.quantity || item['Quantity']).toNumber(),
+        unitRate: item.unitRate || item['Unit Rate'] ? parseMoney(item.unitRate || item['Unit Rate']).toNumber() : undefined,
+        amount: parseMoney(item.amount || item['Amount']).toNumber(),
         notes: item.notes || item['Notes']
       }))
     }
@@ -235,13 +240,13 @@ async function parseExcel(buffer: Buffer): Promise<InvoiceUploadData | null> {
       billingPeriodEnd: invoiceInfo['Billing Period End'] || invoiceInfo.billingPeriodEnd || '',
       invoiceDate: invoiceInfo['Invoice Date'] || invoiceInfo.invoiceDate || '',
       dueDate: invoiceInfo['Due Date'] || invoiceInfo.dueDate,
-      totalAmount: parseFloat(invoiceInfo['Total Amount'] || invoiceInfo.totalAmount || '0'),
+      totalAmount: parseMoney(invoiceInfo['Total Amount'] || invoiceInfo.totalAmount).toNumber(),
       lineItems: lineItems.map((item: any) => ({
         costCategory: item['Cost Category'] || item.costCategory,
         costName: item['Cost Name'] || item.costName || item['Description'],
-        quantity: parseFloat(item['Quantity'] || item.quantity || '0'),
-        unitRate: item['Unit Rate'] || item.unitRate ? parseFloat(item['Unit Rate'] || item.unitRate) : undefined,
-        amount: parseFloat(item['Amount'] || item.amount || '0'),
+        quantity: parseMoney(item['Quantity'] || item.quantity).toNumber(),
+        unitRate: item['Unit Rate'] || item.unitRate ? parseMoney(item['Unit Rate'] || item.unitRate).toNumber() : undefined,
+        amount: parseMoney(item['Amount'] || item.amount).toNumber(),
         notes: item['Notes'] || item.notes
       }))
     }
@@ -251,35 +256,34 @@ async function parseExcel(buffer: Buffer): Promise<InvoiceUploadData | null> {
   }
 }
 
-async function startReconciliation(invoiceId: string) {
-  try {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: { lineItems: true }
-    })
+async function startReconciliationInTransaction(tx: any, invoiceId: string) {
+  const invoice = await tx.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { lineItems: true }
+  })
 
-    if (!invoice) return
+  if (!invoice) return
 
-    // Get calculated costs for the billing period
-    const calculatedCosts = await prisma.calculatedCost.groupBy({
-      by: ['costRateId'],
-      where: {
-        warehouseId: invoice.warehouseId,
-        billingPeriodStart: {
-          gte: invoice.billingPeriodStart,
-          lte: invoice.billingPeriodEnd
-        }
-      },
-      _sum: {
-        finalExpectedCost: true
+  // Get calculated costs for the billing period
+  const calculatedCosts = await tx.calculatedCost.groupBy({
+    by: ['costRateId'],
+    where: {
+      warehouseId: invoice.warehouseId,
+      billingPeriodStart: {
+        gte: invoice.billingPeriodStart,
+        lte: invoice.billingPeriodEnd
       }
-    })
+    },
+    _sum: {
+      finalExpectedCost: true
+    }
+  })
 
-    // Get cost rate details
-    const costRateIds = calculatedCosts.map(c => c.costRateId)
-    const costRates = await prisma.costRate.findMany({
-      where: { id: { in: costRateIds } }
-    })
+  // Get cost rate details
+  const costRateIds = calculatedCosts.map(c => c.costRateId)
+  const costRates = await tx.costRate.findMany({
+    where: { id: { in: costRateIds } }
+  })
 
     // Create reconciliation records
     const reconciliations = []
@@ -295,12 +299,10 @@ async function startReconciliation(invoiceId: string) {
         const calculatedSum = calculatedCosts.find(c => c.costRateId === matchingRate.id)
         const expectedAmount = calculatedSum?._sum.finalExpectedCost || 0
 
-        const difference = Number(lineItem.amount) - Number(expectedAmount)
-        let status: 'match' | 'overbilled' | 'underbilled' = 'match'
-        
-        if (Math.abs(difference) > 0.01) {
-          status = difference > 0 ? 'overbilled' : 'underbilled'
-        }
+        const { difference, status } = calculateReconciliationDifference(
+          lineItem.amount,
+          expectedAmount
+        )
 
         reconciliations.push({
           invoiceId: invoice.id,
@@ -308,30 +310,34 @@ async function startReconciliation(invoiceId: string) {
           costName: lineItem.costName,
           expectedAmount,
           invoicedAmount: lineItem.amount,
-          difference,
+          difference: difference.toDecimal(),
           status
         })
       } else {
         // No matching calculated cost found
+        const invoicedMoney = new Money(lineItem.amount);
         reconciliations.push({
           invoiceId: invoice.id,
           costCategory: lineItem.costCategory,
           costName: lineItem.costName,
           expectedAmount: 0,
           invoicedAmount: lineItem.amount,
-          difference: lineItem.amount,
+          difference: invoicedMoney.toDecimal(),
           status: 'overbilled' as const
         })
       }
     }
 
-    // Insert reconciliation records
-    if (reconciliations.length > 0) {
-      await prisma.invoiceReconciliation.createMany({
-        data: reconciliations
-      })
-    }
-  } catch (error) {
-    console.error('Error starting reconciliation:', error)
+  // Insert reconciliation records
+  if (reconciliations.length > 0) {
+    await tx.invoiceReconciliation.createMany({
+      data: reconciliations
+    })
   }
+}
+
+// Keep the old function for backward compatibility but mark as deprecated
+async function startReconciliation(invoiceId: string) {
+  console.warn('startReconciliation is deprecated. Use transactional version instead.')
+  // This function is no longer used but kept for reference
 }
