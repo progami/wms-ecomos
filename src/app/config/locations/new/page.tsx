@@ -13,6 +13,8 @@ export default function NewWarehousePage() {
     code: '',
     name: '',
     address: '',
+    latitude: '',
+    longitude: '',
     contactEmail: '',
     contactPhone: '',
     isActive: true
@@ -36,6 +38,14 @@ export default function NewWarehousePage() {
       newErrors.contactEmail = 'Invalid email format'
     }
 
+    if (formData.latitude && (isNaN(Number(formData.latitude)) || Number(formData.latitude) < -90 || Number(formData.latitude) > 90)) {
+      newErrors.latitude = 'Latitude must be between -90 and 90'
+    }
+
+    if (formData.longitude && (isNaN(Number(formData.longitude)) || Number(formData.longitude) < -180 || Number(formData.longitude) > 180)) {
+      newErrors.longitude = 'Longitude must be between -180 and 180'
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -52,7 +62,9 @@ export default function NewWarehousePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          code: formData.code.toUpperCase()
+          code: formData.code.toUpperCase(),
+          latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+          longitude: formData.longitude ? parseFloat(formData.longitude) : null
         })
       })
 
@@ -176,6 +188,46 @@ export default function NewWarehousePage() {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="+1 (555) 123-4567"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Latitude
+                </label>
+                <input
+                  type="text"
+                  value={formData.latitude}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                    errors.latitude ? 'border-red-500' : ''
+                  }`}
+                  placeholder="e.g., 51.5074"
+                />
+                {errors.latitude && (
+                  <p className="text-red-500 text-sm mt-1">{errors.latitude}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">Optional: For map display</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Longitude
+                </label>
+                <input
+                  type="text"
+                  value={formData.longitude}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                    errors.longitude ? 'border-red-500' : ''
+                  }`}
+                  placeholder="e.g., -0.1278"
+                />
+                {errors.longitude && (
+                  <p className="text-red-500 text-sm mt-1">{errors.longitude}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">Optional: For map display</p>
               </div>
             </div>
 

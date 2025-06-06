@@ -9,6 +9,8 @@ const createWarehouseSchema = z.object({
   code: z.string().min(1).max(10),
   name: z.string().min(1),
   address: z.string().optional(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
   contactEmail: z.string().email().optional(),
   contactPhone: z.string().optional(),
   isActive: z.boolean().default(true)
@@ -18,6 +20,8 @@ const updateWarehouseSchema = z.object({
   code: z.string().min(1).max(10).optional(),
   name: z.string().min(1).optional(),
   address: z.string().optional(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
   contactEmail: z.string().email().optional().nullable(),
   contactPhone: z.string().optional().nullable(),
   isActive: z.boolean().optional()
