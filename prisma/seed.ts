@@ -13,7 +13,7 @@ async function main() {
     create: {
       code: 'FMC',
       name: 'FMC',
-      address: '123 Main St, City, State 12345',
+      address: 'Star Business Centre, Marsh Wy, Rainham RM13 8UP, UK',
       contactEmail: 'fmc@warehouse.com',
       contactPhone: '555-0100',
     },
@@ -25,9 +25,9 @@ async function main() {
     create: {
       code: 'VGLOBAL',
       name: 'VGlobal',
-      address: '456 Industrial Blvd, City, State 12345',
-      contactEmail: 'vglobal@warehouse.com',
-      contactPhone: '555-0200',
+      address: 'Unit 2, Bulrush Close, Finedon Road, Wellingborough, NN8 4FU, UK',
+      contactEmail: 'dale.ashton@trans-global.com',
+      contactPhone: '+447789332674',
     },
   })
 
@@ -37,9 +37,9 @@ async function main() {
     create: {
       code: '4AS',
       name: '4AS',
-      address: '789 Logistics Ave, City, State 12345',
-      contactEmail: '4as@warehouse.com',
-      contactPhone: '555-0300',
+      address: 'Unit E, 1 Glenburn Rd, East Kilbride, Glasgow, G74 5BA, UK',
+      contactEmail: 'support@4asglobal.com',
+      contactPhone: '+447926124504',
     },
   })
 
