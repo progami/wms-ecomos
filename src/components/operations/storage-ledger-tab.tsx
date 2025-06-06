@@ -657,7 +657,14 @@ export function StorageLedgerTab({
                                       <td className="py-2 text-right">
                                         {(aggregationView === 'weekly' ? item.cartons : item.totalCartonWeeks).toLocaleString()}
                                       </td>
-                                      <td className="py-2 text-right">{item.cartonsPerPallet}/pallet</td>
+                                      <td className="py-2 text-right">
+                                        {item.cartonsPerPallet}/pallet
+                                        {item.cartons === item.pallets && item.cartons <= 5 && (
+                                          <span className="text-xs text-gray-500 ml-1" title="Minimum 1 pallet required">
+                                            (min)
+                                          </span>
+                                        )}
+                                      </td>
                                       <td className="py-2 text-right font-medium">{pallets}</td>
                                       <td className="py-2 text-right font-medium text-green-600">
                                         {formatCurrency(aggregationView === 'weekly' ? item.cost : item.totalCost)}

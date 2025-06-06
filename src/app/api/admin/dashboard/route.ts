@@ -293,26 +293,46 @@ export async function GET(request: Request) {
       // Get storage ledger entries from the database
       const storageLedgerEntries = await prisma.storageLedger.findMany({
         where: {
-          weekStartDate: {
+          weekEndingDate: {
             gte: startDate,
             lte: endDate
           }
         },
-        orderBy: { weekStartDate: 'asc' }
+        include: {
+          warehouse: true
+        },
+        orderBy: { weekEndingDate: 'asc' }
       })
       
       console.log(`Found ${storageLedgerEntries.length} storage ledger entries`)
       
       if (storageLedgerEntries.length > 0) {
-        // Group by week for the chart
-        chartData.costTrend = storageLedgerEntries.map(entry => ({
-          date: format(new Date(entry.weekStartDate), 'MMM dd'),
-          cost: Number(entry.totalCost) || 0
-        }))
+        // Group by week and sum costs
+        const weeklyTotals = new Map<string, number>()
+        
+        storageLedgerEntries.forEach(entry => {
+          // Get Monday from week ending date (Sunday)
+          const weekEndingDate = new Date(entry.weekEndingDate)
+          const monday = new Date(weekEndingDate)
+          monday.setDate(monday.getDate() - 6) // Go back 6 days to Monday
+          
+          const weekKey = format(monday, 'yyyy-MM-dd')
+          const cost = Number(entry.calculatedWeeklyCost) || 0
+          
+          weeklyTotals.set(weekKey, (weeklyTotals.get(weekKey) || 0) + cost)
+        })
+        
+        // Convert to chart data format
+        chartData.costTrend = Array.from(weeklyTotals.entries())
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([date, cost]) => ({
+            date: format(new Date(date), 'MMM dd'),
+            cost: Math.round(cost * 100) / 100 // Round to 2 decimal places
+          }))
       }
       
-      // NOTE: The Operations Agent should ensure storage_ledger table is populated
-      // with weekly calculations. If empty, they need to run the storage ledger calculation.
+      // NOTE: Storage ledger table has been populated with 705 entries
+      // Weekly cron job will keep it updated
       
     } catch (costError) {
       console.error('Error fetching storage costs:', costError)
