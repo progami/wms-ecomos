@@ -26,27 +26,34 @@
    - Added: Interactive charts, monthly metrics, real-time KPIs
    - Progress: Analytics agent now active
 
+7. **PR #7** - Operations: Storage ledger implementation ✅
+   - Merged: 2025-01-06
+   - Fixed: Empty storage_ledger table (705 entries populated)
+   - Added: Population/update scripts, cron job setup
+   - Resolved: Analytics dashboard storage cost charts now working
+
 ### Pending PRs
 *(None at this time)*
 
 ### ⚠️ CRITICAL STATUS
 - Finance Agent: ~40% complete, security fixes done, core UI pending
 - Analytics Agent: ~30% complete, dashboard done, reports pending
-- Operations Agent: Need to address storage ledger population
+- Operations Agent: ✅ COMPLETE - All tasks done including storage ledger fix
 
 ---
 
 ## Cross-Module Dependencies
 
 ### Active Issues
-1. **Operations ← Analytics**: Storage ledger table population
-   - Status: PENDING Operations response
-   - Priority: HIGH
-   - Impact: Dashboard storage cost charts show no data
-   - Details: Need to populate `storage_ledger` table with weekly snapshots
+*(None at this time - all cross-module issues resolved)*
 
-2. **Finance ← Configuration**: Cost calculations with batch-based units/carton
-   - Status: RESOLVED by Finance
+### Recently Resolved Issues
+1. **Operations ← Analytics**: Storage ledger table population ✅
+   - Resolved: PR #7 merged
+   - Operations populated 705 historical entries
+   - Dashboard charts now display correctly
+
+2. **Finance ← Configuration**: Cost calculations with batch-based units/carton ✅
    - Finance confirmed system already handles batch variations
 
 ### Resolved Issues
@@ -60,7 +67,7 @@
 
 | Agent | Status | PRs Submitted | Current Task |
 |-------|--------|---------------|--------------|
-| Operations | ✅ COMPLETE* | 4 | *Need storage ledger fix |
+| Operations | ✅ COMPLETE | 5 | All tasks done |
 | Configuration | ✅ COMPLETE | 1 | Monitoring |
 | Finance | 🔄 ACTIVE | 1 | Working on invoice UI |
 | Analytics | 🔄 ACTIVE | 1 | Working on reports |
