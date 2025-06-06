@@ -37,41 +37,6 @@ export async function GET(request: NextRequest) {
     // Set time to end of day for end date
     end.setHours(23, 59, 59, 999)
 
-    // Build where clause
-    const whereClause: any = {
-      transactionDate: {
-        gte: start,
-        lte: end
-      }
-    }
-
-    if (warehouseId) {
-      whereClause.warehouseId = warehouseId
-    }
-
-    // Get ALL transactions up to the end date to calculate accurate balances
-    const allTransactionsWhere: any = {
-      transactionDate: {
-        lte: end
-      }
-    }
-    
-    if (warehouseId) {
-      allTransactionsWhere.warehouseId = warehouseId
-    }
-    
-    const transactions = await prisma.inventoryTransaction.findMany({
-      where: allTransactionsWhere,
-      include: {
-        sku: true,
-        warehouse: true
-      },
-      orderBy: {
-        transactionDate: 'asc'
-      }
-    })
-    
-
     // Get warehouses for the filter
     const warehouses = await prisma.warehouse.findMany({
       where: {
@@ -89,30 +54,78 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get current rates for calculation
-    const rates = await prisma.costRate.findMany({
-      where: {
-        costCategory: 'Storage',
-        warehouseId: warehouseId || undefined,
-        effectiveDate: {
-          lte: end
-        },
-        OR: [
-          { endDate: null },
-          { endDate: { gte: start } }
-        ]
-      },
-      include: {
-        warehouse: true
+    // Build where clause for storage ledger
+    const whereClause: any = {
+      weekEndingDate: {
+        gte: start,
+        lte: end
       }
+    }
+
+    if (warehouseId) {
+      whereClause.warehouseId = warehouseId
+    }
+
+    // Get storage ledger entries from database
+    const ledgerEntries = await prisma.storageLedger.findMany({
+      where: whereClause,
+      include: {
+        sku: true,
+        warehouse: true
+      },
+      orderBy: [
+        { weekEndingDate: 'desc' },
+        { warehouse: { name: 'asc' } }
+      ]
     })
 
-    console.log(`Found ${transactions.length} transactions, ${warehouses.length} warehouses, ${rates.length} rates`)
+    console.log(`Found ${ledgerEntries.length} storage ledger entries`)
 
-    // Calculate Monday snapshots
-    const snapshots = await calculateMondaySnapshots(transactions, warehouses, rates, start, end)
-    
-    console.log(`Calculated ${snapshots.length} snapshots`)
+    // Transform ledger entries to snapshot format
+    const snapshotsMap = new Map<string, any>()
+
+    for (const entry of ledgerEntries) {
+      // Get Monday date from week ending date (Sunday)
+      const weekEndingDate = new Date(entry.weekEndingDate)
+      const monday = new Date(weekEndingDate)
+      monday.setDate(monday.getDate() - 6) // Go back 6 days to Monday
+      
+      const key = `${monday.toISOString().split('T')[0]}-${entry.warehouseId}`
+      
+      if (!snapshotsMap.has(key)) {
+        snapshotsMap.set(key, {
+          date: monday.toISOString(),
+          weekNumber: getWeekNumber(monday),
+          warehouse: entry.warehouse,
+          totalPallets: 0,
+          rate: Number(entry.applicableWeeklyRate),
+          cost: 0,
+          items: []
+        })
+      }
+      
+      const snapshot = snapshotsMap.get(key)
+      snapshot.totalPallets += entry.storagePalletsCharged
+      snapshot.cost += Number(entry.calculatedWeeklyCost)
+      
+      // Add item details
+      snapshot.items.push({
+        sku: entry.sku,
+        batchLot: entry.batchLot,
+        cartons: entry.cartonsEndOfMonday,
+        pallets: entry.storagePalletsCharged,
+        cartonsPerPallet: Math.ceil(entry.cartonsEndOfMonday / entry.storagePalletsCharged) || 1,
+        cost: Number(entry.calculatedWeeklyCost)
+      })
+    }
+
+    // Convert map to array and sort items within each snapshot
+    const snapshots = Array.from(snapshotsMap.values()).map(snapshot => ({
+      ...snapshot,
+      items: snapshot.items.sort((a: any, b: any) => a.sku.skuCode.localeCompare(b.sku.skuCode))
+    }))
+
+    console.log(`Transformed into ${snapshots.length} snapshots`)
 
     return NextResponse.json({
       snapshots,
@@ -131,161 +144,4 @@ export async function GET(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 })
   }
-}
-
-async function calculateMondaySnapshots(
-  transactions: any[],
-  warehouses: any[],
-  rates: any[],
-  startDate: Date,
-  endDate: Date
-) {
-  const snapshots = []
-  
-  // Find all Mondays in the date range
-  const mondays = []
-  const current = new Date(startDate)
-  
-  // Move to next Monday if start date is not Monday
-  const daysUntilMonday = (8 - current.getDay()) % 7
-  if (daysUntilMonday > 0) {
-    current.setDate(current.getDate() + daysUntilMonday)
-  }
-  
-  while (current <= endDate) {
-    mondays.push(new Date(current))
-    current.setDate(current.getDate() + 7)
-  }
-  
-
-  // For each Monday, calculate inventory snapshot
-  for (const monday of mondays) {
-    const mondayEnd = new Date(monday)
-    mondayEnd.setHours(23, 59, 59, 999)
-    
-    // Calculate inventory for each warehouse
-    for (const warehouse of warehouses) {
-      // Get all unique SKU/batch combinations that have had transactions for this warehouse
-      const warehouseTransactions = transactions.filter(t => 
-        t.warehouseId === warehouse.id && 
-        new Date(t.transactionDate) <= mondayEnd
-      )
-      
-      // Create a map of unique SKU/batch combinations
-      const skuBatchMap = new Map<string, { skuId: string, batchLot: string, sku: any }>()
-      
-      for (const t of warehouseTransactions) {
-        const key = `${t.skuId}-${t.batchLot}`
-        if (!skuBatchMap.has(key)) {
-          skuBatchMap.set(key, {
-            skuId: t.skuId,
-            batchLot: t.batchLot,
-            sku: t.sku
-          })
-        }
-      }
-      
-      // Calculate total pallets for warehouse
-      let totalPallets = 0
-      const items = []
-      
-      // For each unique SKU/batch, calculate the balance at Monday
-      for (const [key, { skuId, batchLot, sku }] of skuBatchMap) {
-        // Get all transactions for this SKU/batch up to Monday
-        const skuBatchTransactions = warehouseTransactions.filter(t => 
-          t.skuId === skuId &&
-          t.batchLot === batchLot
-        )
-        
-        // Calculate cartons at Monday end
-        let cartonsAtMonday = 0
-        for (const t of skuBatchTransactions) {
-          cartonsAtMonday += t.cartonsIn - t.cartonsOut
-        }
-        
-        if (cartonsAtMonday > 0) {
-          // Get the current inventory balance to find storage configuration
-          const { prisma } = await import('@/lib/prisma')
-          const balance = await prisma.inventoryBalance.findFirst({
-            where: {
-              warehouseId: warehouse.id,
-              skuId: skuId,
-              batchLot: batchLot
-            }
-          })
-          
-          // Use storage configuration from balance, or warehouse config, or default
-          let cartonsPerPallet = 1
-          
-          if (balance?.storageCartonsPerPallet) {
-            cartonsPerPallet = balance.storageCartonsPerPallet
-          } else {
-            // Try to get from warehouse SKU config
-            const warehouseConfig = await prisma.warehouseSkuConfig.findFirst({
-              where: {
-                warehouseId: warehouse.id,
-                skuId: skuId,
-                effectiveDate: { lte: monday },
-                OR: [
-                  { endDate: null },
-                  { endDate: { gte: monday } }
-                ]
-              }
-            })
-            
-            if (warehouseConfig?.storageCartonsPerPallet) {
-              cartonsPerPallet = warehouseConfig.storageCartonsPerPallet
-            }
-          }
-          
-          const pallets = Math.ceil(cartonsAtMonday / cartonsPerPallet)
-          totalPallets += pallets
-          
-          items.push({
-            sku,
-            batchLot,
-            cartons: cartonsAtMonday,
-            pallets,
-            cartonsPerPallet,
-            cost: 0 // Will be calculated after we know the total
-          })
-        }
-      }
-      
-      if (totalPallets > 0) {
-        // Find applicable rate
-        const applicableRate = rates.find(r => 
-          r.warehouseId === warehouse.id &&
-          new Date(r.effectiveDate) <= monday &&
-          (!r.endDate || new Date(r.endDate) >= monday)
-        )
-        
-        const rate = applicableRate ? Number(applicableRate.costValue) : 0
-        const cost = totalPallets * rate
-        
-        // Calculate cost share for each item
-        items.forEach(item => {
-          item.cost = (item.pallets / totalPallets) * cost
-        })
-        
-        // Calculate week number
-        const weekNumber = getWeekNumber(monday)
-        
-        snapshots.push({
-          date: monday.toISOString(),
-          weekNumber,
-          warehouse,
-          totalPallets,
-          rate,
-          cost,
-          items: items.sort((a, b) => a.sku.skuCode.localeCompare(b.sku.skuCode))
-        })
-      }
-    }
-  }
-  
-  return snapshots.sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime() ||
-    a.warehouse.name.localeCompare(b.warehouse.name)
-  )
 }
