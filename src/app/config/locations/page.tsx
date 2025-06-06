@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon, Loader2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon, Loader2, MapPin } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 interface Warehouse {
@@ -11,6 +11,8 @@ interface Warehouse {
   code: string
   name: string
   address?: string
+  latitude?: number | null
+  longitude?: number | null
   contactEmail?: string
   contactPhone?: string
   isActive: boolean
@@ -237,6 +239,20 @@ function WarehouseCard({ warehouse, onEdit, onDelete, onToggleActive }: Warehous
           <p className="text-xs text-gray-600">Invoices</p>
         </div>
       </div>
+      
+      {warehouse.latitude && warehouse.longitude && (
+        <div className="mt-4 pt-4 border-t">
+          <a
+            href={`https://www.google.com/maps?q=${warehouse.latitude},${warehouse.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+          >
+            <MapPin className="h-4 w-4" />
+            Show on Map
+          </a>
+        </div>
+      )}
     </div>
   )
 }

@@ -40,6 +40,8 @@ model Warehouse {
   code                  String                 @unique
   name                  String
   address               String?
+  latitude              Float?                 @map("latitude")
+  longitude             Float?                 @map("longitude")
   contactEmail          String?                @map("contact_email")
   contactPhone          String?                @map("contact_phone")
   isActive              Boolean                @default(true) @map("is_active")

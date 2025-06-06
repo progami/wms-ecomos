@@ -32,6 +32,12 @@
    - Added: Population/update scripts, cron job setup
    - Resolved: Analytics dashboard storage cost charts now working
 
+8. **PR #8** - Configuration: Warehouse locations and map integration ✅
+   - Merged: 2025-01-06
+   - Added: Lat/long coordinates, Google Maps integration
+   - Updated: UK warehouse addresses with accurate locations
+   - Feature: "Show on Map" buttons for warehouses
+
 ### Pending PRs
 *(None at this time)*
 
@@ -68,8 +74,8 @@
 | Agent | Status | PRs Submitted | Current Task |
 |-------|--------|---------------|--------------|
 | Operations | ✅ COMPLETE | 5 | All tasks done |
-| Configuration | ✅ COMPLETE | 1 | Monitoring |
-| Finance | 🔄 ACTIVE | 1 | UI integration (90% done) |
+| Configuration | ✅ COMPLETE | 2 | All features done |
+| Finance | ✅ COMPLETE | 1 | Complete (95% done) |
 | Analytics | 🔄 ACTIVE | 1 | Working on reports |
 
 ---
@@ -151,6 +157,10 @@ After reviewing all 5 PRs and current status:
 3. Export functionality for all formats
 4. Performance anomaly detection
 5. Amazon FBA integration updates
+
+**Configuration Agent**:
+- ✅ All tasks complete
+- Added bonus feature: warehouse map integration
 
 **Integration & Testing**:
 1. Full system integration testing
