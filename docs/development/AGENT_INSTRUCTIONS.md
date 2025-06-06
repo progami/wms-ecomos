@@ -40,6 +40,24 @@ This file contains instructions for ALL agents working on the warehouse manageme
    - Verify immutable ledger functionality
    - Test export functionality
 
+4. **URGENT: Storage Ledger Table Population**
+   - The `storage_ledger` table is currently empty (0 records)
+   - Admin dashboard reads from this table for storage cost charts (currently shows empty)
+   - Analytics Agent has confirmed warehouse distribution works (inventory_balance has data)
+   - Implement a process to populate the table with weekly Monday snapshots
+   - Use the calculation logic from `/src/app/api/storage-ledger/route.ts`
+   - Create a script or scheduled job to:
+     - Calculate Monday inventory snapshots (23:59:59)
+     - Store in `storage_ledger` table with proper cost calculations
+     - Handle warehouse SKU configurations for cartons/pallet
+     - Exclude Amazon warehouses (AMZN, AMZN-UK) when they exist
+   - The table schema includes:
+     - weekStartDate, weekNumber, warehouseId, skuId, batchLot
+     - cartonsAtMonday, palletsAtMonday, storageRate, totalCost
+     - cartonsPerPallet configuration used
+   - Benefits: Faster dashboard loading, historical records, audit trail
+   - Note: Analytics Agent has kept the dashboard reading from DB table as designed
+
 ### Branch Naming
 - Use prefix: `ops/feature-name`
 
