@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const warehouseId = searchParams.get('warehouseId') || session.user.warehouseId
     const date = searchParams.get('date')
     const showZeroStock = searchParams.get('showZeroStock') === 'true'
+    const skuCode = searchParams.get('skuCode')
 
     // If point-in-time date is provided, calculate balances from transactions
     if (date) {
@@ -160,6 +161,11 @@ export async function GET(req: NextRequest) {
     // Only show items with positive inventory unless explicitly requested
     if (!showZeroStock) {
       where.currentCartons = { gt: 0 }
+    }
+
+    // Filter by SKU code if provided
+    if (skuCode) {
+      where.sku = { skuCode }
     }
 
     const balances = await prisma.inventoryBalance.findMany({
