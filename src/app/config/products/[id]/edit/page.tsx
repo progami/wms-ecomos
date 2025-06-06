@@ -27,6 +27,10 @@ export default function EditSkuPage() {
     notes: '',
     isActive: true
   })
+  
+  // Separate state for dimension inputs
+  const [unitDimensions, setUnitDimensions] = useState({ length: '', width: '', height: '' })
+  const [cartonDimensions, setCartonDimensions] = useState({ length: '', width: '', height: '' })
   const [errors, setErrors] = useState<any>({})
 
   useEffect(() => {
@@ -41,6 +45,25 @@ export default function EditSkuPage() {
       }
       
       const data = await response.json()
+      
+      // Parse dimensions from string format "LxWxH"
+      const parseAndValidateDimensions = (dimString: string) => {
+        if (!dimString) return { length: '', width: '', height: '' }
+        const parts = dimString.split('x').map(s => s.trim())
+        // Handle both "10x5x3" and "10 x 5 x 3" formats
+        return {
+          length: parts[0] || '',
+          width: parts[1] || '',
+          height: parts[2] || ''
+        }
+      }
+      
+      const parsedUnitDims = parseAndValidateDimensions(data.unitDimensionsCm)
+      const parsedCartonDims = parseAndValidateDimensions(data.cartonDimensionsCm)
+      
+      setUnitDimensions(parsedUnitDims)
+      setCartonDimensions(parsedCartonDims)
+      
       setFormData({
         skuCode: data.skuCode || '',
         asin: data.asin || '',
@@ -59,7 +82,7 @@ export default function EditSkuPage() {
     } catch (error) {
       console.error('Error fetching SKU:', error)
       alert('Failed to load SKU details')
-      router.push('/admin/settings/skus')
+      router.push('/config/products')
     } finally {
       setLoading(false)
     }
@@ -105,6 +128,12 @@ export default function EditSkuPage() {
 
     setSaving(true)
     try {
+      // Format dimensions back to string
+      const formatDimensions = (dims: { length: string, width: string, height: string }) => {
+        if (!dims.length && !dims.width && !dims.height) return null
+        return `${dims.length || 0}x${dims.width || 0}x${dims.height || 0}`
+      }
+      
       const submitData = {
         ...formData,
         skuCode: formData.skuCode.toUpperCase(),
@@ -114,8 +143,8 @@ export default function EditSkuPage() {
         cartonWeightKg: formData.cartonWeightKg ? parseFloat(formData.cartonWeightKg) : null,
         asin: formData.asin || null,
         material: formData.material || null,
-        unitDimensionsCm: formData.unitDimensionsCm || null,
-        cartonDimensionsCm: formData.cartonDimensionsCm || null,
+        unitDimensionsCm: formatDimensions(unitDimensions),
+        cartonDimensionsCm: formatDimensions(cartonDimensions),
         packagingType: formData.packagingType || null,
         notes: formData.notes || null
       }
@@ -132,7 +161,7 @@ export default function EditSkuPage() {
       }
 
       alert('SKU updated successfully!')
-      router.push('/admin/settings/skus')
+      router.push('/config/products')
     } catch (error: any) {
       console.error('Error updating SKU:', error)
       alert(error.message || 'Failed to update SKU')
@@ -161,7 +190,7 @@ export default function EditSkuPage() {
         <div className="bg-white border rounded-lg p-6">
           <div className="flex items-center gap-4 mb-4">
             <Link
-              href="/admin/settings/skus"
+              href="/config/products"
               className="p-2 hover:bg-gray-100 rounded-md"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -286,13 +315,35 @@ export default function EditSkuPage() {
                   Unit Dimensions (cm)
                   <span className="text-xs text-gray-500 ml-1">(L x W x H)</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.unitDimensionsCm}
-                  onChange={(e) => setFormData({ ...formData, unitDimensionsCm: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="10x5x3"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={unitDimensions.length}
+                    onChange={(e) => setUnitDimensions({ ...unitDimensions, length: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Length"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={unitDimensions.width}
+                    onChange={(e) => setUnitDimensions({ ...unitDimensions, width: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Width"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={unitDimensions.height}
+                    onChange={(e) => setUnitDimensions({ ...unitDimensions, height: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Height"
+                  />
+                </div>
               </div>
 
               <div>
@@ -357,13 +408,35 @@ export default function EditSkuPage() {
                   Carton Dimensions (cm)
                   <span className="text-xs text-gray-500 ml-1">(L x W x H)</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.cartonDimensionsCm}
-                  onChange={(e) => setFormData({ ...formData, cartonDimensionsCm: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="40x30x20"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={cartonDimensions.length}
+                    onChange={(e) => setCartonDimensions({ ...cartonDimensions, length: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Length"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={cartonDimensions.width}
+                    onChange={(e) => setCartonDimensions({ ...cartonDimensions, width: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Width"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={cartonDimensions.height}
+                    onChange={(e) => setCartonDimensions({ ...cartonDimensions, height: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Height"
+                  />
+                </div>
               </div>
 
               <div>
@@ -422,7 +495,7 @@ export default function EditSkuPage() {
           {/* Actions */}
           <div className="flex items-center justify-end gap-4">
             <Link
-              href="/admin/settings/skus"
+              href="/config/products"
               className="secondary-button"
             >
               Cancel

@@ -119,7 +119,7 @@ export default function EditWarehousePage({ params }: { params: { id: string } }
       }
 
       alert('Warehouse updated successfully!')
-      router.push('/admin/settings/warehouses')
+      router.push('/config/locations')
     } catch (error: any) {
       console.error('Error updating warehouse:', error)
       alert(error.message || 'Failed to update warehouse')
@@ -143,7 +143,7 @@ export default function EditWarehousePage({ params }: { params: { id: string } }
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link
-            href="/admin/settings/warehouses"
+            href="/config/locations"
             className="p-2 hover:bg-gray-100 rounded-md"
           >
             <ArrowLeft className="h-5 w-5" />

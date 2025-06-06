@@ -24,6 +24,10 @@ export default function NewSkuPage() {
     notes: '',
     isActive: true
   })
+  
+  // Separate state for dimension inputs
+  const [unitDimensions, setUnitDimensions] = useState({ length: '', width: '', height: '' })
+  const [cartonDimensions, setCartonDimensions] = useState({ length: '', width: '', height: '' })
   const [errors, setErrors] = useState<any>({})
 
   const validateForm = () => {
@@ -66,6 +70,12 @@ export default function NewSkuPage() {
 
     setLoading(true)
     try {
+      // Format dimensions back to string
+      const formatDimensions = (dims: { length: string, width: string, height: string }) => {
+        if (!dims.length && !dims.width && !dims.height) return undefined
+        return `${dims.length || 0}x${dims.width || 0}x${dims.height || 0}`
+      }
+      
       const submitData = {
         ...formData,
         skuCode: formData.skuCode.toUpperCase(),
@@ -75,8 +85,8 @@ export default function NewSkuPage() {
         cartonWeightKg: formData.cartonWeightKg ? parseFloat(formData.cartonWeightKg) : undefined,
         asin: formData.asin || undefined,
         material: formData.material || undefined,
-        unitDimensionsCm: formData.unitDimensionsCm || undefined,
-        cartonDimensionsCm: formData.cartonDimensionsCm || undefined,
+        unitDimensionsCm: formatDimensions(unitDimensions),
+        cartonDimensionsCm: formatDimensions(cartonDimensions),
         packagingType: formData.packagingType || undefined,
         notes: formData.notes || undefined
       }
@@ -93,7 +103,7 @@ export default function NewSkuPage() {
       }
 
       alert('SKU created successfully!')
-      router.push('/admin/settings/skus')
+      router.push('/config/products')
     } catch (error: any) {
       console.error('Error creating SKU:', error)
       alert(error.message || 'Failed to create SKU')
@@ -107,7 +117,7 @@ export default function NewSkuPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link
-            href="/admin/settings/skus"
+            href="/config/products"
             className="p-2 hover:bg-gray-100 rounded-md"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -216,13 +226,35 @@ export default function NewSkuPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Unit Dimensions (cm)
                 </label>
-                <input
-                  type="text"
-                  value={formData.unitDimensionsCm}
-                  onChange={(e) => setFormData({ ...formData, unitDimensionsCm: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="L x W x H (e.g., 10x5x3)"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={unitDimensions.length}
+                    onChange={(e) => setUnitDimensions({ ...unitDimensions, length: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Length"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={unitDimensions.width}
+                    onChange={(e) => setUnitDimensions({ ...unitDimensions, width: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Width"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={unitDimensions.height}
+                    onChange={(e) => setUnitDimensions({ ...unitDimensions, height: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Height"
+                  />
+                </div>
               </div>
 
               <div>
@@ -285,13 +317,35 @@ export default function NewSkuPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Carton Dimensions (cm)
                 </label>
-                <input
-                  type="text"
-                  value={formData.cartonDimensionsCm}
-                  onChange={(e) => setFormData({ ...formData, cartonDimensionsCm: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="L x W x H (e.g., 40x30x20)"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={cartonDimensions.length}
+                    onChange={(e) => setCartonDimensions({ ...cartonDimensions, length: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Length"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={cartonDimensions.width}
+                    onChange={(e) => setCartonDimensions({ ...cartonDimensions, width: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Width"
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={cartonDimensions.height}
+                    onChange={(e) => setCartonDimensions({ ...cartonDimensions, height: e.target.value })}
+                    className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Height"
+                  />
+                </div>
               </div>
 
               <div>
@@ -350,7 +404,7 @@ export default function NewSkuPage() {
           {/* Actions */}
           <div className="flex items-center justify-end gap-4">
             <Link
-              href="/admin/settings/skus"
+              href="/config/products"
               className="secondary-button"
             >
               Cancel
