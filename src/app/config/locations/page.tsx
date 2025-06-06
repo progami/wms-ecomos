@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon, Loader2, Map } from 'lucide-react'
+import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon, Loader2, MapPin } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { WarehouseMapSimple } from '@/components/warehouse/warehouse-map-simple'
 
 interface Warehouse {
   id: string
@@ -29,7 +28,6 @@ export default function WarehouseSettingsPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [loading, setLoading] = useState(true)
   const [showInactive, setShowInactive] = useState(false)
-  const [showMap, setShowMap] = useState(true)
 
   useEffect(() => {
     fetchWarehouses()
@@ -135,38 +133,16 @@ export default function WarehouseSettingsPage() {
           <h2 className="text-xl font-semibold">
             {showInactive ? 'All Warehouses' : 'Active Warehouses'}
           </h2>
-          <div className="flex items-center gap-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={showMap}
-                onChange={(e) => setShowMap(e.target.checked)}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700">Show map</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={showInactive}
-                onChange={(e) => setShowInactive(e.target.checked)}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700">Show inactive</span>
-            </label>
-          </div>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            />
+            <span className="ml-2 text-sm text-gray-700">Show inactive</span>
+          </label>
         </div>
-
-        {/* Warehouse Map */}
-        {showMap && !loading && (
-          <div className="bg-white border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Map className="h-5 w-5 text-gray-600" />
-              <h3 className="text-lg font-semibold">Warehouse Locations</h3>
-            </div>
-            <WarehouseMapSimple warehouses={warehouses} />
-          </div>
-        )}
 
         {/* Warehouses List */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -263,6 +239,20 @@ function WarehouseCard({ warehouse, onEdit, onDelete, onToggleActive }: Warehous
           <p className="text-xs text-gray-600">Invoices</p>
         </div>
       </div>
+      
+      {warehouse.latitude && warehouse.longitude && (
+        <div className="mt-4 pt-4 border-t">
+          <a
+            href={`https://www.google.com/maps?q=${warehouse.latitude},${warehouse.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+          >
+            <MapPin className="h-4 w-4" />
+            Show on Map
+          </a>
+        </div>
+      )}
     </div>
   )
 }
