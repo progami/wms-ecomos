@@ -31,6 +31,14 @@ export async function POST(
       notes 
     } = body;
 
+    // Validate required fields
+    if (!paymentMethod || !paymentReference) {
+      return NextResponse.json(
+        { error: 'Payment method and reference are required' },
+        { status: 400 }
+      );
+    }
+
     // Get the invoice with all related data
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -56,12 +64,36 @@ export async function POST(
       );
     }
 
-    // Check if invoice is already paid
+    // Check if invoice is already paid (idempotency check)
     if (invoice.status === 'paid') {
-      return NextResponse.json(
-        { error: 'Invoice is already paid' },
-        { status: 400 }
-      );
+      // Check if this is the same payment reference (idempotent request)
+      const lastPaymentNote = invoice.notes?.match(/Reference: ([^,\n]+)/);
+      const existingReference = lastPaymentNote?.[1];
+      
+      if (existingReference === paymentReference) {
+        // Same payment reference - idempotent response
+        return NextResponse.json({
+          message: 'Invoice already accepted with this payment reference',
+          invoice: invoice,
+          idempotent: true,
+          paymentDetails: {
+            method: paymentMethod,
+            reference: paymentReference,
+            status: 'already_processed'
+          }
+        }, { 
+          status: 200,
+          headers: {
+            'X-Idempotent-Response': 'true'
+          }
+        });
+      } else {
+        // Different payment reference - error
+        return NextResponse.json(
+          { error: 'Invoice is already paid with a different payment reference' },
+          { status: 409 }
+        );
+      }
     }
 
     // Start a transaction to update invoice and reconciliation records

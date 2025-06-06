@@ -158,8 +158,55 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Check for idempotency by looking for existing invoice with same number
+    // This provides natural idempotency since invoice numbers must be unique
+    const existingInvoice = await prisma.invoice.findUnique({
+      where: { invoiceNumber: validatedData.invoiceNumber },
+      include: {
+        warehouse: true,
+        lineItems: true,
+        createdBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true
+          }
+        }
+      }
+    })
+
+    if (existingInvoice) {
+      // Check if it's the same request (idempotent)
+      const isSameRequest = 
+        existingInvoice.warehouseId === validatedData.warehouseId &&
+        existingInvoice.totalAmount === validatedData.totalAmount &&
+        existingInvoice.lineItems.length === validatedData.lineItems.length
+
+      if (isSameRequest) {
+        // Return existing invoice (idempotent response)
+        return NextResponse.json(
+          { 
+            invoice: existingInvoice,
+            idempotent: true,
+            message: 'Invoice already exists with this number'
+          }, 
+          { 
+            status: 200,
+            headers: {
+              'X-Idempotent-Response': 'true'
+            }
+          }
+        )
+      } else {
+        // Different request with same invoice number
+        return NextResponse.json(
+          { error: 'Invoice number already exists with different details' },
+          { status: 409 }
+        )
+      }
+    }
+
     // Create invoice with line items
-    // The unique constraint on invoiceNumber will prevent duplicates
     try {
       const invoice = await prisma.invoice.create({
       data: {
@@ -198,14 +245,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(invoice, { status: 201 })
     } catch (prismaError: any) {
-      // Handle unique constraint violation
-      if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('invoiceNumber')) {
-        return NextResponse.json(
-          { error: 'Invoice number already exists' },
-          { status: 400 }
-        )
-      }
-      throw prismaError
+      // Handle other database errors
+      console.error('Database error:', prismaError)
+      return NextResponse.json(
+        { error: 'Failed to create invoice' },
+        { status: 500 }
+      )
     }
   } catch (error) {
     if (error instanceof z.ZodError) {

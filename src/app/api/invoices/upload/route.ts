@@ -162,42 +162,158 @@ export async function POST(req: NextRequest) {
 async function parseCSV(buffer: Buffer): Promise<InvoiceUploadData | null> {
   try {
     const csvString = buffer.toString('utf-8')
-    const records = parse(csvString, {
+    
+    // Try multiple parsing strategies
+    // Strategy 1: Standard CSV with headers
+    let records = parse(csvString, {
       columns: true,
       skip_empty_lines: true,
-      trim: true
+      trim: true,
+      relax_quotes: true,
+      skip_records_with_error: true
     })
+
+    if (records.length === 0) {
+      // Strategy 2: Try without header detection
+      const rawRecords = parse(csvString, {
+        skip_empty_lines: true,
+        trim: true,
+        relax_quotes: true
+      })
+      
+      if (rawRecords.length > 0) {
+        // Convert array records to objects
+        const headers = rawRecords[0]
+        records = rawRecords.slice(1).map((row: any[]) => {
+          const obj: any = {}
+          headers.forEach((header: string, index: number) => {
+            obj[header] = row[index]
+          })
+          return obj
+        })
+      }
+    }
 
     if (records.length === 0) {
       return null
     }
 
-    // Extract header information (assuming it's in the first few rows)
-    const headerInfo = records[0]
-    const lineItems = records.slice(1).filter((row: any) => 
-      row.costCategory && row.costName && row.amount
-    )
+    // Extract invoice metadata
+    let invoiceInfo: any = {}
+    let lineItemsStartIndex = 0
+    
+    // Look for invoice metadata in first few rows
+    for (let i = 0; i < Math.min(records.length, 10); i++) {
+      const row = records[i]
+      
+      // Check if this row contains invoice metadata
+      if (hasInvoiceMetadata(row)) {
+        Object.assign(invoiceInfo, extractCSVMetadata(row))
+      }
+      
+      // Check if this looks like the start of line items
+      if (isLineItemHeader(row) || hasLineItemData(row)) {
+        lineItemsStartIndex = i
+        break
+      }
+    }
+    
+    // Extract line items
+    const lineItems = records.slice(lineItemsStartIndex)
+      .filter((row: any) => hasLineItemData(row))
+      .map((row: any) => extractCSVLineItem(row))
+      .filter(item => item.amount > 0)
+    
+    // Calculate total if not provided
+    let totalAmount = invoiceInfo.totalAmount || 0
+    if (!totalAmount && lineItems.length > 0) {
+      totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0)
+    }
 
     return {
-      invoiceNumber: headerInfo.invoiceNumber || headerInfo['Invoice Number'] || '',
-      warehouseCode: headerInfo.warehouseCode || headerInfo['Warehouse'] || '',
-      billingPeriodStart: headerInfo.billingPeriodStart || headerInfo['Billing Period Start'] || '',
-      billingPeriodEnd: headerInfo.billingPeriodEnd || headerInfo['Billing Period End'] || '',
-      invoiceDate: headerInfo.invoiceDate || headerInfo['Invoice Date'] || '',
-      dueDate: headerInfo.dueDate || headerInfo['Due Date'],
-      totalAmount: parseMoney(headerInfo.totalAmount || headerInfo['Total Amount']).toNumber(),
-      lineItems: lineItems.map((item: any) => ({
-        costCategory: item.costCategory || item['Cost Category'],
-        costName: item.costName || item['Cost Name'] || item['Description'],
-        quantity: parseMoney(item.quantity || item['Quantity']).toNumber(),
-        unitRate: item.unitRate || item['Unit Rate'] ? parseMoney(item.unitRate || item['Unit Rate']).toNumber() : undefined,
-        amount: parseMoney(item.amount || item['Amount']).toNumber(),
-        notes: item.notes || item['Notes']
-      }))
+      invoiceNumber: invoiceInfo.invoiceNumber || generateInvoiceNumber(),
+      warehouseCode: invoiceInfo.warehouseCode || '',
+      billingPeriodStart: normalizeDate(invoiceInfo.billingPeriodStart) || '',
+      billingPeriodEnd: normalizeDate(invoiceInfo.billingPeriodEnd) || '',
+      invoiceDate: normalizeDate(invoiceInfo.invoiceDate) || new Date().toISOString().split('T')[0],
+      dueDate: invoiceInfo.dueDate ? normalizeDate(invoiceInfo.dueDate) : undefined,
+      totalAmount: totalAmount,
+      lineItems: lineItems
     }
   } catch (error) {
     console.error('Error parsing CSV:', error)
     return null
+  }
+}
+
+// Check if row contains invoice metadata
+function hasInvoiceMetadata(row: any): boolean {
+  const metadataKeys = ['Invoice Number', 'Invoice #', 'Warehouse', 'Billing Period', 'Invoice Date', 'Total Amount']
+  return Object.keys(row).some(key => 
+    metadataKeys.some(metaKey => key.toLowerCase().includes(metaKey.toLowerCase()))
+  )
+}
+
+// Extract metadata from CSV row
+function extractCSVMetadata(row: any): any {
+  const info: any = {}
+  
+  for (const [key, value] of Object.entries(row)) {
+    if (!value) continue
+    
+    const keyLower = key.toLowerCase()
+    const strValue = String(value).trim()
+    
+    if (keyLower.includes('invoice') && (keyLower.includes('number') || keyLower.includes('#'))) {
+      info.invoiceNumber = strValue
+    } else if (keyLower.includes('warehouse')) {
+      info.warehouseCode = strValue
+    } else if (keyLower.includes('billing') && keyLower.includes('start')) {
+      info.billingPeriodStart = strValue
+    } else if (keyLower.includes('billing') && keyLower.includes('end')) {
+      info.billingPeriodEnd = strValue
+    } else if (keyLower.includes('invoice') && keyLower.includes('date')) {
+      info.invoiceDate = strValue
+    } else if (keyLower.includes('due') && keyLower.includes('date')) {
+      info.dueDate = strValue
+    } else if (keyLower.includes('total') && keyLower.includes('amount')) {
+      info.totalAmount = parseMoney(strValue).toNumber()
+    }
+  }
+  
+  return info
+}
+
+// Check if row is a line item header
+function isLineItemHeader(row: any): boolean {
+  const headerKeywords = ['category', 'description', 'amount', 'quantity', 'rate', 'charge']
+  const values = Object.values(row).filter(v => v).map(v => String(v).toLowerCase())
+  const matches = values.filter(v => headerKeywords.some(keyword => v.includes(keyword)))
+  return matches.length >= 2 // At least 2 header keywords
+}
+
+// Check if row has line item data
+function hasLineItemData(row: any): boolean {
+  // Must have some description and amount
+  const hasDescription = Object.values(row).some(v => 
+    v && String(v).trim().length > 2 && isNaN(Number(v))
+  )
+  const hasAmount = Object.values(row).some(v => {
+    const parsed = parseMoney(String(v || ''))
+    return parsed.toNumber() > 0
+  })
+  return hasDescription && hasAmount
+}
+
+// Extract line item from CSV row
+function extractCSVLineItem(row: any): any {
+  return {
+    costCategory: extractCostCategory(row),
+    costName: extractCostName(row),
+    quantity: extractQuantity(row),
+    unitRate: extractUnitRate(row),
+    amount: extractAmount(row),
+    notes: extractNotes(row)
   }
 }
 
@@ -206,54 +322,275 @@ async function parseExcel(buffer: Buffer): Promise<InvoiceUploadData | null> {
     const workbook = XLSX.read(buffer, { type: 'buffer' })
     const sheetName = workbook.SheetNames[0]
     const worksheet = workbook.Sheets[sheetName]
-    const data = XLSX.utils.sheet_to_json(worksheet)
-
-    if (data.length === 0) {
+    
+    // Try multiple parsing strategies
+    
+    // Strategy 1: Look for key-value pairs in cells (common in 3PL invoices)
+    const invoiceInfo = extractInvoiceMetadata(worksheet)
+    
+    // Strategy 2: Parse as structured table
+    const data = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: '' })
+    
+    if (data.length === 0 && !invoiceInfo.invoiceNumber) {
       return null
     }
 
-    // Look for invoice header information
-    let invoiceInfo: any = {}
-    let lineItems: any[] = []
-    let headerFound = false
-
-    // First, try to find invoice header info
-    for (const row of data) {
-      if ((row as any)['Invoice Number'] || (row as any)['invoiceNumber']) {
-        invoiceInfo = row
-        headerFound = true
-      } else if (headerFound && ((row as any)['Cost Category'] || (row as any)['costCategory'])) {
-        lineItems.push(row)
-      }
+    // Extract line items from table data
+    const lineItems = extractLineItems(data)
+    
+    // If we found metadata through cell scanning, use it
+    // Otherwise try to extract from first rows
+    if (!invoiceInfo.invoiceNumber && data.length > 0) {
+      const firstRow = data[0] as any
+      invoiceInfo.invoiceNumber = firstRow['Invoice Number'] || firstRow['Invoice #'] || firstRow.invoiceNumber || ''
+      invoiceInfo.warehouseCode = firstRow['Warehouse'] || firstRow['Warehouse Code'] || firstRow.warehouseCode || ''
     }
 
-    // If no clear header, assume first row is header and rest are line items
-    if (!headerFound && data.length > 0) {
-      invoiceInfo = data[0]
-      lineItems = data.slice(1)
+    // Calculate total if not provided
+    let totalAmount = invoiceInfo.totalAmount
+    if (!totalAmount && lineItems.length > 0) {
+      totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0)
     }
 
     return {
-      invoiceNumber: invoiceInfo['Invoice Number'] || invoiceInfo.invoiceNumber || '',
-      warehouseCode: invoiceInfo['Warehouse'] || invoiceInfo.warehouseCode || '',
-      billingPeriodStart: invoiceInfo['Billing Period Start'] || invoiceInfo.billingPeriodStart || '',
-      billingPeriodEnd: invoiceInfo['Billing Period End'] || invoiceInfo.billingPeriodEnd || '',
-      invoiceDate: invoiceInfo['Invoice Date'] || invoiceInfo.invoiceDate || '',
-      dueDate: invoiceInfo['Due Date'] || invoiceInfo.dueDate,
-      totalAmount: parseMoney(invoiceInfo['Total Amount'] || invoiceInfo.totalAmount).toNumber(),
-      lineItems: lineItems.map((item: any) => ({
-        costCategory: item['Cost Category'] || item.costCategory,
-        costName: item['Cost Name'] || item.costName || item['Description'],
-        quantity: parseMoney(item['Quantity'] || item.quantity).toNumber(),
-        unitRate: item['Unit Rate'] || item.unitRate ? parseMoney(item['Unit Rate'] || item.unitRate).toNumber() : undefined,
-        amount: parseMoney(item['Amount'] || item.amount).toNumber(),
-        notes: item['Notes'] || item.notes
-      }))
+      invoiceNumber: invoiceInfo.invoiceNumber || generateInvoiceNumber(),
+      warehouseCode: invoiceInfo.warehouseCode || '',
+      billingPeriodStart: normalizeDate(invoiceInfo.billingPeriodStart) || '',
+      billingPeriodEnd: normalizeDate(invoiceInfo.billingPeriodEnd) || '',
+      invoiceDate: normalizeDate(invoiceInfo.invoiceDate) || new Date().toISOString().split('T')[0],
+      dueDate: invoiceInfo.dueDate ? normalizeDate(invoiceInfo.dueDate) : undefined,
+      totalAmount: totalAmount || 0,
+      lineItems: lineItems
     }
   } catch (error) {
     console.error('Error parsing Excel:', error)
     return null
   }
+}
+
+// Helper function to extract invoice metadata from cells
+function extractInvoiceMetadata(worksheet: XLSX.WorkSheet): any {
+  const info: any = {}
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:Z100')
+  
+  // Common patterns for invoice metadata
+  const patterns = {
+    invoiceNumber: /invoice\s*(#|number|no\.?):?\s*(.+)/i,
+    warehouseCode: /warehouse\s*(code|#)?:?\s*(.+)/i,
+    billingPeriodStart: /billing\s*period\s*(start|from):?\s*(.+)/i,
+    billingPeriodEnd: /billing\s*period\s*(end|to):?\s*(.+)/i,
+    invoiceDate: /invoice\s*date:?\s*(.+)/i,
+    dueDate: /due\s*date:?\s*(.+)/i,
+    totalAmount: /total\s*(amount)?:?\s*[\$£€]?\s*([\d,]+\.?\d*)/i
+  }
+  
+  // Scan first 20 rows for metadata
+  for (let row = range.s.r; row <= Math.min(range.e.r, 20); row++) {
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+      const cell = worksheet[cellAddress]
+      if (!cell || !cell.v) continue
+      
+      const cellValue = String(cell.v).trim()
+      
+      // Check each pattern
+      for (const [key, pattern] of Object.entries(patterns)) {
+        const match = cellValue.match(pattern)
+        if (match) {
+          // Look for value in same row or next column
+          const nextCol = XLSX.utils.encode_cell({ r: row, c: col + 1 })
+          const nextCell = worksheet[nextCol]
+          
+          if (nextCell && nextCell.v) {
+            info[key] = String(nextCell.v).trim()
+          } else if (match[2]) {
+            info[key] = match[2].trim()
+          } else if (match[1]) {
+            info[key] = match[1].trim()
+          }
+        }
+      }
+    }
+  }
+  
+  // Parse money values
+  if (info.totalAmount) {
+    info.totalAmount = parseMoney(info.totalAmount).toNumber()
+  }
+  
+  return info
+}
+
+// Helper function to extract line items from various formats
+function extractLineItems(data: any[]): any[] {
+  const lineItems: any[] = []
+  
+  // Look for rows that have amount/cost data
+  for (const row of data) {
+    // Skip rows that look like headers or metadata
+    if (isHeaderRow(row)) continue
+    
+    // Try to extract line item data from various column names
+    const amount = extractAmount(row)
+    if (amount > 0) {
+      lineItems.push({
+        costCategory: extractCostCategory(row),
+        costName: extractCostName(row),
+        quantity: extractQuantity(row),
+        unitRate: extractUnitRate(row),
+        amount: amount,
+        notes: extractNotes(row)
+      })
+    }
+  }
+  
+  return lineItems
+}
+
+// Helper functions for data extraction
+function isHeaderRow(row: any): boolean {
+  const headerKeywords = ['category', 'description', 'amount', 'quantity', 'rate', 'total', 'cost']
+  const values = Object.values(row).map(v => String(v).toLowerCase())
+  return values.some(v => headerKeywords.some(keyword => v.includes(keyword)))
+}
+
+function extractAmount(row: any): number {
+  const amountKeys = ['Amount', 'Total', 'Cost', 'Charge', 'Fee', 'Line Total', 'Total Amount', 'Net Amount']
+  for (const key of amountKeys) {
+    if (row[key]) return parseMoney(row[key]).toNumber()
+  }
+  // Check lowercase versions
+  for (const key of Object.keys(row)) {
+    if (key.toLowerCase().includes('amount') || key.toLowerCase().includes('total')) {
+      return parseMoney(row[key]).toNumber()
+    }
+  }
+  return 0
+}
+
+function extractCostCategory(row: any): string {
+  const categoryKeys = ['Category', 'Cost Category', 'Service Type', 'Type', 'Service']
+  for (const key of categoryKeys) {
+    if (row[key]) return mapCostCategory(String(row[key]))
+  }
+  // Try to infer from description
+  const desc = extractCostName(row).toLowerCase()
+  if (desc.includes('storage')) return 'Storage'
+  if (desc.includes('handling') || desc.includes('labor')) return 'Unit'
+  if (desc.includes('shipping') || desc.includes('transport')) return 'Shipment'
+  if (desc.includes('pallet')) return 'Pallet'
+  if (desc.includes('carton') || desc.includes('box')) return 'Carton'
+  if (desc.includes('container')) return 'Container'
+  return 'Accessorial'
+}
+
+function extractCostName(row: any): string {
+  const nameKeys = ['Description', 'Cost Name', 'Service', 'Item', 'Line Item', 'Service Description']
+  for (const key of nameKeys) {
+    if (row[key]) return String(row[key]).trim()
+  }
+  return 'Service Charge'
+}
+
+function extractQuantity(row: any): number {
+  const qtyKeys = ['Quantity', 'Qty', 'Units', 'Count', 'Volume']
+  for (const key of qtyKeys) {
+    if (row[key]) return parseMoney(row[key]).toNumber()
+  }
+  return 1
+}
+
+function extractUnitRate(row: any): number | undefined {
+  const rateKeys = ['Rate', 'Unit Rate', 'Price', 'Unit Price', 'Cost per Unit']
+  for (const key of rateKeys) {
+    if (row[key]) return parseMoney(row[key]).toNumber()
+  }
+  return undefined
+}
+
+function extractNotes(row: any): string | undefined {
+  const noteKeys = ['Notes', 'Comments', 'Remarks', 'Note']
+  for (const key of noteKeys) {
+    if (row[key]) return String(row[key]).trim()
+  }
+  return undefined
+}
+
+// Map common 3PL cost categories to our system categories
+function mapCostCategory(category: string): string {
+  const normalized = category.toLowerCase().trim()
+  
+  const mappings: Record<string, string> = {
+    'storage': 'Storage',
+    'warehousing': 'Storage',
+    'pallet storage': 'Storage',
+    'pallet': 'Pallet',
+    'palletization': 'Pallet',
+    'carton': 'Carton',
+    'box': 'Carton',
+    'case': 'Carton',
+    'container': 'Container',
+    'shipping': 'Shipment',
+    'transport': 'Shipment',
+    'freight': 'Shipment',
+    'delivery': 'Shipment',
+    'handling': 'Unit',
+    'labor': 'Unit',
+    'pick': 'Unit',
+    'pack': 'Unit',
+    'receiving': 'Unit',
+    'other': 'Accessorial',
+    'misc': 'Accessorial',
+    'fee': 'Accessorial',
+    'surcharge': 'Accessorial'
+  }
+  
+  for (const [key, value] of Object.entries(mappings)) {
+    if (normalized.includes(key)) return value
+  }
+  
+  return 'Accessorial'
+}
+
+// Normalize various date formats
+function normalizeDate(dateStr: string | undefined): string {
+  if (!dateStr) return ''
+  
+  try {
+    // Try parsing as date
+    const date = new Date(dateStr)
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0]
+    }
+    
+    // Try common formats
+    const formats = [
+      /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // MM/DD/YYYY
+      /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
+      /(\d{1,2})-(\d{1,2})-(\d{4})/, // DD-MM-YYYY
+    ]
+    
+    for (const format of formats) {
+      const match = dateStr.match(format)
+      if (match) {
+        // Assume first format is MM/DD/YYYY for US
+        if (format === formats[0]) {
+          return `${match[3]}-${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')}`
+        }
+        // Other formats...
+      }
+    }
+  } catch (error) {
+    console.error('Date parsing error:', error)
+  }
+  
+  return dateStr
+}
+
+// Generate a unique invoice number if none provided
+function generateInvoiceNumber(): string {
+  const date = new Date()
+  return `INV-${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}-${Date.now().toString().slice(-6)}`
 }
 
 async function startReconciliationInTransaction(tx: any, invoiceId: string) {

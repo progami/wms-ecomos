@@ -115,6 +115,11 @@ export async function PUT(
 
     const body = await req.json()
     
+    // Extract version for optimistic locking
+    const clientVersion = body.version || body.updatedAt
+    delete body.version // Remove from update data
+    delete body.updatedAt // Remove from update data
+    
     // Validate that invoice exists
     const existingInvoice = await prisma.invoice.findUnique({
       where: { id: params.id }
@@ -143,15 +148,39 @@ export async function PUT(
       )
     }
 
-    // Update invoice
-    const updatedInvoice = await prisma.invoice.update({
-      where: { id: params.id },
-      data: {
-        status: body.status,
-        notes: body.notes,
-        dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
-        updatedAt: new Date()
-      },
+    // Implement optimistic locking
+    if (clientVersion) {
+      const clientDate = new Date(clientVersion)
+      const serverDate = new Date(existingInvoice.updatedAt)
+      
+      // Compare timestamps (allow 1 second tolerance for date parsing)
+      if (Math.abs(clientDate.getTime() - serverDate.getTime()) > 1000) {
+        return NextResponse.json({
+          error: 'Invoice has been modified by another user',
+          conflict: true,
+          currentVersion: existingInvoice.updatedAt,
+          yourVersion: clientVersion,
+          hint: 'Please refresh and try again'
+        }, { status: 409 })
+      }
+    }
+
+    // Update invoice with optimistic locking
+    try {
+      const updatedInvoice = await prisma.invoice.update({
+        where: { 
+          id: params.id,
+          // Add version check in the WHERE clause for atomic operation
+          ...(clientVersion ? {
+            updatedAt: new Date(clientVersion)
+          } : {})
+        },
+        data: {
+          status: body.status,
+          notes: body.notes,
+          dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+          updatedAt: new Date()
+        },
       include: {
         warehouse: true,
         lineItems: true,
@@ -190,7 +219,19 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json(updatedInvoice)
+      return NextResponse.json(updatedInvoice)
+    } catch (updateError: any) {
+      // Check if it's a record not found error (version mismatch)
+      if (updateError.code === 'P2025') {
+        return NextResponse.json({
+          error: 'Invoice has been modified by another user',
+          conflict: true,
+          currentVersion: new Date().toISOString(),
+          hint: 'Please refresh and try again'
+        }, { status: 409 })
+      }
+      throw updateError
+    }
   } catch (error) {
     console.error('Error updating invoice:', error)
     return NextResponse.json(
