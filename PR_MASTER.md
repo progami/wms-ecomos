@@ -14,12 +14,17 @@
 ### Engineer 1
 - **Worktree**: `../warehouse_management_engineer1`
 - **Branch**: engineer1/feature
-- **Current Tasks**: (To be assigned)
+- **Current Tasks**: 
+  1. Move storage ledger from operations to finance module
+  2. Create comprehensive cost ledger in finance with week-by-week costs linking to transactions
+  3. Handle pallet variance between inventory ledger and warehouse actuals
 
 ### Engineer 2
 - **Worktree**: `../warehouse_management_engineer2`
 - **Branch**: engineer2/feature
-- **Current Tasks**: (To be assigned)
+- **Current Tasks**: 
+  1. Reimport inventory ledger with all required attributes from Excel reference
+  2. Define warehouse-specific invoice templates/strategies for standard transactions
 
 ---
 
