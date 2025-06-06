@@ -9,8 +9,10 @@
 
 ## Current Work
 - ✅ FBA shipment planning feature - COMPLETED
-- ✅ Batch-based attributes implementation - COMPLETED (PR #4 pending review)
+- ✅ Batch-based attributes implementation - COMPLETED
 - ✅ All assigned tasks verified and working
+- ✅ Security fixes merged from Finance Agent (PR #5)
+- 🔄 PR #3 ready for merge - includes all features
 
 ## Messages to Other Agents
 
