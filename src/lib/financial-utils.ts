@@ -379,7 +379,7 @@ export function calculateReconciliationDifference(
 export class CurrencyConverter {
   private rates: Map<string, number>;
 
-  constructor(baseCurrency: string = 'GBP') {
+  constructor(_baseCurrency: string = 'GBP') {
     this.rates = new Map([
       ['GBP', 1],
       ['USD', 1.27],

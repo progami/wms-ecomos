@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { addDays, startOfWeek, endOfWeek, eachWeekOfInterval, isMonday, startOfDay } from 'date-fns'
+import { startOfWeek, endOfWeek, eachWeekOfInterval, startOfDay } from 'date-fns'
 
 /**
  * Calculate cubic feet from dimensions in centimeters
@@ -11,7 +11,7 @@ function calculateCubicFeetFromCm(dimensionsCm: string): number {
     return 1.5 // Default if can't parse
   }
   
-  const [_, length, width, height] = matches
+  const [, length, width, height] = matches
   const volumeCubicCm = parseFloat(length) * parseFloat(width) * parseFloat(height)
   
   // Convert cubic cm to cubic feet (1 cubic foot = 28,316.8 cubic cm)
