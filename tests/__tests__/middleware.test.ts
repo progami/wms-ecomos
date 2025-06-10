@@ -115,7 +115,7 @@ describe('Middleware', () => {
           })
         })
 
-        const deniedRoles = ['viewer', 'manager'].filter(
+        const deniedRoles = ['staff'].filter(
           (role) => !allowedRoles.includes(role)
         )
 
@@ -145,7 +145,7 @@ describe('Middleware', () => {
       const request = createRequest('/operations/inventory?warehouseId=warehouse-2')
       ;(getToken as jest.Mock).mockResolvedValue({
         id: 'user-123',
-        role: 'warehouse_staff',
+        role: 'staff',
         warehouseId: 'warehouse-1',
       })
 
@@ -176,11 +176,8 @@ describe('Middleware', () => {
 
     it('should redirect to role-specific dashboard', async () => {
       const roleDashboards = [
-        { role: 'system_admin', dashboard: '/admin/dashboard' },
-        { role: 'finance_admin', dashboard: '/finance/dashboard' },
-        { role: 'warehouse_staff', dashboard: '/dashboard' },
-        { role: 'manager', dashboard: '/dashboard' },
-        { role: 'viewer', dashboard: '/dashboard' },
+        { role: 'admin', dashboard: '/admin/dashboard' },
+        { role: 'staff', dashboard: '/dashboard' },
       ]
 
       for (const { role, dashboard } of roleDashboards) {

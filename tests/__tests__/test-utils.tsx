@@ -19,7 +19,7 @@ export const mockSessions = {
       id: 'staff-id',
       name: 'Warehouse Staff',
       email: 'staff@warehouse.com',
-      role: 'warehouse_staff' as const,
+      role: 'staff' as const,
       warehouseId: 'warehouse-1',
     },
     expires: new Date(Date.now() + 2 * 86400).toISOString(),
@@ -29,7 +29,7 @@ export const mockSessions = {
       id: 'finance-id',
       name: 'Finance Admin',
       email: 'finance@warehouse.com',
-      role: 'finance_admin' as const,
+      role: 'admin' as const,
       warehouseId: null,
     },
     expires: new Date(Date.now() + 2 * 86400).toISOString(),
@@ -39,7 +39,7 @@ export const mockSessions = {
       id: 'manager-id',
       name: 'Manager User',
       email: 'manager@warehouse.com',
-      role: 'manager' as const,
+      role: 'admin' as const,
       warehouseId: null,
     },
     expires: new Date(Date.now() + 2 * 86400).toISOString(),
@@ -49,7 +49,7 @@ export const mockSessions = {
       id: 'viewer-id',
       name: 'Viewer User',
       email: 'viewer@warehouse.com',
-      role: 'viewer' as const,
+      role: 'staff' as const,
       warehouseId: null,
     },
     expires: new Date(Date.now() + 2 * 86400).toISOString(),
@@ -66,7 +66,7 @@ export function render(
 ) {
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
-      <SessionProvider session={session}>
+      <SessionProvider session={session as any}>
         {children}
       </SessionProvider>
     )

@@ -3,7 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { MainNav } from '@/components/layout/main-nav'
-import { render, mockSessions } from '@/__tests__/test-utils'
+import { render, mockSessions } from '../../test-utils'
 
 // Mock dependencies
 jest.mock('next-auth/react')
@@ -21,7 +21,7 @@ describe('MainNav Component', () => {
   })
 
   describe('Role-based Navigation', () => {
-    it('should render admin navigation for system_admin role', () => {
+    it('should render admin navigation for admin role', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
@@ -43,7 +43,7 @@ describe('MainNav Component', () => {
       expect(screen.getByText('Settings')).toBeInTheDocument()
     })
 
-    it('should render finance navigation for finance_admin role', () => {
+    it('should render finance navigation for admin role', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.financeAdmin,
         status: 'authenticated',
@@ -63,7 +63,7 @@ describe('MainNav Component', () => {
       expect(screen.queryByText('Warehouse Ops')).not.toBeInTheDocument()
     })
 
-    it('should render warehouse navigation for warehouse_staff role', () => {
+    it('should render warehouse navigation for staff role', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.warehouseStaff,
         status: 'authenticated',
@@ -84,7 +84,7 @@ describe('MainNav Component', () => {
       expect(screen.queryByText('Users')).not.toBeInTheDocument()
     })
 
-    it('should render manager navigation for manager role', () => {
+    it('should render limited navigation for staff role', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.manager,
         status: 'authenticated',
@@ -102,7 +102,7 @@ describe('MainNav Component', () => {
       expect(screen.queryByText('Invoices')).not.toBeInTheDocument()
     })
 
-    it('should render viewer navigation for viewer role', () => {
+    it('should render limited navigation for read-only users', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.viewer,
         status: 'authenticated',

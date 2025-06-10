@@ -599,6 +599,8 @@ describe('Modal Accessibility', () => {
 })
 
 describe('Toast Positioning', () => {
+  const user = userEvent.setup()
+
   it('toasts appear in correct position', async () => {
     const { container } = render(<ToastDemo />)
 
@@ -612,6 +614,8 @@ describe('Toast Positioning', () => {
 })
 
 describe('Multiple Modals', () => {
+  const user = userEvent.setup()
+
   it('can handle multiple modal types', async () => {
     render(
       <>

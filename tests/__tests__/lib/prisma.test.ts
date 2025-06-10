@@ -71,7 +71,7 @@ describe('Prisma Client', () => {
           email: 'test@example.com',
           fullName: 'Test User',
           passwordHash: 'hashed',
-          role: 'viewer' as const,
+          role: 'staff' as const,
         }
 
         ;(prisma.user.create as jest.Mock).mockResolvedValue({
@@ -111,17 +111,17 @@ describe('Prisma Client', () => {
       it('should update user role', async () => {
         const updatedUser = {
           id: 'user-1',
-          role: 'system_admin',
+          role: 'admin',
         }
 
         ;(prisma.user.update as jest.Mock).mockResolvedValue(updatedUser)
 
         const result = await prisma.user.update({
           where: { id: 'user-1' },
-          data: { role: 'system_admin' },
+          data: { role: 'admin' },
         })
 
-        expect(result.role).toBe('system_admin')
+        expect(result.role).toBe('admin')
       })
     })
 
@@ -296,7 +296,7 @@ describe('Prisma Client', () => {
         ;(prisma.$transaction as jest.Mock).mockResolvedValue(mockTransactionResult)
 
         const result = await prisma.$transaction([
-          prisma.user.create({ data: { email: 'test@example.com', fullName: 'Test User', passwordHash: 'hashed', role: 'viewer' as const } }),
+          prisma.user.create({ data: { email: 'test@example.com', fullName: 'Test User', passwordHash: 'hashed', role: 'staff' as const } }),
           prisma.warehouse.create({ data: { code: 'WH001', name: 'Warehouse 1' } }),
         ])
 

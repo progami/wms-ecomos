@@ -53,7 +53,7 @@ describe('Authentication Configuration', () => {
         email: 'test@example.com',
         fullName: 'Test User',
         passwordHash: 'hashed-password',
-        role: 'system_admin',
+        role: 'admin',
         warehouseId: null,
         isActive: true,
       }
@@ -74,7 +74,7 @@ describe('Authentication Configuration', () => {
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'system_admin',
+        role: 'admin',
         warehouseId: null,
       })
     })
@@ -132,23 +132,23 @@ describe('Authentication Configuration', () => {
 
   describe('Callbacks', () => {
     it('should include user details in JWT token', async () => {
-      const token = { sub: 'user-123' }
+      const token = { sub: 'user-123', role: 'staff' as const, warehouseId: 'warehouse-1' }
       const user = {
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'warehouse_staff',
+        role: 'staff' as const,
         warehouseId: 'warehouse-1',
       }
 
-      const result = await authOptions.callbacks!.jwt!({ token: { ...token, role: 'warehouse_staff' }, user })
+      const result = await authOptions.callbacks!.jwt!({ token, user } as any)
 
       expect(result).toEqual({
         sub: 'user-123',
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'warehouse_staff',
+        role: 'staff',
         warehouseId: 'warehouse-1',
       })
     })
@@ -159,25 +159,26 @@ describe('Authentication Configuration', () => {
           id: '',
           email: '',
           name: '',
-          role: 'warehouse_staff' as const,
+          role: 'staff' as const,
         },
         expires: new Date().toISOString(),
       }
       const token = {
+        sub: 'user-123',
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'finance_admin',
+        role: 'admin' as const,
         warehouseId: null,
       }
 
-      const result = await authOptions.callbacks!.session!({ session, token })
+      const result = await authOptions.callbacks!.session!({ session, token } as any)
 
       expect(result.user).toEqual({
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'finance_admin',
+        role: 'admin',
         warehouseId: null,
       })
     })
@@ -185,11 +186,8 @@ describe('Authentication Configuration', () => {
 
   describe('Role-based Access Control', () => {
     const testRoles = [
-      'system_admin',
-      'finance_admin',
-      'warehouse_staff',
-      'manager',
-      'viewer',
+      'admin',
+      'staff',
     ]
 
     testRoles.forEach((role) => {
@@ -200,7 +198,7 @@ describe('Authentication Configuration', () => {
           fullName: `${role} User`,
           passwordHash: 'hashed-password',
           role,
-          warehouseId: role === 'warehouse_staff' ? 'warehouse-1' : null,
+          warehouseId: role === 'staff' ? 'warehouse-1' : null,
           isActive: true,
         }
 
