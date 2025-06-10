@@ -44,10 +44,10 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        console.log('Auth attempt for:', credentials?.emailOrUsername)
+        console.info('Auth attempt for:', credentials?.emailOrUsername)
         
         if (!credentials?.emailOrUsername || !credentials?.password) {
-          console.log('Missing credentials')
+          console.info('Missing credentials')
           throw new Error('Invalid credentials')
         }
 
@@ -67,7 +67,7 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user || !user.isActive) {
-          console.log('User not found or inactive:', credentials.emailOrUsername)
+          console.info('User not found or inactive:', credentials.emailOrUsername)
           throw new Error('Invalid credentials')
         }
 
@@ -77,11 +77,11 @@ export const authOptions: NextAuthOptions = {
         )
 
         if (!isPasswordValid) {
-          console.log('Invalid password for:', credentials.emailOrUsername)
+          console.info('Invalid password for:', credentials.emailOrUsername)
           throw new Error('Invalid credentials')
         }
         
-        console.log('Login successful for:', user.email)
+        console.info('Login successful for:', user.email)
 
         // Update last login
         await prisma.user.update({

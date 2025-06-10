@@ -190,18 +190,12 @@ export default function AdminDashboardPage() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Dashboard data received:', data)
         setStats(data.stats)
         setSystemInfo(data.systemInfo)
         
         // Use real chart data from API
         if (data.chartData) {
-          console.log('Chart data:', data.chartData)
-          console.log('Inventory trend length:', data.chartData.inventoryTrend?.length)
-          console.log('First inventory point:', data.chartData.inventoryTrend?.[0])
           setChartData(data.chartData)
-        } else {
-          console.log('No chart data in response')
         }
       } else {
         const errorText = await response.text()
@@ -213,7 +207,6 @@ export default function AdminDashboardPage() {
         }
       }
     } catch (error) {
-      console.error('Error fetching stats:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to load dashboard stats')
     } finally {
       setLoadingStats(false)

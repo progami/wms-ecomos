@@ -1,0 +1,20 @@
+<testsuites id="" name="" tests="8" failures="0" skipped="0" errors="0" time="2.801767">
+<testsuite name="dashboard.spec.ts" timestamp="2025-06-10T08:39:49.926Z" hostname="chromium" tests="8" failures="0" skipped="0" time="9.24" errors="0">
+<testcase name="Dashboard Pages › Staff Dashboard › quick action cards are clickable" classname="dashboard.spec.ts" time="1.249">
+</testcase>
+<testcase name="Dashboard Pages › Staff Dashboard › dashboard stats are displayed" classname="dashboard.spec.ts" time="1.951">
+</testcase>
+<testcase name="Dashboard Pages › Admin Dashboard › time range selector works" classname="dashboard.spec.ts" time="1.277">
+</testcase>
+<testcase name="Dashboard Pages › Admin Dashboard › auto-refresh toggle works" classname="dashboard.spec.ts" time="1.282">
+</testcase>
+<testcase name="Dashboard Pages › Admin Dashboard › manual refresh button works" classname="dashboard.spec.ts" time="1.257">
+</testcase>
+<testcase name="Dashboard Pages › Admin Dashboard › system action buttons trigger actions" classname="dashboard.spec.ts" time="0.737">
+</testcase>
+<testcase name="Dashboard Pages › Admin Dashboard › chart view toggle works" classname="dashboard.spec.ts" time="0.727">
+</testcase>
+<testcase name="Dashboard Pages › Admin Dashboard › quick navigation cards work" classname="dashboard.spec.ts" time="0.76">
+</testcase>
+</testsuite>
+</testsuites>
