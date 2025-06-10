@@ -143,35 +143,6 @@ export default function AdminDashboardPage() {
     }
   }), [])
 
-  useEffect(() => {
-    // Only fetch if we haven't already
-    if (!hasFetched && status === 'authenticated') {
-      setHasFetched(true)
-      fetchDashboardStats()
-    }
-  }, [hasFetched, status, fetchDashboardStats])
-
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(() => {
-        fetchDashboardStats()
-      }, 30000) // Refresh every 30 seconds
-      setRefreshInterval(interval)
-    } else if (refreshInterval) {
-      clearInterval(refreshInterval)
-      setRefreshInterval(null)
-    }
-    return () => {
-      if (refreshInterval) clearInterval(refreshInterval)
-    }
-  }, [autoRefresh, refreshInterval, fetchDashboardStats])
-
-  useEffect(() => {
-    if (status === 'authenticated' && hasFetched) {
-      fetchDashboardStats()
-    }
-  }, [selectedTimeRange, status, hasFetched, fetchDashboardStats])
-
   const fetchDashboardStats = useCallback(async () => {
     try {
       const params = new URLSearchParams({
@@ -207,6 +178,34 @@ export default function AdminDashboardPage() {
     }
   }, [selectedTimeRange, timeRanges])
 
+  useEffect(() => {
+    // Only fetch if we haven't already
+    if (!hasFetched && status === 'authenticated') {
+      setHasFetched(true)
+      fetchDashboardStats()
+    }
+  }, [hasFetched, status, fetchDashboardStats])
+
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchDashboardStats()
+      }, 30000) // Refresh every 30 seconds
+      setRefreshInterval(interval)
+    } else if (refreshInterval) {
+      clearInterval(refreshInterval)
+      setRefreshInterval(null)
+    }
+    return () => {
+      if (refreshInterval) clearInterval(refreshInterval)
+    }
+  }, [autoRefresh, refreshInterval, fetchDashboardStats])
+
+  useEffect(() => {
+    if (status === 'authenticated' && hasFetched) {
+      fetchDashboardStats()
+    }
+  }, [selectedTimeRange, status, hasFetched, fetchDashboardStats])
 
   // Helper function to aggregate weekly costs into monthly billing periods
   const aggregateMonthlyStorageCosts = (weeklyCosts: Array<{ date: string; cost: number }>) => {
