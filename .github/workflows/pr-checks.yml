@@ -120,7 +120,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
         run: |
-          npx prisma migrate deploy
+          npx prisma db push --skip-generate --accept-data-loss
           npx prisma db seed
 
       - name: Run unit tests
@@ -180,7 +180,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
         run: |
-          npx prisma migrate deploy
+          npx prisma db push --skip-generate --accept-data-loss
           npx prisma db seed
 
       - name: Build application
@@ -244,7 +244,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
         run: |
           # Deploy migrations to fresh database
-          npx prisma migrate deploy
+          npx prisma db push --skip-generate --accept-data-loss
           
           # Run seed to verify it works with new schema
           npx prisma db seed

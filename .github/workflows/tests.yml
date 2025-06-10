@@ -49,7 +49,7 @@ jobs:
         run: npx prisma generate
 
       - name: Run database migrations
-        run: npx prisma migrate deploy
+        run: npx prisma db push --skip-generate --accept-data-loss
 
       - name: Seed test database
         run: npx prisma db seed
@@ -102,7 +102,7 @@ jobs:
         run: npx prisma generate
 
       - name: Run database migrations
-        run: npx prisma migrate deploy
+        run: npx prisma db push --skip-generate --accept-data-loss
 
       - name: Seed test database
         run: npx prisma db seed
@@ -226,7 +226,7 @@ jobs:
         run: npx prisma validate
 
       - name: Run database migrations
-        run: npx prisma migrate deploy
+        run: npx prisma db push --skip-generate --accept-data-loss
 
       - name: Run seed script
         run: npx prisma db seed

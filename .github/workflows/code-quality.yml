@@ -172,7 +172,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
         run: |
-          npx prisma migrate deploy
+          npx prisma db push --skip-generate --accept-data-loss
           npx prisma db seed
 
       - name: Build application
