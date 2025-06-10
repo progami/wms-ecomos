@@ -19,12 +19,15 @@ const mockSignOut = signOut as jest.MockedFunction<typeof signOut>
 const mockUseSession = useSession as jest.MockedFunction<typeof useSession>
 const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>
 
+// Mock update function
+const mockUpdate = jest.fn()
+
 describe('MainNav Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
     mockUsePathname.mockReturnValue('/dashboard')
-    mockSignOut.mockImplementation(() => Promise.resolve())
+    mockSignOut.mockImplementation(() => Promise.resolve({ url: '/' }))
   })
 
   describe('Role-based Navigation', () => {
@@ -32,309 +35,256 @@ describe('MainNav Component', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
       // Admin should see all navigation items
       expect(screen.getByText('Dashboard')).toBeInTheDocument()
-      expect(screen.getByText('Inventory')).toBeInTheDocument()
-      expect(screen.getByText('Users')).toBeInTheDocument()
-      expect(screen.getByText('Calculations')).toBeInTheDocument()
       expect(screen.getByText('Finance')).toBeInTheDocument()
-      expect(screen.getByText('Invoices')).toBeInTheDocument()
-      expect(screen.getByText('Reconciliation')).toBeInTheDocument()
-      expect(screen.getByText('Warehouse Ops')).toBeInTheDocument()
+      expect(screen.getByText('Operations')).toBeInTheDocument()
+      expect(screen.getByText('Configuration')).toBeInTheDocument()
       expect(screen.getByText('Reports')).toBeInTheDocument()
-      expect(screen.getByText('SKUs')).toBeInTheDocument()
-      expect(screen.getByText('Settings')).toBeInTheDocument()
-    })
-
-    it('should render finance navigation for admin role', () => {
-      mockUseSession.mockReturnValue({
-        data: mockSessions.financeAdmin,
-        status: 'authenticated',
-      })
-
-      render(<MainNav />)
-
-      // Finance admin should see finance-specific items
-      expect(screen.getByText('Dashboard')).toBeInTheDocument()
-      expect(screen.getByText('Invoices')).toBeInTheDocument()
-      expect(screen.getByText('Reconciliation')).toBeInTheDocument()
-      expect(screen.getByText('Reports')).toBeInTheDocument()
-      expect(screen.getByText('Cost Rates')).toBeInTheDocument()
-
-      // Should not see admin-only items
-      expect(screen.queryByText('Users')).not.toBeInTheDocument()
-      expect(screen.queryByText('Warehouse Ops')).not.toBeInTheDocument()
-    })
-
-    it('should render warehouse navigation for staff role', () => {
-      mockUseSession.mockReturnValue({
-        data: mockSessions.warehouseStaff,
-        status: 'authenticated',
-      })
-
-      render(<MainNav />)
-
-      // Warehouse staff should see warehouse-specific items
-      expect(screen.getByText('Dashboard')).toBeInTheDocument()
-      expect(screen.getByText('Inventory')).toBeInTheDocument()
-      expect(screen.getByText('Receive')).toBeInTheDocument()
-      expect(screen.getByText('Ship')).toBeInTheDocument()
-      expect(screen.getByText('Reports')).toBeInTheDocument()
-      expect(screen.getByText('Settings')).toBeInTheDocument()
-
-      // Should not see finance or admin items
-      expect(screen.queryByText('Invoices')).not.toBeInTheDocument()
-      expect(screen.queryByText('Users')).not.toBeInTheDocument()
+      expect(screen.getByText('Analytics')).toBeInTheDocument()
+      expect(screen.getByText('Admin')).toBeInTheDocument()
     })
 
     it('should render limited navigation for staff role', () => {
       mockUseSession.mockReturnValue({
-        data: mockSessions.manager,
+        data: mockSessions.warehouseStaff,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      // Manager should see overview items
+      // Staff should see limited navigation
       expect(screen.getByText('Dashboard')).toBeInTheDocument()
-      expect(screen.getByText('Analytics')).toBeInTheDocument()
-      expect(screen.getByText('Reports')).toBeInTheDocument()
-
-      // Should not see operational items
-      expect(screen.queryByText('Inventory')).not.toBeInTheDocument()
-      expect(screen.queryByText('Invoices')).not.toBeInTheDocument()
+      expect(screen.getByText('Operations')).toBeInTheDocument()
+      expect(screen.queryByText('Admin')).not.toBeInTheDocument()
     })
 
-    it('should render limited navigation for read-only users', () => {
+    it('should render limited navigation for viewer role', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.viewer,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      // Viewer should only see read-only items
+      // Viewer should see limited navigation
       expect(screen.getByText('Dashboard')).toBeInTheDocument()
       expect(screen.getByText('Reports')).toBeInTheDocument()
-
-      // Should not see any operational items
-      expect(screen.queryByText('Inventory')).not.toBeInTheDocument()
-      expect(screen.queryByText('Settings')).not.toBeInTheDocument()
     })
   })
 
-  describe('Active Route Highlighting', () => {
-    it('should highlight the active route', () => {
+  describe('Active Link Highlighting', () => {
+    it('should highlight the current active route', () => {
+      mockUsePathname.mockReturnValue('/finance/invoices')
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
-      mockUsePathname.mockReturnValue('/admin/inventory')
 
       render(<MainNav />)
 
-      const inventoryLink = screen.getByRole('link', { name: /inventory/i })
-      expect(inventoryLink).toHaveClass('bg-gray-100', 'text-primary')
+      const financeLink = screen.getByText('Finance').closest('a')
+      expect(financeLink).toHaveClass('bg-accent')
     })
 
-    it('should not highlight inactive routes', () => {
+    it('should not highlight non-active routes', () => {
+      mockUsePathname.mockReturnValue('/dashboard')
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
-      mockUsePathname.mockReturnValue('/admin/dashboard')
 
       render(<MainNav />)
 
-      const inventoryLink = screen.getByRole('link', { name: /inventory/i })
-      expect(inventoryLink).not.toHaveClass('bg-gray-100')
-      expect(inventoryLink).toHaveClass('text-gray-700')
+      const financeLink = screen.getByText('Finance').closest('a')
+      expect(financeLink).not.toHaveClass('bg-accent')
     })
   })
 
-  describe('User Information Display', () => {
+  describe('User Menu', () => {
     it('should display user information', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      expect(screen.getByText('Signed in as')).toBeInTheDocument()
-      expect(screen.getByText('Admin User')).toBeInTheDocument()
+      // Click on user menu
+      const userButton = screen.getByRole('button', { name: /Admin User/i })
+      fireEvent.click(userButton)
+
       expect(screen.getByText('admin@warehouse.com')).toBeInTheDocument()
     })
 
-    it('should display sign out button', () => {
+    it('should call signOut when logout is clicked', async () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      const signOutButton = screen.getByRole('button', { name: /sign out/i })
-      expect(signOutButton).toBeInTheDocument()
+      // Click on user menu
+      const userButton = screen.getByRole('button', { name: /Admin User/i })
+      fireEvent.click(userButton)
+
+      // Click logout
+      const logoutButton = screen.getByText('Log out')
+      fireEvent.click(logoutButton)
+
+      await waitFor(() => {
+        expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: '/' })
+      })
     })
   })
 
-  describe('Sign Out Functionality', () => {
-    it('should call signOut when sign out button is clicked', async () => {
+  describe('Navigation Dropdowns', () => {
+    it('should toggle dropdown menus on click', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      const signOutButton = screen.getByRole('button', { name: /sign out/i })
-      fireEvent.click(signOutButton)
+      // Finance dropdown should not be visible initially
+      expect(screen.queryByText('Invoices')).not.toBeInTheDocument()
 
-      await waitFor(() => {
-        expect(mockSignOut).toHaveBeenCalledWith({
-          callbackUrl: '/auth/login',
-        })
+      // Click on Finance
+      fireEvent.click(screen.getByText('Finance'))
+
+      // Finance dropdown items should now be visible
+      expect(screen.getByText('Invoices')).toBeInTheDocument()
+      expect(screen.getByText('Cost Ledger')).toBeInTheDocument()
+    })
+
+    it('should close dropdown when clicking outside', () => {
+      mockUseSession.mockReturnValue({
+        data: mockSessions.admin,
+        status: 'authenticated',
+        update: mockUpdate,
       })
+
+      render(<MainNav />)
+
+      // Open Finance dropdown
+      fireEvent.click(screen.getByText('Finance'))
+      expect(screen.getByText('Invoices')).toBeInTheDocument()
+
+      // Click outside
+      fireEvent.click(document.body)
+
+      // Dropdown should close
+      expect(screen.queryByText('Invoices')).not.toBeInTheDocument()
     })
   })
 
   describe('Mobile Navigation', () => {
-    it('should render mobile menu button on small screens', () => {
+    it('should toggle mobile menu', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      const mobileMenuButton = screen.getByRole('button', { name: /open sidebar/i })
-      expect(mobileMenuButton).toBeInTheDocument()
-    })
+      // Mobile menu should not be visible initially
+      const mobileNav = screen.getByTestId('mobile-nav')
+      expect(mobileNav).toHaveClass('hidden')
 
-    it('should open mobile menu when button is clicked', () => {
-      mockUseSession.mockReturnValue({
-        data: mockSessions.admin,
-        status: 'authenticated',
-      })
+      // Click hamburger menu
+      const hamburgerButton = screen.getByLabelText('Toggle navigation menu')
+      fireEvent.click(hamburgerButton)
 
-      render(<MainNav />)
-
-      const mobileMenuButton = screen.getByRole('button', { name: /open sidebar/i })
-      fireEvent.click(mobileMenuButton)
-
-      // Should show close button when menu is open
-      const closeButton = screen.getByRole('button', { name: /close sidebar/i })
-      expect(closeButton).toBeInTheDocument()
-    })
-
-    it('should close mobile menu when close button is clicked', () => {
-      mockUseSession.mockReturnValue({
-        data: mockSessions.admin,
-        status: 'authenticated',
-      })
-
-      render(<MainNav />)
-
-      // Open menu
-      const mobileMenuButton = screen.getByRole('button', { name: /open sidebar/i })
-      fireEvent.click(mobileMenuButton)
-
-      // Close menu
-      const closeButton = screen.getByRole('button', { name: /close sidebar/i })
-      fireEvent.click(closeButton)
-
-      // Close button should no longer be visible
-      expect(screen.queryByRole('button', { name: /close sidebar/i })).not.toBeInTheDocument()
-    })
-
-    it('should close mobile menu when navigation link is clicked', () => {
-      mockUseSession.mockReturnValue({
-        data: mockSessions.admin,
-        status: 'authenticated',
-      })
-
-      render(<MainNav />)
-
-      // Open menu
-      const mobileMenuButton = screen.getByRole('button', { name: /open sidebar/i })
-      fireEvent.click(mobileMenuButton)
-
-      // Click a navigation link
-      const dashboardLinks = screen.getAllByText('Dashboard')
-      // Click the mobile menu dashboard link (second one)
-      fireEvent.click(dashboardLinks[1])
-
-      // Menu should close
-      expect(screen.queryByRole('button', { name: /close sidebar/i })).not.toBeInTheDocument()
+      // Mobile menu should now be visible
+      expect(mobileNav).toHaveClass('block')
     })
   })
 
-  describe('No Session Handling', () => {
-    it('should not render navigation when no session exists', () => {
+  describe('Loading State', () => {
+    it('should show loading state when session is loading', () => {
+      mockUseSession.mockReturnValue({
+        data: null,
+        status: 'loading',
+        update: mockUpdate,
+      })
+
+      render(<MainNav />)
+
+      expect(screen.getByText('Loading...')).toBeInTheDocument()
+    })
+  })
+
+  describe('Unauthenticated State', () => {
+    it('should show login link when unauthenticated', () => {
       mockUseSession.mockReturnValue({
         data: null,
         status: 'unauthenticated',
-      })
-
-      const { container } = render(<MainNav />)
-
-      expect(container.firstChild).toBeNull()
-    })
-  })
-
-  describe('Icon Rendering', () => {
-    it('should render correct icons for navigation items', () => {
-      mockUseSession.mockReturnValue({
-        data: mockSessions.admin,
-        status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      // Check for presence of navigation with icons
-      const navItems = screen.getAllByRole('link')
-      expect(navItems.length).toBeGreaterThan(0)
-
-      // Verify specific navigation items have the correct structure
-      const dashboardLink = screen.getByRole('link', { name: /dashboard/i })
-      expect(dashboardLink).toBeInTheDocument()
+      expect(screen.getByText('Login')).toBeInTheDocument()
     })
   })
 
   describe('Accessibility', () => {
-    it('should have proper ARIA attributes', () => {
+    it('should have proper ARIA labels', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      // Check for proper list structure
-      const lists = screen.getAllByRole('list')
-      expect(lists.length).toBeGreaterThan(0)
+      expect(screen.getByRole('navigation')).toHaveAttribute('aria-label', 'Main navigation')
+      expect(screen.getByLabelText('Toggle navigation menu')).toBeInTheDocument()
+    })
 
-      // Check for screen reader only text
-      expect(screen.getByText('Open sidebar')).toHaveClass('sr-only')
+    it('should support keyboard navigation', () => {
+      mockUseSession.mockReturnValue({
+        data: mockSessions.admin,
+        status: 'authenticated',
+        update: mockUpdate,
+      })
+
+      render(<MainNav />)
+
+      const firstLink = screen.getByText('Dashboard').closest('a')
+      firstLink?.focus()
+
+      expect(document.activeElement).toBe(firstLink)
     })
 
     it('should mark icon as decorative with aria-hidden', () => {
       mockUseSession.mockReturnValue({
         data: mockSessions.admin,
         status: 'authenticated',
+        update: mockUpdate,
       })
 
       render(<MainNav />)
 
-      // Icons should be hidden from screen readers
-      const signOutButton = screen.getByRole('button', { name: /sign out/i })
-      const icon = signOutButton.querySelector('[aria-hidden="true"]')
-      expect(icon).toBeInTheDocument()
+      const icons = screen.getAllByTestId('nav-icon')
+      icons.forEach(icon => {
+        expect(icon).toHaveAttribute('aria-hidden', 'true')
+      })
     })
   })
 })
