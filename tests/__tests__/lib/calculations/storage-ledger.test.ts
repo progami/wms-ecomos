@@ -11,9 +11,11 @@ jest.mock('@/lib/prisma', () => ({
   prisma: {
     inventoryBalance: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
     },
     inventoryTransaction: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
     },
     warehouseSkuConfig: {
       findFirst: jest.fn(),
@@ -23,6 +25,7 @@ jest.mock('@/lib/prisma', () => ({
     },
     storageLedger: {
       upsert: jest.fn(),
+      createMany: jest.fn(),
     },
   },
 }))
