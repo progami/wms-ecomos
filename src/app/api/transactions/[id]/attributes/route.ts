@@ -55,7 +55,6 @@ export async function PATCH(
       ...(notes !== undefined && { notes }),
       ...(referenceId !== undefined && { referenceId }),
       ...(attachments !== undefined && { attachments }),
-      ...(unitsPerCarton !== undefined && { unitsPerCarton }),
       ...(storageCartonsPerPallet !== undefined && { storageCartonsPerPallet }),
       ...(shippingCartonsPerPallet !== undefined && { shippingCartonsPerPallet }),
       updatedAt: new Date()
@@ -95,7 +94,7 @@ export async function PATCH(
         if (inventoryBalance) {
           const newCartons = inventoryBalance.currentCartons + cartonsDiff
           const newPallets = inventoryBalance.currentPallets + palletsDiff
-          const newUnits = newCartons * (unitsPerCarton || currentTransaction.unitsPerCarton || currentTransaction.sku.unitsPerCarton)
+          const newUnits = newCartons * (unitsPerCarton || currentTransaction.sku.unitsPerCarton)
           
           inventoryBalanceUpdate = {
             id: inventoryBalance.id,
