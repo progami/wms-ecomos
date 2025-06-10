@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import '@testing-library/jest-dom'
 
 // Mock the server component
-jest.mock('@/app/admin/settings/skus/page', () => ({
+jest.mock('@/app/config/products/page', () => ({
   __esModule: true,
   default: function AdminSkusPage() {
     const mockSkus = [

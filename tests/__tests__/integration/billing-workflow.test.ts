@@ -1,5 +1,5 @@
-import { POST as runCalculations } from '@/app/api/calculations/route'
-import { POST as generateReport } from '@/app/api/reports/route'
+import { POST as runCalculations } from '@/app/api/finance/storage-ledger/route'
+import { POST as generateReport } from '@/app/api/finance/reports/route'
 import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
 import { mockSessions, mockData } from '../test-utils'
