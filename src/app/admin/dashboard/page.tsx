@@ -642,7 +642,7 @@ export default function AdminDashboardPage() {
                   <div className="pt-2">
                     {chartData.warehouseDistribution
                       .sort((a, b) => b.value - a.value)
-                      .map((warehouse) => (
+                      .map((warehouse, index) => (
                         <div key={warehouse.name} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div className="flex items-center gap-3">
                             <div 
