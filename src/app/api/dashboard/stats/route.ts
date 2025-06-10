@@ -13,9 +13,6 @@ export async function GET() {
 
     // Get current date info
     const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
 
     // Check if user has warehouse restriction
     const warehouseFilter = session.user.warehouseId 

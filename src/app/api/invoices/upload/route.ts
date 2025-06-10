@@ -199,7 +199,7 @@ async function parseCSV(buffer: Buffer): Promise<InvoiceUploadData | null> {
     }
 
     // Extract invoice metadata
-    let invoiceInfo: any = {}
+    const invoiceInfo: any = {}
     let lineItemsStartIndex = 0
     
     // Look for invoice metadata in first few rows
@@ -673,8 +673,3 @@ async function startReconciliationInTransaction(tx: any, invoiceId: string) {
   }
 }
 
-// Keep the old function for backward compatibility but mark as deprecated
-async function startReconciliation(invoiceId: string) {
-  console.warn('startReconciliation is deprecated. Use transactional version instead.')
-  // This function is no longer used but kept for reference
-}

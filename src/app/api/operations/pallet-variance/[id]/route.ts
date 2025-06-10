@@ -15,7 +15,6 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { status, actualPallets, notes } = body
 
     // In a production system, you would store variance records in a dedicated table
     // For this implementation, we'll update the inventory balance metadata

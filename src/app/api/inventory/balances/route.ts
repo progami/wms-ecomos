@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
       }
       
       // Calculate pallets for each balance
-      for (const [key, balance] of balances.entries()) {
+      for (const [, balance] of balances.entries()) {
         if (balance.currentCartons > 0) {
           // First try to use pallet configuration from transactions
           if (balance.storageCartonsPerPallet) {

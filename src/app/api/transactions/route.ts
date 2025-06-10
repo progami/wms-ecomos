@@ -386,7 +386,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Prevent updates to maintain immutability
-export async function PUT(request: NextRequest) {
+export async function PUT(_request: NextRequest) {
   return NextResponse.json({ 
     error: 'Inventory transactions are immutable and cannot be modified',
     message: 'To correct errors, please create an adjustment transaction (ADJUST_IN or ADJUST_OUT)'
@@ -394,7 +394,7 @@ export async function PUT(request: NextRequest) {
 }
 
 // Prevent deletes to maintain immutability
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
   return NextResponse.json({ 
     error: 'Inventory transactions are immutable and cannot be deleted',
     message: 'The inventory ledger maintains a permanent audit trail. To correct errors, please create an adjustment transaction'

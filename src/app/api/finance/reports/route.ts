@@ -149,7 +149,7 @@ async function generateInvoiceReconciliationReport(period: string, warehouseFilt
   })
 
   const data: any[] = []
-  let summaryData: any = {
+  const summaryData: any = {
     totalInvoices: 0,
     totalInvoicedAmount: 0,
     totalExpectedAmount: 0,

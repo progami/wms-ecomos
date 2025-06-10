@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { BarChart3, TrendingUp, Package2, Users, Activity, PieChart, Download } from 'lucide-react'
+import { BarChart3, TrendingUp, Package2, Users, Activity, PieChart } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { prisma } from '@/lib/prisma'
 import { ExportButton } from '@/components/common/export-button'

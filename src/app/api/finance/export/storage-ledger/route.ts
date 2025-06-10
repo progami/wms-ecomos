@@ -290,7 +290,7 @@ async function calculateMondaySnapshots(
       const items = []
       
       // For each unique SKU/batch, calculate the balance at Monday
-      for (const [key, { skuId, batchLot, sku }] of skuBatchMap) {
+      for (const [, { skuId, batchLot, sku }] of skuBatchMap) {
         // Get all transactions for this SKU/batch up to Monday
         const skuBatchTransactions = warehouseTransactions.filter(t => 
           t.skuId === skuId &&

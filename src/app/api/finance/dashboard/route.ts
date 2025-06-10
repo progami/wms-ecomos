@@ -4,8 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { 
   getBillingPeriod, 
-  calculateAllCosts,
-  type BillingPeriod 
+  calculateAllCosts
 } from '@/lib/calculations/cost-aggregation'
 
 export async function GET() {

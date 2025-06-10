@@ -30,7 +30,6 @@ export async function GET(request: Request) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
-    const timeRange = searchParams.get('timeRange') || 'current'
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
 
@@ -202,7 +201,7 @@ export async function GET(request: Request) {
     }
 
     // Fetch real chart data
-    let chartData: {
+    const chartData: {
       inventoryTrend: { date: string; inventory: number }[],
       costTrend: { date: string; cost: number }[],
       warehouseDistribution: { name: string; value: number; percentage: string }[],

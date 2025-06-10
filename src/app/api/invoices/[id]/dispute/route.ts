@@ -11,12 +11,6 @@ interface RouteParams {
   };
 }
 
-interface DisputedLineItem {
-  reconciliationId: string;
-  reason: string;
-  suggestedAmount?: number;
-}
-
 // POST /api/invoices/[id]/dispute - Dispute an invoice or specific line items
 export async function POST(
   request: NextRequest,

@@ -8,7 +8,7 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import { createReadStream } from 'fs'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     

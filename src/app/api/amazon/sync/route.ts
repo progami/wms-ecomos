@@ -66,7 +66,7 @@ async function syncInventory() {
     for (const item of inventoryData.inventorySummaries) {
       try {
         // Only sync SKUs that already exist in our system
-        let sku = await prisma.sku.findFirst({
+        const sku = await prisma.sku.findFirst({
           where: {
             OR: [
               { asin: item.asin },
