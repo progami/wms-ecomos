@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, startOfWeek, endOfWeek, addDays } from 'date-fns'
+import { startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz'
 
 export function cn(...inputs: ClassValue[]) {
