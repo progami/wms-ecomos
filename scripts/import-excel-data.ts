@@ -109,7 +109,7 @@ async function importCostMaster(sheet: XLSX.WorkSheet) {
   for (const [warehouseName, rows] of Object.entries(warehouseGroups)) {
     console.log(`\n  🏢 Processing ${warehouseName.toUpperCase()} warehouse rates...`)
     
-    for (const row of rows) {
+    for (const row of rows as any[]) {
       try {
         if (!row.warehouse || !row.cost_name || row.cost_value === undefined || row.cost_value === null) {
           skipped++
