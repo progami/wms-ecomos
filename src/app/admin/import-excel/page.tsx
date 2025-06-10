@@ -28,7 +28,7 @@ interface ImportResult {
 }
 
 export default function ImportExcelPage() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)

@@ -24,8 +24,6 @@ import {
   Calendar,
   ChevronDown,
   Activity,
-  CheckCircle2,
-  XCircle,
   Clock,
   Zap,
   FileSpreadsheet,
@@ -41,14 +39,10 @@ import {
   Bar,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
@@ -155,7 +149,7 @@ export default function AdminDashboardPage() {
       setHasFetched(true)
       fetchDashboardStats()
     }
-  }, [hasFetched, status])
+  }, [hasFetched, status, fetchDashboardStats])
 
   useEffect(() => {
     if (autoRefresh) {
@@ -170,15 +164,15 @@ export default function AdminDashboardPage() {
     return () => {
       if (refreshInterval) clearInterval(refreshInterval)
     }
-  }, [autoRefresh])
+  }, [autoRefresh, refreshInterval, fetchDashboardStats])
 
   useEffect(() => {
     if (status === 'authenticated' && hasFetched) {
       fetchDashboardStats()
     }
-  }, [selectedTimeRange])
+  }, [selectedTimeRange, status, hasFetched, fetchDashboardStats])
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       const params = new URLSearchParams({
         timeRange: selectedTimeRange,
@@ -211,7 +205,7 @@ export default function AdminDashboardPage() {
     } finally {
       setLoadingStats(false)
     }
-  }
+  }, [selectedTimeRange])
 
 
   // Helper function to aggregate weekly costs into monthly billing periods
@@ -620,7 +614,7 @@ export default function AdminDashboardPage() {
                   
                   {/* Simple Bar Chart Alternative */}
                   <div className="space-y-3">
-                    {chartData.warehouseDistribution.map((warehouse, index) => {
+                    {chartData.warehouseDistribution.map((warehouse, _index) => {
                       const maxValue = Math.max(...chartData.warehouseDistribution.map(w => w.value))
                       const widthPercentage = maxValue > 0 ? (warehouse.value / maxValue) * 100 : 0
                       
@@ -649,7 +643,7 @@ export default function AdminDashboardPage() {
                   <div className="pt-2">
                     {chartData.warehouseDistribution
                       .sort((a, b) => b.value - a.value)
-                      .map((warehouse, index) => (
+                      .map((warehouse) => (
                         <div key={warehouse.name} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div className="flex items-center gap-3">
                             <div 
@@ -1150,9 +1144,4 @@ function InfoItem({ label, value, icon: Icon }: InfoItemProps) {
       <span className="text-sm font-medium">{value}</span>
     </div>
   )
-}
-
-// Custom label for pie chart
-const renderCustomizedLabel = (entry: any) => {
-  return `${entry.percentage}%`
 }

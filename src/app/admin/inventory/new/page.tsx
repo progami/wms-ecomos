@@ -26,7 +26,7 @@ export default function NewTransactionPage() {
 
   useEffect(() => {
     fetchWarehouses()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchWarehouses = async () => {
     try {

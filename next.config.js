@@ -7,11 +7,11 @@ const nextConfig = {
   },
   eslint: {
     // During production builds, do not run ESLint on the following directories
-    ignoreDuringBuilds: process.env.CI === 'true',
+    ignoreDuringBuilds: false,
   },
   typescript: {
     // During CI, ignore TypeScript errors to get builds working first
-    ignoreBuildErrors: process.env.CI === 'true',
+    ignoreBuildErrors: false,
   },
   async headers() {
     return [
