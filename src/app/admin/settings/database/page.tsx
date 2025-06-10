@@ -28,7 +28,7 @@ export default function DatabaseSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [backing, setBacking] = useState(false)
-  const [restoring, setRestoring] = useState(false)
+  const [restoring] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
   
   const [dbInfo, setDbInfo] = useState<DatabaseInfo>({

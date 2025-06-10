@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Filter, Upload, X, ChevronDown } from 'lucide-react'
+import { Plus, Search, Filter } from 'lucide-react'
 import { ExportButton } from '@/components/common/export-button'
 import { toast } from 'react-hot-toast'
 

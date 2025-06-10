@@ -1,14 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, Calendar, FileText, Package } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-
-interface ReportAction {
-  type: string
-  period?: string
-  warehouseId?: string
-}
 
 interface Warehouse {
   id: string

@@ -205,7 +205,7 @@ export default function AdminDashboardPage() {
     } finally {
       setLoadingStats(false)
     }
-  }, [selectedTimeRange])
+  }, [selectedTimeRange, timeRanges])
 
 
   // Helper function to aggregate weekly costs into monthly billing periods
