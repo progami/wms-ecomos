@@ -31,7 +31,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.STAGING_NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.STAGING_URL }}
+          NEXTAUTH_URL: ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
         run: npm run build
 
       - name: Run database migrations
@@ -89,7 +89,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.PRODUCTION_NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.PRODUCTION_URL }}
+          NEXTAUTH_URL: ${{ secrets.PRODUCTION_URL || 'http://localhost:3000' }}
           NODE_ENV: production
         run: npm run build
 
