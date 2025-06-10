@@ -6,13 +6,20 @@ import { MainNav } from '@/components/layout/main-nav'
 import { render, mockSessions } from '../../test-utils'
 
 // Mock dependencies
-jest.mock('next-auth/react')
-jest.mock('next/navigation')
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(),
+  signOut: jest.fn(),
+}))
+
+jest.mock('next/navigation', () => ({
+  usePathname: jest.fn(),
+}))
+
+const mockSignOut = signOut as jest.MockedFunction<typeof signOut>
+const mockUseSession = useSession as jest.MockedFunction<typeof useSession>
+const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>
 
 describe('MainNav Component', () => {
-  const mockSignOut = signOut as jest.Mock
-  const mockUseSession = useSession as jest.Mock
-  const mockUsePathname = usePathname as jest.Mock
 
   beforeEach(() => {
     jest.clearAllMocks()

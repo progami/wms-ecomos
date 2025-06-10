@@ -49,7 +49,8 @@ jest.mock('@prisma/client', () => {
 describe('Prisma Client', () => {
   it('should be a singleton instance', () => {
     expect(prisma).toBeDefined()
-    expect(prisma).toBeInstanceOf(PrismaClient)
+    expect(prisma).toHaveProperty('user')
+    expect(prisma).toHaveProperty('warehouse')
   })
 
   it('should have all required models', () => {

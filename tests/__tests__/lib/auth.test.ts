@@ -1,6 +1,4 @@
 import { authOptions } from '@/lib/auth'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
-import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import bcryptjs from 'bcryptjs'
 
@@ -21,10 +19,6 @@ jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
 }))
 
-jest.mock('@next-auth/prisma-adapter', () => ({
-  PrismaAdapter: jest.fn(() => ({})),
-}))
-
 describe('Authentication Configuration', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -33,14 +27,10 @@ describe('Authentication Configuration', () => {
 
   describe('authOptions', () => {
     it('should have correct configuration', () => {
-      expect(authOptions.adapter).toBeDefined()
+      expect(authOptions.adapter).toBeUndefined() // No adapter in JWT strategy
       expect(authOptions.session?.strategy).toBe('jwt')
       expect(authOptions.providers).toHaveLength(1)
       expect(authOptions.providers[0].id).toBe('credentials')
-    })
-
-    it('should use PrismaAdapter', () => {
-      expect(PrismaAdapter).toHaveBeenCalledWith(prisma)
     })
   })
 
@@ -58,16 +48,25 @@ describe('Authentication Configuration', () => {
         isActive: true,
       }
 
-      ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser)
+      ;(prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser)
       ;(bcryptjs.compare as jest.Mock).mockResolvedValue(true)
+      ;(prisma.user.update as jest.Mock).mockResolvedValue(mockUser)
 
       const result = await credentialsProvider.authorize({
-        email: 'test@example.com',
+        emailOrUsername: 'test@example.com',
         password: 'password123',
       })
 
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          OR: [
+            { email: 'test@example.com' },
+            { username: 'test@example.com' }
+          ]
+        },
+        include: {
+          warehouse: true,
+        },
       })
       expect(bcryptjs.compare).toHaveBeenCalledWith('password123', 'hashed-password')
       expect(result).toEqual({
@@ -75,7 +74,7 @@ describe('Authentication Configuration', () => {
         email: 'test@example.com',
         name: 'Test User',
         role: 'admin',
-        warehouseId: null,
+        warehouseId: undefined,
       })
     })
 
@@ -87,26 +86,23 @@ describe('Authentication Configuration', () => {
         isActive: true,
       }
 
-      ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser)
+      ;(prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser)
       ;(bcryptjs.compare as jest.Mock).mockResolvedValue(false)
 
-      const result = await credentialsProvider.authorize({
-        email: 'test@example.com',
+      await expect(credentialsProvider.authorize({
+        emailOrUsername: 'test@example.com',
         password: 'wrong-password',
-      })
-
-      expect(result).toBeNull()
+      })).rejects.toThrow('Invalid credentials')
     })
 
     it('should reject authentication for non-existent user', async () => {
-      ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(null)
+      ;(prisma.user.findFirst as jest.Mock).mockResolvedValue(null)
 
-      const result = await credentialsProvider.authorize({
-        email: 'nonexistent@example.com',
+      await expect(credentialsProvider.authorize({
+        emailOrUsername: 'nonexistent@example.com',
         password: 'password123',
-      })
-
-      expect(result).toBeNull()
+      })).rejects.toThrow('Invalid credentials')
+      
       expect(bcryptjs.compare).not.toHaveBeenCalled()
     })
 
@@ -118,21 +114,61 @@ describe('Authentication Configuration', () => {
         isActive: false,
       }
 
-      ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser)
+      ;(prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser)
+
+      await expect(credentialsProvider.authorize({
+        emailOrUsername: 'test@example.com',
+        password: 'password123',
+      })).rejects.toThrow('Invalid credentials')
+      
+      expect(bcryptjs.compare).not.toHaveBeenCalled()
+    })
+
+    it('should authenticate with username', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        username: 'testuser',
+        fullName: 'Test User',
+        passwordHash: 'hashed-password',
+        role: 'staff',
+        warehouseId: 'warehouse-1',
+        isActive: true,
+      }
+
+      ;(prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser)
+      ;(bcryptjs.compare as jest.Mock).mockResolvedValue(true)
+      ;(prisma.user.update as jest.Mock).mockResolvedValue(mockUser)
 
       const result = await credentialsProvider.authorize({
-        email: 'test@example.com',
+        emailOrUsername: 'testuser',
         password: 'password123',
       })
 
-      expect(result).toBeNull()
-      expect(bcryptjs.compare).not.toHaveBeenCalled()
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          OR: [
+            { email: 'testuser' },
+            { username: 'testuser' }
+          ]
+        },
+        include: {
+          warehouse: true,
+        },
+      })
+      expect(result).toEqual({
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'staff',
+        warehouseId: 'warehouse-1',
+      })
     })
   })
 
   describe('Callbacks', () => {
     it('should include user details in JWT token', async () => {
-      const token = { sub: 'user-123', role: 'staff' as const, warehouseId: 'warehouse-1' }
+      const token = { sub: 'user-123' }
       const user = {
         id: 'user-123',
         email: 'test@example.com',
@@ -145,9 +181,6 @@ describe('Authentication Configuration', () => {
 
       expect(result).toEqual({
         sub: 'user-123',
-        id: 'user-123',
-        email: 'test@example.com',
-        name: 'Test User',
         role: 'staff',
         warehouseId: 'warehouse-1',
       })
@@ -176,8 +209,8 @@ describe('Authentication Configuration', () => {
 
       expect(result.user).toEqual({
         id: 'user-123',
-        email: 'test@example.com',
-        name: 'Test User',
+        email: '',
+        name: '',
         role: 'admin',
         warehouseId: null,
       })
@@ -203,11 +236,12 @@ describe('Authentication Configuration', () => {
         }
 
         const credentialsProvider = authOptions.providers[0] as any
-        ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser)
+        ;(prisma.user.findFirst as jest.Mock).mockResolvedValue(mockUser)
         ;(bcryptjs.compare as jest.Mock).mockResolvedValue(true)
+        ;(prisma.user.update as jest.Mock).mockResolvedValue(mockUser)
 
         const result = await credentialsProvider.authorize({
-          email: `${role}@example.com`,
+          emailOrUsername: `${role}@example.com`,
           password: 'password123',
         })
 

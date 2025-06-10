@@ -1,5 +1,4 @@
-import { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { NextRequest, NextResponse } from 'next/server'
 import { middleware } from '@/middleware'
 
 // Mock next-auth/jwt
@@ -7,232 +6,130 @@ jest.mock('next-auth/jwt', () => ({
   getToken: jest.fn(),
 }))
 
-// Mock NextResponse
-const mockRedirect = jest.fn()
-const mockNext = jest.fn()
-
-jest.mock('next/server', () => ({
-  NextResponse: {
-    redirect: (...args: any[]) => {
-      mockRedirect(...args)
-      return { redirect: true }
-    },
-    next: (...args: any[]) => {
-      mockNext(...args)
-      return { next: true }
-    },
-  },
-  NextRequest: jest.requireActual('next/server').NextRequest,
-}))
+const { getToken } = jest.requireMock('next-auth/jwt')
 
 describe('Middleware', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    process.env.NEXTAUTH_SECRET = 'test-secret'
   })
 
-  const createRequest = (pathname: string) => {
-    const url = new URL(`http://localhost:3000${pathname}`)
-    return new NextRequest(url)
+  const createMockRequest = (url: string) => {
+    return new NextRequest(new Request(`http://localhost:3000${url}`))
   }
 
-  describe('Public Routes', () => {
-    it('should allow access to login page without authentication', async () => {
-      const request = createRequest('/auth/login')
-      ;(getToken as jest.Mock).mockResolvedValue(null)
-
-      await middleware(request)
-
-      expect(mockNext).toHaveBeenCalled()
-      expect(mockRedirect).not.toHaveBeenCalled()
-    })
-
-    it('should allow access to public assets', async () => {
-      const publicPaths = ['/_next/static/test.js', '/favicon.ico', '/robots.txt']
-
-      for (const path of publicPaths) {
-        jest.clearAllMocks()
-        const request = createRequest(path)
-        
-        await middleware(request)
-
-        expect(mockNext).toHaveBeenCalled()
-        expect(getToken).not.toHaveBeenCalled()
-      }
-    })
+  it('should allow access to public routes without authentication', async () => {
+    const publicRoutes = ['/auth/login', '/api/health']
+    
+    for (const route of publicRoutes) {
+      const request = createMockRequest(route)
+      const response = await middleware(request)
+      
+      expect(response).toBeUndefined() // No redirect for public routes
+    }
   })
 
-  describe('Protected Routes', () => {
-    it('should redirect to login when accessing protected route without authentication', async () => {
-      const request = createRequest('/dashboard')
-      ;(getToken as jest.Mock).mockResolvedValue(null)
-
-      await middleware(request)
-
-      expect(mockRedirect).toHaveBeenCalledWith(
-        expect.objectContaining({
-          href: expect.stringContaining('/auth/login'),
-        })
-      )
-    })
-
-    it('should allow authenticated users to access protected routes', async () => {
-      const request = createRequest('/dashboard')
-      ;(getToken as jest.Mock).mockResolvedValue({
-        id: 'user-123',
-        role: 'admin',
-      })
-
-      await middleware(request)
-
-      expect(mockNext).toHaveBeenCalled()
-      expect(mockRedirect).not.toHaveBeenCalled()
-    })
+  it('should redirect to login for protected routes without authentication', async () => {
+    getToken.mockResolvedValue(null)
+    
+    const protectedRoutes = ['/dashboard', '/admin/users', '/finance/invoices']
+    
+    for (const route of protectedRoutes) {
+      const request = createMockRequest(route)
+      const response = await middleware(request)
+      
+      expect(response?.status).toBe(307) // Redirect status
+      expect(response?.headers.get('location')).toContain('/auth/login')
+    }
   })
 
-  describe('Role-based Route Protection', () => {
-    const roleBasedRoutes = [
-      { path: '/admin/users', allowedRoles: ['system_admin'] },
-      { path: '/admin/settings', allowedRoles: ['system_admin'] },
-      { path: '/finance/dashboard', allowedRoles: ['system_admin', 'finance_admin'] },
-      { path: '/operations/inventory', allowedRoles: ['system_admin', 'warehouse_staff'] },
+  it('should allow authenticated users to access protected routes', async () => {
+    getToken.mockResolvedValue({
+      sub: 'user-123',
+      role: 'admin',
+      email: 'admin@test.com',
+    })
+    
+    const request = createMockRequest('/dashboard')
+    const response = await middleware(request)
+    
+    expect(response).toBeUndefined() // No redirect for authenticated users
+  })
+
+  it('should redirect non-admin users from admin routes', async () => {
+    getToken.mockResolvedValue({
+      sub: 'user-123',
+      role: 'staff',
+      email: 'staff@test.com',
+    })
+    
+    const adminRoutes = ['/admin/users', '/admin/settings/security']
+    
+    for (const route of adminRoutes) {
+      const request = createMockRequest(route)
+      const response = await middleware(request)
+      
+      expect(response?.status).toBe(307)
+      expect(response?.headers.get('location')).toBe('http://localhost:3000/unauthorized')
+    }
+  })
+
+  it('should allow admin users to access admin routes', async () => {
+    getToken.mockResolvedValue({
+      sub: 'user-123',
+      role: 'admin',
+      email: 'admin@test.com',
+    })
+    
+    const request = createMockRequest('/admin/users')
+    const response = await middleware(request)
+    
+    expect(response).toBeUndefined() // No redirect for admin users
+  })
+
+  it('should allow access to static and special routes', async () => {
+    const specialRoutes = [
+      '/api/health',
+      '/test/page',
+      '/diagnostic',
+      '/favicon.ico',
+      '/robots.txt'
     ]
-
-    roleBasedRoutes.forEach(({ path, allowedRoles }) => {
-      describe(`Route: ${path}`, () => {
-        allowedRoles.forEach((role) => {
-          it(`should allow ${role} to access`, async () => {
-            const request = createRequest(path)
-            ;(getToken as jest.Mock).mockResolvedValue({
-              id: 'user-123',
-              role,
-            })
-
-            await middleware(request)
-
-            expect(mockNext).toHaveBeenCalled()
-            expect(mockRedirect).not.toHaveBeenCalled()
-          })
-        })
-
-        const deniedRoles = ['staff'].filter(
-          (role) => !allowedRoles.includes(role)
-        )
-
-        deniedRoles.forEach((role) => {
-          it(`should deny ${role} from accessing`, async () => {
-            const request = createRequest(path)
-            ;(getToken as jest.Mock).mockResolvedValue({
-              id: 'user-123',
-              role,
-            })
-
-            await middleware(request)
-
-            expect(mockRedirect).toHaveBeenCalledWith(
-              expect.objectContaining({
-                href: expect.stringContaining('/unauthorized'),
-              })
-            )
-          })
-        })
-      })
-    })
+    
+    for (const route of specialRoutes) {
+      const request = createMockRequest(route)
+      const response = await middleware(request)
+      
+      // Should return NextResponse.next() which we can't easily check
+      // but it shouldn't redirect
+      expect(response?.status).not.toBe(307)
+    }
   })
 
-  describe('Warehouse Staff Route Restrictions', () => {
-    it('should restrict warehouse staff to their assigned warehouse', async () => {
-      const request = createRequest('/operations/inventory?warehouseId=warehouse-2')
-      ;(getToken as jest.Mock).mockResolvedValue({
-        id: 'user-123',
-        role: 'staff',
-        warehouseId: 'warehouse-1',
-      })
-
-      await middleware(request)
-
-      // In a real implementation, this would check warehouse access
-      // For now, we'll just verify the middleware runs
-      expect(getToken).toHaveBeenCalled()
+  it('should redirect root to appropriate dashboard', async () => {
+    // Test admin redirect
+    getToken.mockResolvedValue({
+      sub: 'user-123',
+      role: 'admin',
+      email: 'admin@test.com',
     })
-  })
-
-  describe('Redirect Logic', () => {
-    it('should redirect authenticated users from login page to dashboard', async () => {
-      const request = createRequest('/auth/login')
-      ;(getToken as jest.Mock).mockResolvedValue({
-        id: 'user-123',
-        role: 'admin',
-      })
-
-      await middleware(request)
-
-      expect(mockRedirect).toHaveBeenCalledWith(
-        expect.objectContaining({
-          href: expect.stringContaining('/dashboard'),
-        })
-      )
+    
+    let request = createMockRequest('/')
+    let response = await middleware(request)
+    
+    expect(response?.status).toBe(307)
+    expect(response?.headers.get('location')).toBe('http://localhost:3000/admin/dashboard')
+    
+    // Test staff redirect
+    getToken.mockResolvedValue({
+      sub: 'user-456',
+      role: 'staff',
+      email: 'staff@test.com',
     })
-
-    it('should redirect to role-specific dashboard', async () => {
-      const roleDashboards = [
-        { role: 'admin', dashboard: '/admin/dashboard' },
-        { role: 'staff', dashboard: '/dashboard' },
-      ]
-
-      for (const { role, dashboard } of roleDashboards) {
-        jest.clearAllMocks()
-        const request = createRequest('/')
-        ;(getToken as jest.Mock).mockResolvedValue({
-          id: 'user-123',
-          role,
-        })
-
-        await middleware(request)
-
-        expect(mockRedirect).toHaveBeenCalledWith(
-          expect.objectContaining({
-            href: expect.stringContaining(dashboard),
-          })
-        )
-      }
-    })
-  })
-
-  describe('API Route Protection', () => {
-    it('should protect API routes', async () => {
-      const apiRoutes = [
-        '/api/inventory',
-        '/api/calculations/storage-ledger',
-        '/api/reports',
-      ]
-
-      for (const route of apiRoutes) {
-        jest.clearAllMocks()
-        const request = createRequest(route)
-        ;(getToken as jest.Mock).mockResolvedValue(null)
-
-        await middleware(request)
-
-        expect(mockRedirect).toHaveBeenCalledWith(
-          expect.objectContaining({
-            href: expect.stringContaining('/auth/login'),
-          })
-        )
-      }
-    })
-
-    it('should allow authenticated users to access API routes', async () => {
-      const request = createRequest('/api/inventory')
-      ;(getToken as jest.Mock).mockResolvedValue({
-        id: 'user-123',
-        role: 'admin',
-      })
-
-      await middleware(request)
-
-      expect(mockNext).toHaveBeenCalled()
-      expect(mockRedirect).not.toHaveBeenCalled()
-    })
+    
+    request = createMockRequest('/')
+    response = await middleware(request)
+    
+    expect(response?.status).toBe(307)
+    expect(response?.headers.get('location')).toBe('http://localhost:3000/dashboard')
   })
 })

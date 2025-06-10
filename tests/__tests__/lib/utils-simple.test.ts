@@ -21,10 +21,10 @@ describe('Utility Functions - Simple Tests', () => {
   })
 
   describe('formatCurrency', () => {
-    it('should format numbers as USD currency', () => {
-      expect(formatCurrency(1234.56)).toBe('$1,234.56')
-      expect(formatCurrency(0)).toBe('$0.00')
-      expect(formatCurrency(-1234.56)).toBe('-$1,234.56')
+    it('should format numbers as GBP currency', () => {
+      expect(formatCurrency(1234.56)).toBe('£1,234.56')
+      expect(formatCurrency(0)).toBe('£0.00')
+      expect(formatCurrency(-1234.56)).toBe('-£1,234.56')
     })
   })
 
