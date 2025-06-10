@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -104,7 +104,7 @@ export default function AdminDashboardPage() {
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false)
   const [storageCostView, setStorageCostView] = useState<'weekly' | 'monthly'>('weekly')
   
-  const timeRanges: Record<string, TimeRange> = {
+  const timeRanges: Record<string, TimeRange> = useMemo(() => ({
     current: {
       label: 'Current Month',
       value: 'current',
@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
       startDate: new Date(new Date().getFullYear() - 1, 0, 1),
       endDate: new Date(new Date().getFullYear() - 1, 11, 31)
     }
-  }
+  }), [])
 
   useEffect(() => {
     // Only fetch if we haven't already

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, Plus, Save, X, AlertCircle } from 'lucide-react'
+import { Plus, Save, X, AlertCircle } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
@@ -14,7 +14,7 @@ interface Warehouse {
 
 export default function NewTransactionPage() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { } = useSession()
   const [loading, setLoading] = useState(false)
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [transactionType, setTransactionType] = useState<'RECEIVE' | 'SHIP' | 'ADJUST'>('RECEIVE')

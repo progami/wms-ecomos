@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { Download, Calendar, TrendingUp, Package, DollarSign, FileText } from 'lucide-react'
+import { Download, TrendingUp, DollarSign, FileText } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { AdminReportsClient } from './client-page'
 import { prisma } from '@/lib/prisma'
@@ -130,27 +130,3 @@ function StatCard({ title, value, period, change, icon: Icon }: StatCardProps) {
   )
 }
 
-interface ReportItemProps {
-  title: string
-  description: string
-  icon: React.ElementType
-  onClick: () => void
-}
-
-function ReportItem({ title, description, icon: Icon, onClick }: ReportItemProps) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-    >
-      <div className="flex items-start gap-3">
-        <Icon className="h-5 w-5 text-muted-foreground mt-0.5" />
-        <div className="flex-1">
-          <h4 className="text-sm font-medium">{title}</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-        </div>
-        <Download className="h-4 w-4 text-muted-foreground" />
-      </div>
-    </button>
-  )
-}

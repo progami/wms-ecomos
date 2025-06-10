@@ -14,7 +14,6 @@ import {
   Bell,
   Shield,
   ArrowRight,
-  Upload,
   Download,
   Info,
 } from 'lucide-react'
