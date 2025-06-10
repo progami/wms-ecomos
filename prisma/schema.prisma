@@ -174,6 +174,8 @@ model InventoryTransaction {
   storageCartonsPerPallet  Int?            @map("storage_cartons_per_pallet")
   shipName                 String?         @map("ship_name")
   containerNumber          String?         @map("container_number")
+  modeOfTransportation     String?         @map("mode_of_transportation")
+  fbaTrackingId            String?         @map("fba_tracking_id")
   attachments              Json?           @db.JsonB
   createdBy                User            @relation("TransactionCreator", fields: [createdById], references: [id])
   sku                      Sku             @relation(fields: [skuId], references: [id])

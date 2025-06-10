@@ -22,7 +22,7 @@ if (fs.existsSync(envPath)) {
 }
 
 // Get PORT from environment or use default
-const port = process.env.PORT || '3000';
+const port = process.env.PORT || '3002';
 
 console.log(`Starting Next.js dev server on port ${port}...`);
 

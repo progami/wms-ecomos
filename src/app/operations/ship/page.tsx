@@ -395,9 +395,11 @@ export default function WarehouseShipPage() {
     
     const referenceNumber = formData.get('orderNumber') as string
     const date = shipDate
+    const pickupDate = formData.get('pickupDate') as string
     const sourceWarehouseId = formData.get('sourceWarehouse') as string
     const carrier = formData.get('carrier') as string
     const tracking = formData.get('tracking') as string
+    const modeOfTransportation = formData.get('modeOfTransportation') as string
     const notes = formData.get('notes') as string
     
     // Get source warehouse name
@@ -416,9 +418,12 @@ export default function WarehouseShipPage() {
           type: 'SHIP',
           referenceNumber,
           date,
+          pickupDate,
           items: validItems,
-          notes: `Source: ${sourceWarehouse?.name || 'Unknown'}. Carrier: ${carrier}. FBA Tracking: ${tracking}. Total Cartons: ${items.reduce((sum, item) => sum + item.cartons, 0)}. ${notes}`,
+          notes: `Source: ${sourceWarehouse?.name || 'Unknown'}. Carrier: ${carrier}. Mode: ${modeOfTransportation}. Total Cartons: ${items.reduce((sum, item) => sum + item.cartons, 0)}. ${notes}`,
           warehouseId: sourceWarehouseId || session?.user.warehouseId,
+          modeOfTransportation,
+          fbaTrackingId: tracking,
           attachments: allAttachments.length > 0 ? allAttachments : null,
         }),
       })
@@ -434,6 +439,7 @@ export default function WarehouseShipPage() {
           fbaTrackingId: tracking,
           shipDate: date,
           carrier,
+          modeOfTransportation,
           warehouse: sourceWarehouse,
           items: validItems.map(item => {
             const sku = skus.find(s => s.skuCode === item.skuCode)
@@ -484,7 +490,7 @@ export default function WarehouseShipPage() {
           {/* Header Information */}
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">Shipment Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Order Number
@@ -527,6 +533,8 @@ export default function WarehouseShipPage() {
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Ship Date
@@ -541,8 +549,22 @@ export default function WarehouseShipPage() {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Pickup Date
+                </label>
+                <input
+                  type="date"
+                  name="pickupDate"
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  defaultValue={new Date().toISOString().split('T')[0]}
+                  max={new Date().toISOString().split('T')[0]}
+                  min={new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0]}
+                  required
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Carrier
@@ -563,6 +585,23 @@ export default function WarehouseShipPage() {
                   <option value="Other">Other</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mode of Transportation
+                </label>
+                <select
+                  name="modeOfTransportation"
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                >
+                  <option value="">Select Mode...</option>
+                  <option value="SPD">SPD - Small Parcel Delivery</option>
+                  <option value="LTL">LTL - Less Than Truckload</option>
+                  <option value="FTL">FTL - Full Truckload</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   FBA Tracking ID

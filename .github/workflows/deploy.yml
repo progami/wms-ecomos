@@ -1,0 +1,142 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-before-deploy:
+    name: Test Before Deploy
+    uses: ./.github/workflows/tests.yml
+    secrets: inherit
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [test-before-deploy]
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --production
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Build application
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.STAGING_NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.STAGING_URL }}
+        run: npm run build
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: npx prisma migrate deploy
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploy to staging server"
+          # Add your deployment script here
+          # Examples: 
+          # - Deploy to Vercel
+          # - Deploy to AWS
+          # - Deploy to custom VPS
+          # - Deploy to Docker registry
+
+      - name: Run smoke tests on staging
+        run: |
+          echo "Running smoke tests on staging environment"
+          # Add smoke test commands here
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Staging deployment successful"
+          else
+            echo "❌ Staging deployment failed"
+          fi
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --production
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Build application
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.PRODUCTION_NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.PRODUCTION_URL }}
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Backup production database
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          echo "Creating database backup before deployment"
+          # Add backup script here
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: npx prisma migrate deploy
+
+      - name: Deploy to production
+        run: |
+          echo "Deploy to production server"
+          # Add your production deployment script here
+
+      - name: Verify deployment
+        run: |
+          echo "Verifying production deployment"
+          # Add verification script here
+          # - Check health endpoint
+          # - Run critical path tests
+          # - Verify database connectivity
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, initiating rollback"
+          # Add rollback script here
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Production deployment successful"
+            # Send success notification (Slack, email, etc.)
+          else
+            echo "❌ Production deployment failed"
+            # Send failure notification with urgency
+          fi

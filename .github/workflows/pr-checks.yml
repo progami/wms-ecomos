@@ -1,0 +1,327 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      database: ${{ steps.filter.outputs.database }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      tests: ${{ steps.filter.outputs.tests }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            database:
+              - 'prisma/**'
+              - '**/*.sql'
+            frontend:
+              - 'src/app/**'
+              - 'src/components/**'
+              - 'src/**/*.tsx'
+              - 'src/**/*.css'
+              - 'tailwind.config.js'
+              - 'postcss.config.js'
+            backend:
+              - 'src/lib/**'
+              - 'src/modules/**'
+              - 'src/app/api/**'
+              - 'src/**/*.ts'
+              - '!src/**/*.test.ts'
+            tests:
+              - 'tests/**'
+              - '**/*.test.ts'
+              - '**/*.test.tsx'
+              - '**/*.spec.ts'
+              - 'playwright.config.ts'
+              - 'jest.config.js'
+
+  quick-checks:
+    name: Quick Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Check formatting
+        run: |
+          npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Check for console.log statements
+        run: |
+          ! grep -r "console\.log" src/ --include="*.ts" --include="*.tsx" --exclude-dir=__tests__ || (echo "Found console.log statements" && exit 1)
+
+      - name: Check for TODO comments
+        run: |
+          grep -r "TODO\|FIXME\|XXX" src/ --include="*.ts" --include="*.tsx" || echo "No TODO comments found"
+
+  unit-tests:
+    name: Unit Tests
+    needs: [quick-checks]
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: warehouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+
+      - name: Run unit tests
+        run: npm run test:ci
+
+      - name: Check coverage thresholds
+        run: |
+          npx jest --coverage --coverageThreshold='{"global":{"branches":60,"functions":60,"lines":60,"statements":60}}'
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+
+  e2e-smoke-tests:
+    name: E2E Smoke Tests
+    needs: [quick-checks]
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: warehouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run E2E smoke tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
+          NEXTAUTH_SECRET: test-secret-for-ci-only
+          NEXTAUTH_URL: http://localhost:3000
+        run: |
+          # Run only critical path tests for PRs
+          npm run test:e2e -- tests/e2e/auth.spec.ts tests/e2e/dashboard.spec.ts --project=chromium
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-smoke-results
+          path: test-results/
+
+  database-checks:
+    name: Database Checks
+    needs: [changes]
+    if: needs.changes.outputs.database == 'true'
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: warehouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Check migration safety
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
+        run: |
+          # Deploy migrations to fresh database
+          npx prisma migrate deploy
+          
+          # Run seed to verify it works with new schema
+          npx prisma db seed
+          
+          echo "✅ Database migrations are safe to deploy"
+
+  build-check:
+    name: Build Check
+    needs: [quick-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Build application
+        run: npm run build
+
+      - name: Analyze bundle size
+        run: |
+          echo "## Bundle Size Analysis" > bundle-analysis.md
+          echo "| File | Size |" >> bundle-analysis.md
+          echo "|------|------|" >> bundle-analysis.md
+          find .next/static -name "*.js" -type f -exec ls -lh {} \; | awk '{print "| " $9 " | " $5 " |"}' | head -20 >> bundle-analysis.md
+          
+          cat bundle-analysis.md
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run npm audit
+        run: npm audit --production
+
+      - name: Run security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  all-pr-checks:
+    name: All PR Checks Pass
+    needs: [quick-checks, unit-tests, e2e-smoke-tests, build-check, security-scan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.quick-checks.result }}" != "success" ] || 
+             [ "${{ needs.unit-tests.result }}" != "success" ] || 
+             [ "${{ needs.e2e-smoke-tests.result }}" != "success" ] || 
+             [ "${{ needs.build-check.result }}" != "success" ] || 
+             [ "${{ needs.security-scan.result }}" != "success" ]; then
+            echo "❌ One or more checks failed"
+            exit 1
+          else
+            echo "✅ All PR checks passed!"
+          fi

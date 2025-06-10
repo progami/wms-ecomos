@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated users from login page
   if (pathname === '/auth/login' && token) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = isAdmin ? '/admin/dashboard' : '/dashboard'
     return NextResponse.redirect(url)
   }
 

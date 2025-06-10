@@ -158,7 +158,7 @@ export function MainNav() {
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} className="flex items-center gap-2">
               <Package2 className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold">WMS</span>
             </Link>
@@ -261,7 +261,7 @@ export function MainNav() {
               </div>
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 pb-4">
                 <div className="flex h-16 shrink-0 items-center">
-                  <Link href="/" className="flex items-center gap-2">
+                  <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} className="flex items-center gap-2">
                     <Package2 className="h-8 w-8 text-primary" />
                     <span className="text-xl font-bold">WMS</span>
                   </Link>

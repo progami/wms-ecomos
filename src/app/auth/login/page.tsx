@@ -9,7 +9,7 @@ import { Package2 } from 'lucide-react'
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const callbackUrl = searchParams.get('callbackUrl')
   
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -32,7 +32,13 @@ export default function LoginPage() {
         toast.error('Invalid email/username or password')
       } else {
         toast.success('Login successful!')
-        router.push(callbackUrl)
+        // If there's a callback URL, use it. Otherwise, let middleware handle the redirect
+        if (callbackUrl) {
+          router.push(callbackUrl)
+        } else {
+          // Redirect to home and let middleware handle role-based routing
+          router.push('/')
+        }
         router.refresh()
       }
     } catch (error) {

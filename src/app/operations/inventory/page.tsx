@@ -8,7 +8,7 @@ import { Search, Filter, Download, Package2, Calendar, AlertCircle, BookOpen, Pa
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ImmutableLedgerNotice } from '@/components/ui/immutable-ledger-notice'
+import { LedgerInfoTooltip } from '@/components/ui/ledger-info-tooltip'
 import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/lib/utils'
 import { InventoryTabs } from '@/components/operations/inventory-tabs'
@@ -48,6 +48,8 @@ interface Transaction {
   createdAt: string
   runningBalance?: number
   shipName?: string | null
+  modeOfTransportation?: string | null
+  fbaTrackingId?: string | null
   containerNumber?: string | null
   storageCartonsPerPallet?: number | null
   shippingCartonsPerPallet?: number | null
@@ -83,7 +85,7 @@ export default function UnifiedInventoryPage() {
     maxCartons: '',
     showLowStock: false,
     showZeroStock: false,
-    showMissingAttributes: false
+    showIncomplete: false
   })
 
   useEffect(() => {
@@ -257,7 +259,7 @@ export default function UnifiedInventoryPage() {
       const transactionDate = new Date(transaction.transactionDate)
       if (filters.endDate && transactionDate > new Date(filters.endDate)) return false
 
-      if (filters.showMissingAttributes) {
+      if (filters.showIncomplete) {
         const missing = getMissingAttributes(transaction)
         if (missing.length === 0) return false
       }
@@ -300,13 +302,38 @@ export default function UnifiedInventoryPage() {
   const getMissingAttributes = (transaction: Transaction) => {
     const missing: string[] = []
     
+    if (transaction.transactionType === 'SHIP') {
+      // Check if carrier info is in notes but not in proper field
+      if (transaction.notes?.includes('Carrier:') && !transaction.modeOfTransportation) {
+        missing.push('Mode of Transport')
+      }
+      
+      // Check for carrier in notes
+      if (transaction.notes?.includes('Carrier:')) {
+        missing.push('Carrier')
+      }
+      
+      // If no FBA tracking ID but it might be an Amazon shipment
+      if (!transaction.fbaTrackingId && (transaction.referenceId?.includes('FBA') || transaction.notes?.includes('FBA'))) {
+        missing.push('FBA Tracking')
+      }
+    }
+    
     if (transaction.transactionType === 'RECEIVE') {
-      if (!transaction.containerNumber) missing.push('Container #')
-      if (!transaction.attachments) missing.push('Attachments')
-    } else if (transaction.transactionType === 'SHIP') {
-      if (!transaction.pickupDate) missing.push('Pickup Date')
-      if (!transaction.shipName) missing.push('Destination')
-      if (!transaction.attachments) missing.push('Attachments')
+      // Check for ship name in reference but not in field
+      if (!transaction.shipName && (transaction.referenceId?.includes('OOCL') || transaction.referenceId?.includes('MSC'))) {
+        missing.push('Ship Name')
+      }
+      
+      // Container number is often missing
+      if (!transaction.containerNumber) {
+        missing.push('Container #')
+      }
+    }
+    
+    // Common missing fields
+    if (!transaction.notes || transaction.notes === '') {
+      missing.push('Notes')
     }
     
     return missing
@@ -531,11 +558,11 @@ export default function UnifiedInventoryPage() {
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
-                        checked={filters.showMissingAttributes}
-                        onChange={(e) => setFilters({...filters, showMissingAttributes: e.target.checked})}
+                        checked={filters.showIncomplete}
+                        onChange={(e) => setFilters({...filters, showIncomplete: e.target.checked})}
                         className="rounded border-gray-300"
                       />
-                      <span className="text-sm">Missing Attributes Only</span>
+                      <span className="text-sm">Incomplete Only</span>
                     </label>
                   </div>
                 )}
@@ -554,7 +581,7 @@ export default function UnifiedInventoryPage() {
                       maxCartons: '',
                       showLowStock: false,
                       showZeroStock: false,
-                      showMissingAttributes: false
+                      showIncomplete: false
                     })
                   }}
                   className="text-sm text-primary hover:underline"
@@ -566,24 +593,8 @@ export default function UnifiedInventoryPage() {
           )}
         </div>
 
-        {/* Show immutable notice for ledger tab */}
+        {/* Empty div for transactions tab - info moved to header */}
         <div className={activeTab === 'transactions' ? '' : 'hidden'}>
-          <ImmutableLedgerNotice />
-          
-          {/* Reconciliation Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-            <div className="flex items-start gap-3">
-              <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div className="space-y-2">
-                <h3 className="font-medium text-blue-900">About Transaction Status</h3>
-                <div className="text-sm text-blue-800 space-y-1">
-                  <p><strong>Reconciled:</strong> Transaction has been verified against warehouse invoices and billing records. This confirms the transaction was properly billed and paid for.</p>
-                  <p><strong>Unreconciled:</strong> Transaction has not yet been matched with warehouse invoices. This is normal for recent transactions that haven't been billed yet.</p>
-                  <p className="text-xs mt-2">Note: Currently all transactions show as unreconciled. The reconciliation process happens during invoice processing in the Finance module.</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Content based on active tab */}
@@ -782,12 +793,12 @@ export default function UnifiedInventoryPage() {
                 </p>
               </div>
               <div className="border rounded-lg p-4 bg-yellow-50">
-                <p className="text-sm text-yellow-800">Missing Attributes</p>
+                <p className="text-sm text-yellow-800">Incomplete</p>
                 <p className="text-2xl font-bold text-yellow-600">
                   {filteredAndSortedTransactions.filter(t => getMissingAttributes(t).length > 0).length.toLocaleString()}
                 </p>
                 <p className="text-xs text-yellow-700 mt-1">
-                  {Math.round((filteredAndSortedTransactions.filter(t => getMissingAttributes(t).length > 0).length / filteredAndSortedTransactions.length) * 100)}% incomplete
+                  {Math.round((filteredAndSortedTransactions.filter(t => getMissingAttributes(t).length > 0).length / filteredAndSortedTransactions.length) * 100)}% need attention
                 </p>
               </div>
             </div>
@@ -797,9 +808,12 @@ export default function UnifiedInventoryPage() {
               <div className="bg-gray-50 px-6 py-3 border-b">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold">Inventory Ledger Details</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold">Inventory Ledger Details</h3>
+                      <LedgerInfoTooltip />
+                    </div>
                     <p className="text-sm text-gray-600 mt-1">
-                      All inventory movements in chronological order • Click any transaction to view details or add missing attributes
+                      All inventory movements in chronological order • Click any transaction to view details
                     </p>
                   </div>
                   <div className="text-sm text-gray-600">
@@ -871,20 +885,17 @@ export default function UnifiedInventoryPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Notes
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Missing Data
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAndSortedTransactions.map((transaction) => {
                       const missingAttributes = getMissingAttributes(transaction)
-                      const hasMissingData = missingAttributes.length > 0
+                      const isIncomplete = missingAttributes.length > 0
                       
                       return (
                       <tr 
                         key={transaction.id} 
-                        className={`hover:bg-gray-50 cursor-pointer ${hasMissingData ? 'bg-yellow-50' : ''}`}
+                        className={`hover:bg-gray-50 cursor-pointer ${isIncomplete ? 'border-l-4 border-l-yellow-400' : ''}`}
                         onClick={() => router.push(`/operations/transactions/${transaction.id}`)}>
                         <td className="px-4 py-3 text-sm">
                           <div className="text-gray-900">
@@ -959,7 +970,14 @@ export default function UnifiedInventoryPage() {
                           {transaction.batchLot}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
-                          {transaction.referenceId}
+                          <div className="flex items-center gap-1">
+                            {isIncomplete && (
+                              <Tooltip content={`Missing: ${missingAttributes.join(', ')}`}>
+                                <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                              </Tooltip>
+                            )}
+                            <span>{transaction.referenceId}</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-center">
                           <div className="space-y-1">
@@ -1054,31 +1072,30 @@ export default function UnifiedInventoryPage() {
                           {transaction.createdBy.fullName}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          <div className="max-w-xs truncate" title={transaction.notes || ''}>
-                            {transaction.notes || '-'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {missingAttributes.length > 0 ? (
-                            <div className="space-y-1">
-                              {missingAttributes.map((attr, idx) => (
-                                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 mr-1">
-                                  {attr}
-                                </span>
-                              ))}
+                          <div className="max-w-xs space-y-1">
+                            <div className="flex flex-wrap gap-1">
+                              {transaction.transactionType === 'SHIP' && transaction.modeOfTransportation && (
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {transaction.modeOfTransportation}
+                                </div>
+                              )}
+                              {transaction.transactionType === 'SHIP' && transaction.fbaTrackingId && (
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  {transaction.fbaTrackingId}
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                              Complete
-                            </span>
-                          )}
+                            <div className="truncate" title={transaction.notes || ''}>
+                              {transaction.notes || '-'}
+                            </div>
+                          </div>
                         </td>
                       </tr>
                       )
                     })}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={17} className="px-6 py-12">
+                        <td colSpan={16} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"

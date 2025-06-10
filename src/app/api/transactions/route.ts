@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { type, referenceNumber, date, items, notes, shipName, containerNumber, attachments } = body
+    const { type, referenceNumber, date, pickupDate, items, notes, shipName, containerNumber, attachments, modeOfTransportation, fbaTrackingId } = body
 
     // Validate transaction type
     if (!type || !['RECEIVE', 'SHIP'].includes(type)) {
@@ -293,9 +293,11 @@ export async function POST(request: NextRequest) {
           notes,
           shipName: type === 'RECEIVE' ? shipName : null,
           containerNumber: type === 'RECEIVE' ? containerNumber : null,
+          modeOfTransportation: type === 'SHIP' ? modeOfTransportation : null,
+          fbaTrackingId: type === 'SHIP' ? fbaTrackingId : null,
           attachments: type === 'RECEIVE' && attachments ? attachments : null,
           transactionDate: new Date(date),
-          pickupDate: new Date(date), // Set pickup date same as transaction date
+          pickupDate: pickupDate ? new Date(pickupDate) : new Date(date), // Use provided pickup date or default to transaction date
           createdById: session.user.id,
         }
       })

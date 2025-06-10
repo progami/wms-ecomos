@@ -358,6 +358,7 @@ export default function WarehouseReceivePage() {
     
     const formData = new FormData(e.target as HTMLFormElement)
     const receiptDate = formData.get('receiptDate') as string
+    const pickupDate = formData.get('pickupDate') as string
     
     // Validate date is not in future
     const receiptDateObj = new Date(receiptDate)
@@ -474,6 +475,7 @@ export default function WarehouseReceivePage() {
           type: 'RECEIVE',
           referenceNumber: ciNumber, // Use CI number as reference
           date: receiptDate,
+          pickupDate,
           items: validItems,
           notes: fullNotes,
           shipName,
@@ -584,6 +586,18 @@ export default function WarehouseReceivePage() {
                 <input
                   type="date"
                   name="receiptDate"
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  defaultValue={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Pickup Date
+                </label>
+                <input
+                  type="date"
+                  name="pickupDate"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   defaultValue={new Date().toISOString().split('T')[0]}
                   required

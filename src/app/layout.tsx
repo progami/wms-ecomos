@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Warehouse Management System',
+  title: 'WMS',
   description: 'Modern warehouse inventory and billing management',
   keywords: ['warehouse', 'inventory', 'billing', 'management', '3PL'],
 }
