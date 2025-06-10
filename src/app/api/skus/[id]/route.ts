@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+export const dynamic = 'force-dynamic'
 
 // GET /api/skus/[id] - Get a single SKU by ID
 export async function GET(

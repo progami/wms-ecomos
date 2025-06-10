@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { canAccessInvoice } from '@/lib/auth-utils';
 import { Money } from '@/lib/financial-utils';
 import prisma from '@/lib/prisma';
+export const dynamic = 'force-dynamic'
 
 interface RouteParams {
   params: {

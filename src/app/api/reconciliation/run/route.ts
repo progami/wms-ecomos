@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { Money, calculateReconciliationDifference } from '@/lib/financial-utils'
 import { 
+
+export const dynamic = 'force-dynamic'
+
   getCalculatedCostsSummary, 
   getBillingPeriod,
   type BillingPeriod 

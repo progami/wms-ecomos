@@ -6,6 +6,7 @@ import { Money, parseMoney, calculateReconciliationDifference } from '@/lib/fina
 import prisma from '@/lib/prisma'
 import { parse } from 'csv-parse/sync'
 import * as XLSX from 'xlsx'
+export const dynamic = 'force-dynamic'
 
 interface InvoiceUploadData {
   invoiceNumber: string

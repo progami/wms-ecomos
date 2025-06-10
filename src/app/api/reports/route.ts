@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx'
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { getWarehouseFilter } from '@/lib/auth-utils'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 // Validation schemas
 const createInvoiceSchema = z.object({

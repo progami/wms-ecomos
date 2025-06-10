@@ -7,6 +7,8 @@ import {
   calculateAllCosts
 } from '@/lib/calculations/cost-aggregation'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)

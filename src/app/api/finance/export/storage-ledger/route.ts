@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { stringify } from 'csv-stringify/sync'
+export const dynamic = 'force-dynamic'
 
 // Get ISO week number
 function getWeekNumber(date: Date): number {

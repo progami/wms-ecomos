@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getInventory, getCatalogItem } from '@/lib/amazon/client'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {

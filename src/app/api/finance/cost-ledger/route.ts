@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateAllCosts } from '@/lib/calculations/cost-aggregation'
 import { startOfWeek, endOfWeek, format, startOfMonth, endOfMonth } from 'date-fns'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {

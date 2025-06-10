@@ -8,6 +8,7 @@ import {
   type BillingPeriod 
 } from '@/lib/calculations/cost-aggregation';
 import { parseISO, isValid } from 'date-fns';
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {

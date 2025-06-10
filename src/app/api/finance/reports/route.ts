@@ -6,6 +6,7 @@ import { Money } from '@/lib/financial-utils'
 import prisma from '@/lib/prisma'
 import * as XLSX from 'xlsx'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {

@@ -7,6 +7,7 @@ import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { createReadStream } from 'fs'
+export const dynamic = 'force-dynamic'
 
 export async function GET(_request: NextRequest) {
   try {
