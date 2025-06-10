@@ -4,13 +4,12 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { Money, calculateReconciliationDifference } from '@/lib/financial-utils'
 import { 
-
-export const dynamic = 'force-dynamic'
-
   getCalculatedCostsSummary, 
   getBillingPeriod,
   type BillingPeriod 
 } from '@/lib/calculations/cost-aggregation'
+
+export const dynamic = 'force-dynamic'
 
 // POST /api/reconciliation/run - Run reconciliation for a period
 export async function POST(req: NextRequest) {
