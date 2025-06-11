@@ -69,6 +69,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
           NEXTAUTH_SECRET: test-secret-for-ci-only
           NEXTAUTH_URL: http://localhost:3000
+          CI: true
         run: npm run test:e2e
 
       - name: Generate test report

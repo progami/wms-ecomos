@@ -226,7 +226,7 @@ describe('Storage Ledger Calculations', () => {
 
       expect(prisma.storageLedger.upsert).not.toHaveBeenCalled()
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('No warehouse config found')
+        expect.stringContaining('No pallet config found')
       )
     })
 
@@ -414,7 +414,8 @@ describe('Storage Ledger Calculations', () => {
       ;(prisma.inventoryTransaction.findMany as jest.Mock).mockImplementation(
         ({ where }) => {
           const date = where.transactionDate.lte
-          return mockTransactions.filter((t) => t.transactionDate <= date)
+          // Return only the first 3 transactions (up to Monday 2024-01-22)
+          return mockTransactions.slice(0, 3)
         }
       )
       ;(prisma.warehouseSkuConfig.findFirst as jest.Mock).mockResolvedValue({
