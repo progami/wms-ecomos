@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Building, Globe, Clock, Save } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 interface GeneralSettings {
   companyName: string

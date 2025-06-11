@@ -20,7 +20,7 @@ import {
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import { formatCurrency } from '@/lib/utils'
 
 interface CostDetail {

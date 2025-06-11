@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { ErrorBoundary } from './error-boundary'
 import { ConfigProvider, App, theme as antdTheme } from 'antd'
 import { theme, darkTheme } from '@/lib/antd-theme'
+import { configureToast } from '@/lib/toast'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -56,7 +57,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <ConfigProvider theme={currentTheme}>
             <App>
-              {children}
+              {({ message, notification }) => {
+                // Configure toast with Ant Design instances
+                useEffect(() => {
+                  configureToast(message, notification)
+                }, [message, notification])
+                
+                return children
+              }}
             </App>
           </ConfigProvider>
         </QueryClientProvider>

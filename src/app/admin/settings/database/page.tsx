@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Database, HardDrive, Clock, AlertTriangle, Save, Download, Upload, RefreshCw, Trash2 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 

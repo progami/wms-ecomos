@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader, HelpfulTips } from '@/components/ui/page-header'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 export default function AdminSettingsPage() {
   const { data: session, status } = useSession()

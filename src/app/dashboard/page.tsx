@@ -20,7 +20,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { QuickStartGuide } from '@/components/ui/quick-start-guide'
 import Link from 'next/link'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 // Helper function to get relative time
 function getTimeAgo(date: Date): string {

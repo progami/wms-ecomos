@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Truck, Plus, Save, X, AlertTriangle, Upload, FileText, Mail, Check } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import { useSession } from 'next-auth/react'
 
 interface Sku {

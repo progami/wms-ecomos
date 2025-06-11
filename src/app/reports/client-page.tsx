@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Download, Calendar, FileText, Package } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 interface ReportAction {
   type: string

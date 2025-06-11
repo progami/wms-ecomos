@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { Building, Save, X, Calendar } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 interface WarehouseConfig {
   id: string

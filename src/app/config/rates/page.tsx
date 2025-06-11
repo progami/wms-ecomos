@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import { DollarSign, Plus, Edit2, Calendar, AlertCircle, Filter, X } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import Link from 'next/link'
 
 interface CostRate {

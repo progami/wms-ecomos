@@ -16,7 +16,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 
 interface Transaction {
   id: string

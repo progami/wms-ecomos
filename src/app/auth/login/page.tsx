@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import { Package2 } from 'lucide-react'
 
 export default function LoginPage() {

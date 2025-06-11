@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Calendar, Download, Package, DollarSign, BarChart3, ChevronDown, ChevronRight } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
-import { toast } from 'react-hot-toast'
+import { toast } from '@/lib/toast'
 import { formatCurrency } from '@/lib/utils'
 
 interface StorageSnapshot {
