@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronRight, Home } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { Breadcrumb as AntBreadcrumb } from 'antd'
+import { HomeOutlined } from '@ant-design/icons'
 
 export function Breadcrumb() {
   const pathname = usePathname()
@@ -17,79 +18,68 @@ export function Breadcrumb() {
   // Parse the pathname into segments
   const segments = pathname.split('/').filter(Boolean)
   
-  // Create breadcrumb items
-  const breadcrumbs = segments.map((segment, index) => {
-    const href = '/' + segments.slice(0, index + 1).join('/')
-    
-    // Handle special cases for better labels
-    let label = segment
+  // Handle special cases for better labels
+  const formatLabel = (segment: string) => {
     switch (segment) {
       case 'operations':
-        label = 'Operations'
-        break
+        return 'Operations'
       case 'finance':
-        label = 'Finance'
-        break
+        return 'Finance'
       case 'config':
-        label = 'Configuration'
-        break
+        return 'Configuration'
       case 'admin':
-        label = 'Admin'
-        break
+        return 'Admin'
       case 'integrations':
-        label = 'Integrations'
-        break
+        return 'Integrations'
       case 'transactions':
-        label = 'Transactions'
-        break
+        return 'Transactions'
       case 'inventory':
-        label = 'Inventory Ledger'
-        break
+        return 'Inventory Ledger'
       default:
         // For IDs and other segments, format them nicely
         if (segment.match(/^[a-f0-9-]+$/i) && segment.length > 20) {
           // Looks like an ID, truncate it
-          label = segment.substring(0, 8) + '...'
+          return segment.substring(0, 8) + '...'
         } else {
-          label = segment
+          return segment
             .split('-')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ')
         }
     }
-    
-    return { href, label }
-  })
+  }
 
   // Determine home link based on user role
   const homeLink = session?.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard'
 
-  return (
-    <nav className="flex items-center space-x-1 text-sm text-gray-600 mb-4">
-      <Link
-        href={homeLink}
-        className="flex items-center hover:text-gray-900 transition-colors"
-      >
-        <Home className="h-4 w-4" />
-      </Link>
+  // Create breadcrumb items
+  const items = [
+    {
+      title: (
+        <Link href={homeLink} className="flex items-center">
+          <HomeOutlined />
+        </Link>
+      ),
+    },
+    ...segments.map((segment, index) => {
+      const href = '/' + segments.slice(0, index + 1).join('/')
+      const label = formatLabel(segment)
+      const isLast = index === segments.length - 1
       
-      {breadcrumbs.map((breadcrumb, index) => (
-        <div key={breadcrumb.href} className="flex items-center">
-          <ChevronRight className="h-4 w-4 mx-1 text-gray-400" />
-          {index === breadcrumbs.length - 1 ? (
-            <span className="font-medium text-gray-900">
-              {breadcrumb.label}
-            </span>
-          ) : (
-            <Link
-              href={breadcrumb.href}
-              className="hover:text-gray-900 transition-colors"
-            >
-              {breadcrumb.label}
-            </Link>
-          )}
-        </div>
-      ))}
-    </nav>
+      return {
+        title: isLast ? (
+          <span className="font-medium">{label}</span>
+        ) : (
+          <Link href={href}>{label}</Link>
+        ),
+      }
+    }),
+  ]
+
+  return (
+    <AntBreadcrumb 
+      items={items}
+      className="mb-4 text-sm"
+    />
   )
 }

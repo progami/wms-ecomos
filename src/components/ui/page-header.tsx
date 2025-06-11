@@ -1,5 +1,8 @@
 import React from 'react'
+import { Card, Alert, Typography, Space } from 'antd'
 import { LucideIcon } from 'lucide-react'
+
+const { Title, Text } = Typography
 
 interface PageHeaderProps {
   title: string
@@ -25,33 +28,30 @@ export function PageHeader({
   actions
 }: PageHeaderProps) {
   return (
-    <div className="bg-white border rounded-lg p-6">
+    <Card className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">{title}</h1>
+          <Title level={2} className="!mb-2">{title}</Title>
           {subtitle && (
-            <p className="text-muted-foreground">{subtitle}</p>
+            <Text type="secondary">{subtitle}</Text>
           )}
         </div>
         {actions && (
-          <div className="flex items-center gap-2">
+          <Space>
             {actions}
-          </div>
+          </Space>
         )}
       </div>
       
-      <div className={`${bgColor} border ${borderColor} rounded-lg p-4`}>
-        <div className="flex items-start">
-          {Icon && (
-            <Icon className={`h-5 w-5 ${iconColor} mt-0.5 mr-3 flex-shrink-0`} />
-          )}
-          <div className={`text-sm ${textColor}`}>
-            <p className="font-semibold mb-1">About This Page:</p>
-            <p>{description}</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Alert
+        message="About This Page:"
+        description={description}
+        type="info"
+        showIcon={!!Icon}
+        icon={Icon ? <Icon className={`h-5 w-5 ${iconColor}`} /> : undefined}
+        className={`${bgColor} ${borderColor} ${textColor}`}
+      />
+    </Card>
   )
 }
 
@@ -76,20 +76,19 @@ export function HelpfulTips({
   textColor = 'text-blue-800'
 }: HelpfulTipsProps) {
   return (
-    <div className={`${bgColor} border ${borderColor} rounded-lg p-4`}>
-      <div className="flex items-start">
-        {Icon && (
-          <Icon className={`h-5 w-5 ${iconColor} mt-0.5 mr-3 flex-shrink-0`} />
-        )}
-        <div className={`text-sm ${textColor}`}>
-          <p className="font-semibold mb-1">{title}</p>
-          <ul className="list-disc list-inside space-y-1">
-            {tips.map((tip, index) => (
-              <li key={index}>{tip}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
+    <Alert
+      message={title}
+      description={
+        <ul className="list-disc list-inside space-y-1 mt-2">
+          {tips.map((tip, index) => (
+            <li key={index}>{tip}</li>
+          ))}
+        </ul>
+      }
+      type="info"
+      showIcon={!!Icon}
+      icon={Icon ? <Icon className={`h-5 w-5 ${iconColor}`} /> : undefined}
+      className={`${bgColor} ${borderColor} ${textColor}`}
+    />
   )
 }
