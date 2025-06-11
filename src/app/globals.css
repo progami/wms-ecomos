@@ -2,8 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ant Design Reset */
-@import '~antd/dist/reset.css';
+/* Ant Design styles are loaded via Next.js registry */
 
 @layer base {
   :root {
