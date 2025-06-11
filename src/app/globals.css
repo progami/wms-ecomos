@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ant Design Reset */
+@import '~antd/dist/reset.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;
