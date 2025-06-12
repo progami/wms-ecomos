@@ -261,7 +261,7 @@ export default function UnifiedInventoryPage() {
         if (!transaction.sku.skuCode.toLowerCase().includes(query) &&
             !transaction.sku.description.toLowerCase().includes(query) &&
             !transaction.batchLot.toLowerCase().includes(query) &&
-            !transaction.referenceId.toLowerCase().includes(query) &&
+            !(transaction.referenceId?.toLowerCase().includes(query)) &&
             !transaction.warehouse.name.toLowerCase().includes(query) &&
             !(transaction.shipName?.toLowerCase().includes(query)) &&
             !(transaction.trackingNumber?.toLowerCase().includes(query))) {

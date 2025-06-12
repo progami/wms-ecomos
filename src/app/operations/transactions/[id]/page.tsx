@@ -144,13 +144,13 @@ export default function TransactionDetailPage() {
       
       // Set form data
       setFormData({
-        ciNumber: data.referenceId || ciMatch?.[1]?.trim() || '',
-        packingListNumber: plMatch?.[1]?.trim() || '',
-        tcNumber: tcMatch?.[1]?.trim() || '',
-        supplier: supplierMatch?.[1]?.trim() || '',
-        shipName: data.shipName || shipMatch?.[1]?.trim() || '',
-        trackingNumber: data.trackingNumber || trackingMatch?.[1]?.trim() || fbaMatch?.[1]?.trim() || '',
-        carrier: carrierMatch?.[1]?.trim() || '',
+        ciNumber: data.referenceId || '',
+        packingListNumber: '',
+        tcNumber: '',
+        supplier: '',
+        shipName: data.shipName || '',
+        trackingNumber: data.trackingNumber || '',
+        carrier: '',
         pickupDate: data.pickupDate || '',
         cartons: data.transactionType === 'RECEIVE' ? data.cartonsIn : data.cartonsOut,
         pallets: data.transactionType === 'RECEIVE' ? data.storagePalletsIn : data.shippingPalletsOut,
