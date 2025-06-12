@@ -136,7 +136,7 @@ jobs:
           npm test -- tests/__tests__/lib/dynamic-export.test.ts --coverage
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage/lcov.info
           flags: business-logic
@@ -199,7 +199,7 @@ jobs:
           npm test -- ${{ matrix.test-group.path }} --coverage
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage/lcov.info
           flags: api-integration
