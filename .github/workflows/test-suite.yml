@@ -85,7 +85,7 @@ jobs:
     if: needs.test-matrix.outputs.unit-tests == 'true'
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -153,7 +153,7 @@ jobs:
     if: needs.test-matrix.outputs.api-tests == 'true'
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -216,7 +216,7 @@ jobs:
     if: needs.test-matrix.outputs.e2e-tests == 'true'
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -367,7 +367,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
