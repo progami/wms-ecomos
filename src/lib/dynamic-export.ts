@@ -33,12 +33,12 @@ const defaultFormatters = {
 }
 
 // Get model fields from Prisma DMMF
-export function getModelFields(modelName: string): Prisma.DMMF.Field[] {
+export function getModelFields(modelName: string): readonly Prisma.DMMF.Field[] {
   const model = Prisma.dmmf.datamodel.models.find(m => m.name === modelName)
   if (!model) {
     throw new Error(`Model ${modelName} not found in Prisma schema`)
   }
-  return model.fields
+  return model.fields as readonly Prisma.DMMF.Field[]
 }
 
 // Convert field name to display column name

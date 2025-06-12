@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -15,6 +15,7 @@ import { InventoryTabs } from '@/components/operations/inventory-tabs'
 import { IncompleteTransactionsAlert } from '@/components/operations/incomplete-transactions-alert'
 import { Tooltip } from '@/components/ui/tooltip'
 import { ImportButton } from '@/components/ui/import-button'
+import { getUIColumns, getBalanceUIColumns } from '@/lib/column-ordering'
 
 interface InventoryBalance {
   id: string
@@ -738,33 +739,20 @@ export default function UnifiedInventoryPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Warehouse
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      SKU Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Batch/Lot
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cartons
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pallet Config
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pallets
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Units
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Activity
-                    </th>
+                    {getBalanceUIColumns().map((column) => (
+                      <th 
+                        key={column.fieldName}
+                        className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                          column.fieldName === 'currentCartons' || column.fieldName === 'currentPallets' || column.fieldName === 'currentUnits'
+                            ? 'text-right'
+                            : column.fieldName === 'storageCartonsPerPallet' || column.fieldName === 'shippingCartonsPerPallet'
+                            ? 'text-center'
+                            : 'text-left'
+                        }`}
+                      >
+                        {column.displayName}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -776,75 +764,131 @@ export default function UnifiedInventoryPage() {
                       <tr key={balance.id} className={`hover:bg-gray-50 transition-colors ${
                         isZeroStock ? 'bg-red-50' : isLowStock ? 'bg-orange-50' : ''
                       }`}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {balance.warehouse.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {balance.sku.skuCode}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {balance.sku.description}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {balance.batchLot}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {isZeroStock && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Out
-                              </span>
-                            )}
-                            {isLowStock && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                Low
-                              </span>
-                            )}
-                            <span className={`font-medium ${
-                              isZeroStock ? 'text-red-600' : isLowStock ? 'text-orange-600' : 'text-gray-900'
-                            }`}>
-                              {balance.currentCartons.toLocaleString()}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="text-xs text-gray-600">
-                            {balance.storageCartonsPerPallet && balance.shippingCartonsPerPallet ? (
-                              <div className="space-y-1">
-                                <div title="Storage cartons per pallet">
-                                  S: {balance.storageCartonsPerPallet}/pallet
-                                </div>
-                                <div title="Shipping cartons per pallet">
-                                  P: {balance.shippingCartonsPerPallet}/pallet
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {balance.currentPallets}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {balance.currentUnits.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {balance.lastTransactionDate
-                            ? new Date(balance.lastTransactionDate).toLocaleDateString('en-US', {
-                                timeZone: 'America/Chicago',
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })
-                            : 'No activity'}
-                        </td>
+                        {getBalanceUIColumns().map((column) => {
+                          const renderCell = () => {
+                            switch (column.fieldName) {
+                              case 'warehouse':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {balance.warehouse.name}
+                                  </td>
+                                )
+                              
+                              case 'sku':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {balance.sku.skuCode}
+                                  </td>
+                                )
+                              
+                              case 'skuDescription':
+                                return (
+                                  <td className="px-6 py-4 text-sm text-gray-500">
+                                    {balance.sku.description}
+                                  </td>
+                                )
+                              
+                              case 'batchLot':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {balance.batchLot}
+                                  </td>
+                                )
+                              
+                              case 'currentCartons':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      {isZeroStock && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                          Out
+                                        </span>
+                                      )}
+                                      {isLowStock && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                          Low
+                                        </span>
+                                      )}
+                                      <span className={`font-medium ${
+                                        isZeroStock ? 'text-red-600' : isLowStock ? 'text-orange-600' : 'text-gray-900'
+                                      }`}>
+                                        {balance.currentCartons.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </td>
+                                )
+                              
+                              case 'storageCartonsPerPallet':
+                                return (
+                                  <td className="px-6 py-4 text-center">
+                                    <div className="text-xs text-gray-600">
+                                      {balance.storageCartonsPerPallet ? (
+                                        <div title="Storage cartons per pallet">
+                                          S: {balance.storageCartonsPerPallet}
+                                        </div>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                )
+                              
+                              case 'shippingCartonsPerPallet':
+                                return (
+                                  <td className="px-6 py-4 text-center">
+                                    <div className="text-xs text-gray-600">
+                                      {balance.shippingCartonsPerPallet ? (
+                                        <div title="Shipping cartons per pallet">
+                                          P: {balance.shippingCartonsPerPallet}
+                                        </div>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                )
+                              
+                              case 'currentPallets':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                    {balance.currentPallets}
+                                  </td>
+                                )
+                              
+                              case 'currentUnits':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                    {balance.currentUnits.toLocaleString()}
+                                  </td>
+                                )
+                              
+                              case 'lastTransactionDate':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {balance.lastTransactionDate
+                                      ? new Date(balance.lastTransactionDate).toLocaleDateString('en-US', {
+                                          timeZone: 'America/Chicago',
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric'
+                                        })
+                                      : 'No activity'}
+                                  </td>
+                                )
+                              
+                              default:
+                                return <td className="px-6 py-4 text-sm text-gray-500">-</td>
+                            }
+                          }
+                          
+                          return <React.Fragment key={column.fieldName}>{renderCell()}</React.Fragment>
+                        })}
                       </tr>
                     )
                   })}
                   {filteredInventory.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-6 py-12">
+                      <td colSpan={getBalanceUIColumns().length} className="px-6 py-12">
                         <EmptyState
                           icon={Package2}
                           title={searchQuery || Object.values(filters).some(v => v) 
@@ -923,54 +967,37 @@ export default function UnifiedInventoryPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')
-                          }}
-                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                      {getUIColumns().map((column) => (
+                        <th 
+                          key={column.fieldName}
+                          className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                            column.fieldName === 'cartonsIn' || column.fieldName === 'cartonsOut' || column.fieldName === 'isReconciled' 
+                              ? 'text-center' 
+                              : 'text-left'
+                          }`}
                         >
-                          Transaction Date
-                          {sortOrder === 'desc' ? (
-                            <ArrowDown className="h-3 w-3" />
+                          {column.fieldName === 'transactionDate' ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')
+                              }}
+                              className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                            >
+                              {column.displayName}
+                              {sortOrder === 'desc' ? (
+                                <ArrowDown className="h-3 w-3" />
+                              ) : (
+                                <ArrowUp className="h-3 w-3" />
+                              )}
+                            </button>
                           ) : (
-                            <ArrowUp className="h-3 w-3" />
+                            column.displayName
                           )}
-                        </button>
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Type
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Warehouse
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        SKU Code
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        SKU Description
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Batch/Lot
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Cartons In
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Cartons Out
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tracking Number
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Reconciled
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Created By
-                      </th>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -983,86 +1010,141 @@ export default function UnifiedInventoryPage() {
                         key={transaction.id} 
                         className={`hover:bg-gray-50 cursor-pointer ${isIncomplete ? 'border-l-4 border-l-yellow-400' : ''}`}
                         onClick={() => router.push(`/operations/transactions/${transaction.id}`)}>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="text-gray-900">
-                            {new Date(transaction.transactionDate).toLocaleDateString('en-US', {
-                              timeZone: 'America/Chicago',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(transaction.transactionDate).toLocaleTimeString('en-US', {
-                              timeZone: 'America/Chicago',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            getTransactionColor(transaction.transactionType)
-                          }`}>
-                            {transaction.transactionType}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {transaction.warehouse.name}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="font-medium text-gray-900">{transaction.sku.skuCode}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="text-gray-500 truncate max-w-[200px]" title={transaction.sku.description}>
-                            {transaction.sku.description}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {transaction.batchLot}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          <span className={transaction.cartonsIn > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                            {transaction.cartonsIn || '-'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          <span className={transaction.cartonsOut > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>
-                            {transaction.cartonsOut || '-'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          <div className="flex items-center gap-1">
-                            {isIncomplete && (
-                              <Tooltip content={`Missing: ${missingAttributes.join(', ')}`}>
-                                <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                              </Tooltip>
-                            )}
-                            <span className="truncate max-w-[120px]" title={transaction.trackingNumber || ''}>
-                              {transaction.trackingNumber || '-'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          {transaction.isReconciled ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Yes
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              No
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          {transaction.createdBy.fullName}
-                        </td>
+                        {getUIColumns().map((column) => {
+                          // Helper function to render cell content based on field
+                          const renderCell = () => {
+                            switch (column.fieldName) {
+                              case 'transactionDate':
+                                return (
+                                  <td className="px-4 py-3 text-sm">
+                                    <div className="text-gray-900">
+                                      {new Date(transaction.transactionDate).toLocaleDateString('en-US', {
+                                        timeZone: 'America/Chicago',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                      })}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {new Date(transaction.transactionDate).toLocaleTimeString('en-US', {
+                                        timeZone: 'America/Chicago',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </div>
+                                  </td>
+                                )
+                              
+                              case 'transactionType':
+                                return (
+                                  <td className="px-4 py-3 text-sm">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      getTransactionColor(transaction.transactionType)
+                                    }`}>
+                                      {transaction.transactionType}
+                                    </span>
+                                  </td>
+                                )
+                              
+                              case 'isReconciled':
+                                return (
+                                  <td className="px-4 py-3 text-sm text-center">
+                                    {transaction.isReconciled ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Yes
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        No
+                                      </span>
+                                    )}
+                                  </td>
+                                )
+                              
+                              case 'warehouse':
+                                return (
+                                  <td className="px-4 py-3 text-sm text-gray-900">
+                                    {transaction.warehouse.name}
+                                  </td>
+                                )
+                              
+                              case 'sku':
+                                return (
+                                  <td className="px-4 py-3 text-sm">
+                                    <div className="font-medium text-gray-900">{transaction.sku.skuCode}</div>
+                                  </td>
+                                )
+                              
+                              case 'skuDescription':
+                                return (
+                                  <td className="px-4 py-3 text-sm">
+                                    <div className="text-gray-500 truncate max-w-[200px]" title={transaction.sku.description}>
+                                      {transaction.sku.description}
+                                    </div>
+                                  </td>
+                                )
+                              
+                              case 'batchLot':
+                                return (
+                                  <td className="px-4 py-3 text-sm text-gray-500">
+                                    {transaction.batchLot}
+                                  </td>
+                                )
+                              
+                              case 'cartonsIn':
+                                return (
+                                  <td className="px-4 py-3 text-sm text-center">
+                                    <span className={transaction.cartonsIn > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                                      {transaction.cartonsIn || '-'}
+                                    </span>
+                                  </td>
+                                )
+                              
+                              case 'cartonsOut':
+                                return (
+                                  <td className="px-4 py-3 text-sm text-center">
+                                    <span className={transaction.cartonsOut > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>
+                                      {transaction.cartonsOut || '-'}
+                                    </span>
+                                  </td>
+                                )
+                              
+                              case 'trackingNumber':
+                                return (
+                                  <td className="px-4 py-3 text-sm text-gray-500">
+                                    <div className="flex items-center gap-1">
+                                      {isIncomplete && (
+                                        <Tooltip content={`Missing: ${missingAttributes.join(', ')}`}>
+                                          <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                                        </Tooltip>
+                                      )}
+                                      <span className="truncate max-w-[120px]" title={transaction.trackingNumber || ''}>
+                                        {transaction.trackingNumber || '-'}
+                                      </span>
+                                    </div>
+                                  </td>
+                                )
+                              
+                              case 'createdBy':
+                                return (
+                                  <td className="px-4 py-3 text-sm text-gray-500">
+                                    {transaction.createdBy.fullName}
+                                  </td>
+                                )
+                              
+                              default:
+                                return <td className="px-4 py-3 text-sm text-gray-500">-</td>
+                            }
+                          }
+                          
+                          return <React.Fragment key={column.fieldName}>{renderCell()}</React.Fragment>
+                        })}
                       </tr>
                       )
                     })}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={11} className="px-6 py-12">
+                        <td colSpan={getUIColumns().length} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"

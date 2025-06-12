@@ -2,6 +2,41 @@
 // This file can be easily updated when schema changes without touching the export logic
 
 import { ExportConfig } from './dynamic-export'
+import { INVENTORY_TRANSACTION_COLUMNS, INVENTORY_BALANCE_COLUMNS } from './column-ordering'
+
+// Helper function to generate export fields from column definitions
+function generateExportFields(columns: typeof INVENTORY_TRANSACTION_COLUMNS) {
+  return columns
+    .filter(col => col.showInExport)
+    .sort((a, b) => a.order - b.order)
+    .map(col => {
+      const field: any = {
+        fieldName: col.isRelation ? col.relationPath! : col.fieldName,
+        columnName: col.exportName
+      }
+      
+      if (col.isRelation) {
+        field.isRelation = true
+        field.format = (value: any) => value || ''
+      }
+      
+      // Special formatting for attachments
+      if (col.fieldName === 'attachments') {
+        field.format = (value: any) => {
+          if (!value) return ''
+          const attachments = value as any
+          const types = []
+          if (attachments.packingList) types.push('Packing List')
+          if (attachments.commercialInvoice) types.push('Invoice')
+          if (attachments.deliveryNote) types.push('Delivery Note')
+          if (attachments.cubemaster) types.push('Cubemaster')
+          return types.join(', ')
+        }
+      }
+      
+      return field
+    })
+}
 
 // Inventory Transaction Export Configuration
 export const inventoryTransactionConfig: Partial<ExportConfig> = {
@@ -13,104 +48,8 @@ export const inventoryTransactionConfig: Partial<ExportConfig> = {
   // Relations to include in the export
   includeRelations: ['warehouse', 'sku', 'createdBy'],
   
-  // Custom field configurations - FULL DATABASE EXPORT (minus excluded fields)
-  fields: [
-    // 1. Transaction Date
-    { fieldName: 'transactionDate', columnName: 'Transaction Date' },
-    
-    // 2. Pickup Date
-    { fieldName: 'pickupDate', columnName: 'Pickup Date' },
-    
-    // 3. Is Reconciled
-    { fieldName: 'isReconciled', columnName: 'Is Reconciled' },
-    
-    // 4. Type
-    { fieldName: 'transactionType', columnName: 'Type' },
-    
-    // 5. Warehouse (relation)
-    { 
-      fieldName: 'warehouse.name', 
-      columnName: 'Warehouse',
-      isRelation: true,
-      format: (value) => value || ''
-    },
-    
-    // 6. SKU Code (relation)
-    { 
-      fieldName: 'sku.skuCode', 
-      columnName: 'SKU Code',
-      isRelation: true,
-      format: (value) => value || ''
-    },
-    
-    // 7. SKU Description (relation)
-    { 
-      fieldName: 'sku.description', 
-      columnName: 'SKU Description',
-      isRelation: true,
-      format: (value) => value || ''
-    },
-    
-    // 8. Batch/Lot
-    { fieldName: 'batchLot', columnName: 'Batch/Lot' },
-    
-    // 9. Reference
-    { fieldName: 'referenceId', columnName: 'Reference' },
-    
-    // 10. Cartons In
-    { fieldName: 'cartonsIn', columnName: 'Cartons In' },
-    
-    // 11. Cartons Out
-    { fieldName: 'cartonsOut', columnName: 'Cartons Out' },
-    
-    // 12. Storage Pallets In
-    { fieldName: 'storagePalletsIn', columnName: 'Storage Pallets In' },
-    
-    // 13. Shipping Pallets Out
-    { fieldName: 'shippingPalletsOut', columnName: 'Shipping Pallets Out' },
-    
-    // 14. Ship Name
-    { fieldName: 'shipName', columnName: 'Ship Name' },
-    
-    // 15. Tracking Number
-    { fieldName: 'trackingNumber', columnName: 'Tracking Number' },
-    
-    // 16. Mode of Transportation
-    { fieldName: 'modeOfTransportation', columnName: 'Mode of Transportation' },
-    
-    // 17. Storage Cartons/Pallet
-    { fieldName: 'storageCartonsPerPallet', columnName: 'Storage Cartons/Pallet' },
-    
-    // 18. Shipping Cartons/Pallet
-    { fieldName: 'shippingCartonsPerPallet', columnName: 'Shipping Cartons/Pallet' },
-    
-    // 19. Attachments (complex field)
-    {
-      fieldName: 'attachments',
-      columnName: 'Attachments',
-      format: (value) => {
-        if (!value) return ''
-        const attachments = value as any
-        const types = []
-        if (attachments.packingList) types.push('Packing List')
-        if (attachments.commercialInvoice) types.push('Invoice')
-        if (attachments.deliveryNote) types.push('Delivery Note')
-        if (attachments.cubemaster) types.push('Cubemaster')
-        return types.join(', ')
-      }
-    },
-    
-    // 20. Created By (relation)
-    { 
-      fieldName: 'createdBy.fullName', 
-      columnName: 'Created By',
-      isRelation: true,
-      format: (value) => value || ''
-    },
-    
-    // 21. Created At
-    { fieldName: 'createdAt', columnName: 'Created At' },
-  ]
+  // Custom field configurations - Using standardized column ordering
+  fields: generateExportFields(INVENTORY_TRANSACTION_COLUMNS)
 }
 
 // Inventory Balance Export Configuration
@@ -118,30 +57,7 @@ export const inventoryBalanceConfig: Partial<ExportConfig> = {
   modelName: 'InventoryBalance',
   excludeFields: ['id', 'warehouseId', 'skuId'],
   includeRelations: ['warehouse', 'sku'],
-  fields: [
-    { fieldName: 'batchLot', columnName: 'Batch/Lot' },
-    { fieldName: 'currentCartons', columnName: 'Current Cartons' },
-    { fieldName: 'currentPallets', columnName: 'Current Pallets' },
-    { fieldName: 'currentUnits', columnName: 'Current Units' },
-    { fieldName: 'lastTransactionDate', columnName: 'Last Activity' },
-    { fieldName: 'storageCartonsPerPallet', columnName: 'Storage Cartons/Pallet' },
-    { fieldName: 'shippingCartonsPerPallet', columnName: 'Shipping Cartons/Pallet' },
-    { 
-      fieldName: 'warehouse.name', 
-      columnName: 'Warehouse',
-      isRelation: true
-    },
-    { 
-      fieldName: 'sku.skuCode', 
-      columnName: 'SKU Code',
-      isRelation: true
-    },
-    { 
-      fieldName: 'sku.description', 
-      columnName: 'SKU Description',
-      isRelation: true
-    }
-  ]
+  fields: generateExportFields(INVENTORY_BALANCE_COLUMNS)
 }
 
 // SKU Export Configuration
