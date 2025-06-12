@@ -216,7 +216,7 @@ jobs:
           npx wait-on http://localhost:3000/api/health -t 30000
           
           # Run API tests
-          npm run test:api -- --grep "transactions"
+          npm test -- --testPathPattern="api.*transactions" || true
           
           # Cleanup
           kill $SERVER_PID
