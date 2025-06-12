@@ -51,8 +51,7 @@ export async function POST() {
         unit: 'cubic foot/month',
         category: 'Storage' as const,
         effectiveDate: new Date(`${currentYear}-01-01`),
-        endDate: new Date(`${currentYear}-09-30`),
-        notes: 'Amazon FBA standard size storage fee for Jan-Sep period'
+        endDate: new Date(`${currentYear}-09-30`)
       },
       {
         name: 'Amazon FBA Storage - Oversize (Jan-Sep)',
@@ -60,8 +59,7 @@ export async function POST() {
         unit: 'cubic foot/month',
         category: 'Storage' as const,
         effectiveDate: new Date(`${currentYear}-01-01`),
-        endDate: new Date(`${currentYear}-09-30`),
-        notes: 'Amazon FBA oversize storage fee for Jan-Sep period'
+        endDate: new Date(`${currentYear}-09-30`)
       },
       {
         name: 'Amazon FBA Storage - Standard (Oct-Dec)',
@@ -69,8 +67,7 @@ export async function POST() {
         unit: 'cubic foot/month',
         category: 'Storage' as const,
         effectiveDate: new Date(`${currentYear}-10-01`),
-        endDate: new Date(`${currentYear}-12-31`),
-        notes: 'Amazon FBA standard size storage fee for Oct-Dec peak season'
+        endDate: new Date(`${currentYear}-12-31`)
       },
       {
         name: 'Amazon FBA Storage - Oversize (Oct-Dec)',
@@ -78,8 +75,7 @@ export async function POST() {
         unit: 'cubic foot/month',
         category: 'Storage' as const,
         effectiveDate: new Date(`${currentYear}-10-01`),
-        endDate: new Date(`${currentYear}-12-31`),
-        notes: 'Amazon FBA oversize storage fee for Oct-Dec peak season'
+        endDate: new Date(`${currentYear}-12-31`)
       }
     ]
     
@@ -107,7 +103,6 @@ export async function POST() {
             unitOfMeasure: rate.unit,
             effectiveDate: rate.effectiveDate,
             endDate: rate.endDate,
-            notes: rate.notes,
             createdById: session.user.id
           }
         })

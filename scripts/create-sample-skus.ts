@@ -18,8 +18,7 @@ async function createSampleSkus() {
         unitsPerCarton: 24,
         cartonDimensionsCm: '40x30x25',
         cartonWeightKg: 6.5,
-        packagingType: 'Box',
-        notes: 'Handle with care'
+        packagingType: 'Box'
       },
       {
         skuCode: 'SKU002',
@@ -32,8 +31,7 @@ async function createSampleSkus() {
         unitsPerCarton: 12,
         cartonDimensionsCm: '45x35x30',
         cartonWeightKg: 9.5,
-        packagingType: 'Carton',
-        notes: 'Fragile item'
+        packagingType: 'Carton'
       },
       {
         skuCode: 'SKU003',
@@ -46,8 +44,7 @@ async function createSampleSkus() {
         unitsPerCarton: 500,
         cartonDimensionsCm: '30x25x20',
         cartonWeightKg: 26.0,
-        packagingType: 'Bulk',
-        notes: null
+        packagingType: 'Bulk'
       },
       {
         skuCode: 'SKU004',
@@ -60,8 +57,7 @@ async function createSampleSkus() {
         unitsPerCarton: 4,
         cartonDimensionsCm: null, // Missing dimensions
         cartonWeightKg: 10.5,
-        packagingType: 'Pallet',
-        notes: 'Requires forklift'
+        packagingType: 'Pallet'
       },
       {
         skuCode: 'SKU005',
@@ -74,8 +70,7 @@ async function createSampleSkus() {
         unitsPerCarton: 200,
         cartonDimensionsCm: '60x40x30',
         cartonWeightKg: null, // Missing weight
-        packagingType: 'Bag',
-        notes: 'Keep dry'
+        packagingType: 'Bag'
       },
       {
         skuCode: 'SKU006',
@@ -88,8 +83,7 @@ async function createSampleSkus() {
         unitsPerCarton: 50,
         cartonDimensionsCm: null, // No dimensions
         cartonWeightKg: null, // No weight
-        packagingType: null,
-        notes: 'Dimensional data not available'
+        packagingType: null
       }
     ];
 

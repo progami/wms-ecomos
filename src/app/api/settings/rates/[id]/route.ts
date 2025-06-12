@@ -41,8 +41,7 @@ export async function GET(
       costValue: parseFloat(rate.costValue.toString()),
       unitOfMeasure: rate.unitOfMeasure,
       effectiveDate: rate.effectiveDate.toISOString(),
-      endDate: rate.endDate?.toISOString() || null,
-      notes: rate.notes
+      endDate: rate.endDate?.toISOString() || null
     }
 
     return NextResponse.json(formattedRate)
@@ -67,7 +66,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { costName, costValue, unitOfMeasure, endDate, notes } = body
+    const { costName, costValue, unitOfMeasure, endDate } = body
 
     // Validate required fields
     if (!costName || costValue === undefined || !unitOfMeasure) {
@@ -101,7 +100,6 @@ export async function PUT(
         unitOfMeasure,
         costValue,
         endDate: endDate ? new Date(endDate) : null,
-        notes,
         updatedAt: new Date()
       },
       include: {
@@ -124,8 +122,7 @@ export async function PUT(
       costValue: parseFloat(updatedRate.costValue.toString()),
       unitOfMeasure: updatedRate.unitOfMeasure,
       effectiveDate: updatedRate.effectiveDate.toISOString(),
-      endDate: updatedRate.endDate?.toISOString() || null,
-      notes: updatedRate.notes
+      endDate: updatedRate.endDate?.toISOString() || null
     }
 
     return NextResponse.json(formattedRate)

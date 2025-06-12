@@ -17,7 +17,6 @@ interface WarehouseConfig {
   maxStackingHeightCm?: number
   effectiveDate: string
   endDate?: string
-  notes?: string
   warehouse: {
     id: string
     name: string
@@ -42,8 +41,7 @@ export default function EditWarehouseConfigPage() {
     storageCartonsPerPallet: '',
     shippingCartonsPerPallet: '',
     maxStackingHeightCm: '',
-    endDate: '',
-    notes: ''
+    endDate: ''
   })
 
   useEffect(() => {
@@ -65,8 +63,7 @@ export default function EditWarehouseConfigPage() {
           storageCartonsPerPallet: data.storageCartonsPerPallet.toString(),
           shippingCartonsPerPallet: data.shippingCartonsPerPallet.toString(),
           maxStackingHeightCm: data.maxStackingHeightCm?.toString() || '',
-          endDate: data.endDate ? data.endDate.split('T')[0] : '',
-          notes: data.notes || ''
+          endDate: data.endDate ? data.endDate.split('T')[0] : ''
         })
       } else {
         toast.error('Configuration not found')
@@ -97,8 +94,7 @@ export default function EditWarehouseConfigPage() {
           storageCartonsPerPallet: parseInt(formData.storageCartonsPerPallet),
           shippingCartonsPerPallet: parseInt(formData.shippingCartonsPerPallet),
           maxStackingHeightCm: formData.maxStackingHeightCm ? parseInt(formData.maxStackingHeightCm) : null,
-          endDate: formData.endDate ? new Date(formData.endDate) : null,
-          notes: formData.notes || null
+          endDate: formData.endDate ? new Date(formData.endDate) : null
         })
       })
 
@@ -243,19 +239,6 @@ export default function EditWarehouseConfigPage() {
             </div>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              rows={3}
-              placeholder="Additional notes or special instructions..."
-            />
-          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t">

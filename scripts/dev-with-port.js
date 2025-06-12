@@ -28,8 +28,7 @@ console.log(`Starting Next.js dev server on port ${port}...`);
 
 // Run next dev with the specified port
 const child = spawn('npx', ['next', 'dev', '-p', port], {
-  stdio: 'inherit',
-  shell: true
+  stdio: 'inherit'
 });
 
 child.on('exit', (code) => {

@@ -94,7 +94,6 @@ export async function PUT(
         cartonDimensionsCm: body.cartonDimensionsCm,
         cartonWeightKg: body.cartonWeightKg,
         packagingType: body.packagingType,
-        notes: body.notes,
         isActive: body.isActive
       }
     })

@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Edit, Trash2, Building2, Package, Settings as SettingsIcon, Loader2, MapPin } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PageHeader } from '@/components/ui/page-header'
+import { ImportButton } from '@/components/ui/import-button'
 
 interface Warehouse {
   id: string
@@ -100,33 +102,31 @@ export default function WarehouseSettingsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header with Description */}
-        <div className="bg-white border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Warehouse Settings</h1>
-              <p className="text-muted-foreground">
-                Manage warehouses and SKU configurations
-              </p>
+        <PageHeader
+          title="Warehouse Settings"
+          subtitle="Manage warehouses and SKU configurations"
+          description="Configure warehouse locations, contact information, and operational settings. Each warehouse can have its own staff, inventory, cost rates, and invoicing. Active warehouses can receive shipments and generate invoices."
+          icon={Building2}
+          iconColor="text-teal-600"
+          bgColor="bg-teal-50"
+          borderColor="border-teal-200"
+          textColor="text-teal-800"
+          actions={
+            <div className="flex gap-2">
+              <ImportButton 
+                entityName="warehouses" 
+                onImportComplete={fetchWarehouses}
+              />
+              <Link
+                href="/config/locations/new"
+                className="action-button"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Warehouse
+              </Link>
             </div>
-            <Link
-              href="/config/locations/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Warehouse
-            </Link>
-          </div>
-          
-          <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <Building2 className="h-5 w-5 text-teal-600 mt-0.5 mr-3 flex-shrink-0" />
-              <div className="text-sm text-teal-800">
-                <p className="font-semibold mb-1">About This Page:</p>
-                <p>Configure warehouse locations, contact information, and operational settings. Each warehouse can have its own staff, inventory, cost rates, and invoicing. Active warehouses can receive shipments and generate invoices.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* Filter Options */}
         <div className="flex items-center justify-between">

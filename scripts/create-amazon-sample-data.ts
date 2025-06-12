@@ -71,8 +71,7 @@ async function createAmazonSampleData() {
           storagePalletsIn: Math.ceil(cartons / 10), // Assume 10 cartons per pallet
           shippingPalletsOut: 0,
           transactionDate: new Date(),
-          createdById: systemUser.id,
-          notes: 'Sample data for Amazon FBA inventory'
+          createdById: systemUser.id
         }
       })
       
@@ -136,8 +135,7 @@ async function createAmazonSampleData() {
           storagePalletsIn: 0,
           shippingPalletsOut: Math.ceil(shipCartons / 10),
           transactionDate: new Date(),
-          createdById: systemUser.id,
-          notes: 'Sample shipment from Amazon FBA'
+          createdById: systemUser.id
         }
       })
       

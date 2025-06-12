@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { 
       orderNumber, 
-      fbaTrackingId, 
+      trackingNumber, 
       shipDate, 
       carrier, 
       warehouse,
@@ -25,11 +25,11 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Generate email content
-    const emailSubject = `FBA Shipment - ${orderNumber} - ${fbaTrackingId}`
+    const emailSubject = `FBA Shipment - ${orderNumber} - ${trackingNumber}`
     
     const emailBody = generateEmailBody({
       orderNumber,
-      fbaTrackingId,
+      trackingNumber,
       shipDate,
       carrier,
       warehouse,
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         to: warehouse.contactEmail || 'warehouse@example.com',
         references: {
           orderNumber,
-          fbaTrackingId,
+          trackingNumber,
           shipmentId: `${orderNumber}-${new Date().getTime()}`
         }
       }
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 function generateEmailBody(data: any): string {
   const {
     orderNumber,
-    fbaTrackingId,
+    trackingNumber,
     shipDate,
     carrier,
     warehouse,
@@ -93,7 +93,7 @@ Please prepare the following shipment for Amazon FBA:
 SHIPMENT DETAILS
 ================
 Order Number: ${orderNumber}
-FBA Tracking ID: ${fbaTrackingId}
+FBA Tracking Number: ${trackingNumber}
 Ship Date: ${new Date(shipDate).toLocaleDateString()}
 Carrier: ${carrier}
 Total: ${totalCartons} cartons on ${totalPallets} pallets
@@ -105,7 +105,7 @@ ${itemsTable}
 SHIPPING INSTRUCTIONS
 ====================
 1. Please prepare all items for pickup by ${carrier}
-2. Use the FBA Tracking ID ${fbaTrackingId} on all shipment labels
+2. Use the FBA Tracking ID ${trackingNumber} on all shipment labels
 3. Ensure all cartons are properly labeled with Amazon FBA labels
 4. Stack pallets according to the carrier's requirements
 
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         subject: 'FBA Shipment - [Order Number] - [FBA Tracking ID]',
         fields: [
           'orderNumber',
-          'fbaTrackingId', 
+          'trackingNumber', 
           'shipDate',
           'carrier',
           'warehouse',

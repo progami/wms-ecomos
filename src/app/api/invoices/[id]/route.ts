@@ -178,7 +178,6 @@ export async function PUT(
         },
         data: {
           status: body.status,
-          notes: body.notes,
           dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
           updatedAt: new Date()
         },
@@ -205,12 +204,10 @@ export async function PUT(
         changes: {
           before: {
             status: existingInvoice.status,
-            notes: existingInvoice.notes,
             dueDate: existingInvoice.dueDate
           },
           after: {
             status: updatedInvoice.status,
-            notes: updatedInvoice.notes,
             dueDate: updatedInvoice.dueDate
           }
         },

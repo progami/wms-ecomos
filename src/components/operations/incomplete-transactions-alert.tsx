@@ -58,7 +58,7 @@ export function IncompleteTransactionsAlert() {
             <ul className="list-disc list-inside space-y-1">
               {receiveCount > 0 && (
                 <li>
-                  <strong>{receiveCount} RECEIVE</strong> transactions missing container numbers and/or pickup dates
+                  <strong>{receiveCount} RECEIVE</strong> transactions missing tracking numbers and/or pickup dates
                 </li>
               )}
               {shipCount > 0 && (
@@ -95,7 +95,7 @@ export function IncompleteTransactionsAlert() {
                 <div>
                   <strong className="text-gray-700">RECEIVE Transactions:</strong>
                   <ul className="mt-1 ml-4 text-gray-600 list-disc">
-                    <li>Container Number (for tracking shipments)</li>
+                    <li>Tracking Number (for tracking shipments)</li>
                     <li>Pickup Date (for delivery scheduling)</li>
                     <li>Supporting Documents (BOL, customs docs, etc.)</li>
                   </ul>

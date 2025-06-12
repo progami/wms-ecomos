@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Truck, Plus, Save, X, AlertTriangle, Upload, FileText, Mail, Check } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { Tooltip } from '@/components/ui/tooltip'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 
@@ -398,7 +399,7 @@ export default function WarehouseShipPage() {
     const pickupDate = formData.get('pickupDate') as string
     const sourceWarehouseId = formData.get('sourceWarehouse') as string
     const carrier = formData.get('carrier') as string
-    const tracking = formData.get('tracking') as string
+    const trackingNumber = formData.get('trackingNumber') as string
     const modeOfTransportation = formData.get('modeOfTransportation') as string
     const notes = formData.get('notes') as string
     
@@ -423,7 +424,7 @@ export default function WarehouseShipPage() {
           notes: `Source: ${sourceWarehouse?.name || 'Unknown'}. Carrier: ${carrier}. Mode: ${modeOfTransportation}. Total Cartons: ${items.reduce((sum, item) => sum + item.cartons, 0)}. ${notes}`,
           warehouseId: sourceWarehouseId || session?.user.warehouseId,
           modeOfTransportation,
-          fbaTrackingId: tracking,
+          trackingNumber: trackingNumber,
           attachments: allAttachments.length > 0 ? allAttachments : null,
         }),
       })
@@ -436,7 +437,7 @@ export default function WarehouseShipPage() {
         // Store shipment data for email
         const shipmentData = {
           orderNumber: referenceNumber,
-          fbaTrackingId: tracking,
+          trackingNumber: trackingNumber,
           shipDate: date,
           carrier,
           modeOfTransportation,
@@ -493,7 +494,8 @@ export default function WarehouseShipPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Order Number
+                  Reference ID
+                  <span className="ml-1 text-xs text-gray-500">(Order Number)</span>
                 </label>
                 <input
                   type="text"
@@ -604,11 +606,17 @@ export default function WarehouseShipPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  FBA Tracking ID
+                  <div className="flex items-center gap-1">
+                    Tracking Number
+                    <Tooltip 
+                      content="FBA shipment ID for Amazon shipments" 
+                      iconSize="sm"
+                    />
+                  </div>
                 </label>
                 <input
                   type="text"
-                  name="tracking"
+                  name="trackingNumber"
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="e.g., FBA15K7TRCBF"
                   required
@@ -1145,7 +1153,7 @@ function EmailModal({ shipmentData, onClose }: { shipmentData: any; onClose: () 
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                   <p className="text-sm text-blue-800">
                     <strong>References stored:</strong> Order #{emailContent.references.orderNumber} | 
-                    FBA: {emailContent.references.fbaTrackingId}
+                    FBA: {emailContent.references.trackingNumber}
                   </p>
                 </div>
               </div>

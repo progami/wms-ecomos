@@ -33,8 +33,7 @@ export default function NewWarehouseConfigPage() {
     storageCartonsPerPallet: '',
     shippingCartonsPerPallet: '',
     maxStackingHeightCm: '',
-    effectiveDate: new Date().toISOString().split('T')[0],
-    notes: ''
+    effectiveDate: new Date().toISOString().split('T')[0]
   })
 
   useEffect(() => {
@@ -90,8 +89,7 @@ export default function NewWarehouseConfigPage() {
           storageCartonsPerPallet: parseInt(formData.storageCartonsPerPallet),
           shippingCartonsPerPallet: parseInt(formData.shippingCartonsPerPallet),
           maxStackingHeightCm: formData.maxStackingHeightCm ? parseInt(formData.maxStackingHeightCm) : null,
-          effectiveDate: new Date(formData.effectiveDate),
-          notes: formData.notes || null
+          effectiveDate: new Date(formData.effectiveDate)
         })
       })
 
@@ -246,19 +244,6 @@ export default function NewWarehouseConfigPage() {
             </div>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              rows={3}
-              placeholder="Additional notes or special instructions..."
-            />
-          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t">

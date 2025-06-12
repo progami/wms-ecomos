@@ -58,8 +58,7 @@ export default function NewRatePage() {
     costValue: '',
     unitOfMeasure: '',
     effectiveDate: new Date().toISOString().split('T')[0],
-    endDate: '',
-    notes: ''
+    endDate: ''
   })
 
   useEffect(() => {
@@ -322,19 +321,6 @@ export default function NewRatePage() {
             </div>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              rows={3}
-              placeholder="Additional notes..."
-            />
-          </div>
 
           {/* Warning for Storage Category */}
           {formData.costCategory === 'Storage' && (

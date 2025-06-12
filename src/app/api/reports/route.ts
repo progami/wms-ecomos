@@ -253,7 +253,6 @@ async function generateInventoryLedger(period: string, warehouseId?: string) {
     'Reference': t.referenceId || '',
     'Cartons In': t.cartonsIn,
     'Cartons Out': t.cartonsOut,
-    'Notes': t.notes || '',
     'Created By': t.createdBy.fullName,
   }))
 }

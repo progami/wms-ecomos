@@ -22,7 +22,6 @@ interface CostRate {
   unitOfMeasure: string
   effectiveDate: string
   endDate?: string
-  notes?: string
 }
 
 const unitsByCategory: { [key: string]: string[] } = {
@@ -48,8 +47,7 @@ export default function EditRatePage() {
     costName: '',
     costValue: '',
     unitOfMeasure: '',
-    endDate: '',
-    notes: ''
+    endDate: ''
   })
 
   useEffect(() => {
@@ -71,8 +69,7 @@ export default function EditRatePage() {
           costName: data.costName,
           costValue: data.costValue.toString(),
           unitOfMeasure: data.unitOfMeasure,
-          endDate: data.endDate ? data.endDate.split('T')[0] : '',
-          notes: data.notes || ''
+          endDate: data.endDate ? data.endDate.split('T')[0] : ''
         })
       } else {
         toast.error('Rate not found')
@@ -143,8 +140,7 @@ export default function EditRatePage() {
           costName: formData.costName,
           costValue: parseFloat(formData.costValue),
           unitOfMeasure: formData.unitOfMeasure,
-          endDate: formData.endDate || null,
-          notes: formData.notes || null
+          endDate: formData.endDate || null
         })
       })
 
@@ -294,19 +290,6 @@ export default function EditRatePage() {
             </div>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              rows={3}
-              placeholder="Additional notes..."
-            />
-          </div>
 
           {/* Warning for date changes */}
           {formData.endDate && (

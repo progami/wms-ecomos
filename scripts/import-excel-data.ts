@@ -34,8 +34,7 @@ async function importSkuMaster(sheet: XLSX.WorkSheet) {
           unitsPerCarton: parseInt(row.Units_Per_Carton) || 1,
           cartonDimensionsCm: row.Carton_Dimensions_cm || null,
           cartonWeightKg: parseFloat(row.Carton_Weight_KG) || null,
-          packagingType: row.Packaging_Type || null,
-          notes: row.Notes || null
+          packagingType: row.Packaging_Type || null
         },
         create: {
           skuCode: row.SKU,
@@ -48,8 +47,7 @@ async function importSkuMaster(sheet: XLSX.WorkSheet) {
           unitsPerCarton: parseInt(row.Units_Per_Carton) || 1,
           cartonDimensionsCm: row.Carton_Dimensions_cm || null,
           cartonWeightKg: parseFloat(row.Carton_Weight_KG) || null,
-          packagingType: row.Packaging_Type || null,
-          notes: row.Notes || null
+          packagingType: row.Packaging_Type || null
         }
       })
       console.log(`  ✅ Imported SKU: ${row.SKU} - ${row.Description}`)
@@ -136,7 +134,6 @@ async function importCostMaster(sheet: XLSX.WorkSheet) {
             unitOfMeasure: row.unit_of_measure || 'unit',
             effectiveDate,
             endDate: row.end_date ? excelDateToJSDate(row.end_date) : null,
-            notes: row.notes || null,
             createdById: adminUser.id
           }
         })
@@ -214,7 +211,6 @@ async function importWarehouseConfig(sheet: XLSX.WorkSheet) {
           maxStackingHeightCm: row.max_stacking_height_cm ? parseInt(row.max_stacking_height_cm) : null,
           effectiveDate,
           endDate: row.end_date ? excelDateToJSDate(row.end_date) : null,
-          notes: row.notes || null,
           createdById: adminUser.id
         }
       })

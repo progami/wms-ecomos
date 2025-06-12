@@ -13,7 +13,6 @@ interface LineItem {
   quantity: number
   unitRate: number
   amount: number
-  notes?: string
 }
 
 export default function NewInvoicePage() {
@@ -30,8 +29,7 @@ export default function NewInvoicePage() {
     billingPeriodStart: '',
     billingPeriodEnd: '',
     invoiceDate: '',
-    dueDate: '',
-    notes: ''
+    dueDate: ''
   })
   const [lineItems, setLineItems] = useState<LineItem[]>([
     {
@@ -247,18 +245,6 @@ export default function NewInvoicePage() {
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                  placeholder="Additional notes..."
-                />
-              </div>
             </div>
           </div>
 

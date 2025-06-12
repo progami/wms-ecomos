@@ -8,6 +8,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { ImportButton } from '@/components/ui/import-button'
 
 interface SKU {
   id: string
@@ -134,13 +135,19 @@ export default function AdminSkusPage() {
           borderColor="border-indigo-200"
           textColor="text-indigo-800"
           actions={
-            <Link 
-              href="/config/products/new"
-              className="action-button"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add SKU
-            </Link>
+            <div className="flex gap-2">
+              <ImportButton 
+                entityName="skus" 
+                onImportComplete={fetchSkus}
+              />
+              <Link 
+                href="/config/products/new"
+                className="action-button"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add SKU
+              </Link>
+            </div>
           }
         />
 

@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/utils'
 import { InventoryTabs } from '@/components/operations/inventory-tabs'
 import { IncompleteTransactionsAlert } from '@/components/operations/incomplete-transactions-alert'
 import { Tooltip } from '@/components/ui/tooltip'
+import { ImportButton } from '@/components/ui/import-button'
 
 interface InventoryBalance {
   id: string
@@ -38,21 +39,20 @@ interface Transaction {
   warehouse: { id: string; name: string }
   sku: { id: string; skuCode: string; description: string; unitsPerCarton: number }
   batchLot: string
-  referenceId: string
+  referenceId: string | null
   cartonsIn: number
   cartonsOut: number
   storagePalletsIn: number
   shippingPalletsOut: number
-  notes: string | null
+  storageCartonsPerPallet: number | null
+  shippingCartonsPerPallet: number | null
+  shipName: string | null
+  trackingNumber: string | null
+  modeOfTransportation: string | null
+  attachments: any | null
   createdBy: { id: string; fullName: string }
   createdAt: string
   runningBalance?: number
-  shipName?: string | null
-  modeOfTransportation?: string | null
-  fbaTrackingId?: string | null
-  containerNumber?: string | null
-  storageCartonsPerPallet?: number | null
-  shippingCartonsPerPallet?: number | null
 }
 
 export default function UnifiedInventoryPage() {
@@ -77,6 +77,7 @@ export default function UnifiedInventoryPage() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [filters, setFilters] = useState({
     warehouse: '',
     transactionType: '',
@@ -207,6 +208,21 @@ export default function UnifiedInventoryPage() {
     }
   }, [hasInitialized, fetchData])
   
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (showExportMenu && !target.closest('.relative')) {
+        setShowExportMenu(false)
+      }
+    }
+    
+    if (showExportMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showExportMenu])
+  
   
   // Handle tab changes
   useEffect(() => {
@@ -248,7 +264,7 @@ export default function UnifiedInventoryPage() {
             !transaction.referenceId.toLowerCase().includes(query) &&
             !transaction.warehouse.name.toLowerCase().includes(query) &&
             !(transaction.shipName?.toLowerCase().includes(query)) &&
-            !(transaction.containerNumber?.toLowerCase().includes(query))) {
+            !(transaction.trackingNumber?.toLowerCase().includes(query))) {
           return false
         }
       }
@@ -272,25 +288,44 @@ export default function UnifiedInventoryPage() {
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
     })
 
-  const handleExport = (e?: React.MouseEvent) => {
+  const handleExport = (e?: React.MouseEvent, exportType: 'filtered' | 'full' = 'filtered') => {
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
+    
     if (activeTab === 'balances') {
-      toast.success('Exporting inventory balances...')
-      window.open('/api/export/inventory', '_blank')
+      if (exportType === 'full') {
+        toast.success('Exporting all inventory balances...')
+        window.open('/api/export/inventory?full=true', '_blank')
+      } else {
+        toast.success('Exporting filtered inventory balances...')
+        const params = new URLSearchParams({
+          warehouse: filters.warehouse,
+          minCartons: filters.minCartons,
+          maxCartons: filters.maxCartons,
+          showLowStock: String(filters.showLowStock),
+          showZeroStock: String(filters.showZeroStock)
+        })
+        window.open(`/api/export/inventory?${params}`, '_blank')
+      }
     } else {
-      const params = new URLSearchParams({
-        warehouse: filters.warehouse,
-        transactionType: filters.transactionType,
-        endDate: filters.endDate,
-        minCartons: filters.minCartons,
-        maxCartons: filters.maxCartons,
-        showLowStock: String(filters.showLowStock),
-        showZeroStock: String(filters.showZeroStock)
-      })
-      window.open(`/api/export/ledger?${params}`, '_blank')
+      if (exportType === 'full') {
+        toast.success('Exporting all transactions from database...')
+        window.open('/api/export/ledger?full=true', '_blank')
+      } else {
+        toast.success('Exporting filtered transactions...')
+        const params = new URLSearchParams({
+          warehouse: filters.warehouse,
+          transactionType: filters.transactionType,
+          endDate: filters.endDate,
+          minCartons: filters.minCartons,
+          maxCartons: filters.maxCartons,
+          showLowStock: String(filters.showLowStock),
+          showZeroStock: String(filters.showZeroStock)
+        })
+        window.open(`/api/export/ledger?${params}`, '_blank')
+      }
     }
   }
 
@@ -303,19 +338,14 @@ export default function UnifiedInventoryPage() {
     const missing: string[] = []
     
     if (transaction.transactionType === 'SHIP') {
-      // Check if carrier info is in notes but not in proper field
-      if (transaction.notes?.includes('Carrier:') && !transaction.modeOfTransportation) {
+      // Check if mode of transport is missing
+      if (!transaction.modeOfTransportation) {
         missing.push('Mode of Transport')
       }
       
-      // Check for carrier in notes
-      if (transaction.notes?.includes('Carrier:')) {
-        missing.push('Carrier')
-      }
-      
-      // If no FBA tracking ID but it might be an Amazon shipment
-      if (!transaction.fbaTrackingId && (transaction.referenceId?.includes('FBA') || transaction.notes?.includes('FBA'))) {
-        missing.push('FBA Tracking')
+      // If no tracking number but it might be an Amazon shipment
+      if (!transaction.trackingNumber && transaction.referenceId?.includes('FBA')) {
+        missing.push('FBA Tracking Number')
       }
     }
     
@@ -326,14 +356,9 @@ export default function UnifiedInventoryPage() {
       }
       
       // Container number is often missing
-      if (!transaction.containerNumber) {
-        missing.push('Container #')
+      if (!transaction.trackingNumber) {
+        missing.push('Tracking #')
       }
-    }
-    
-    // Common missing fields
-    if (!transaction.notes || transaction.notes === '') {
-      missing.push('Notes')
     }
     
     return missing
@@ -381,6 +406,12 @@ export default function UnifiedInventoryPage() {
           textColor="text-green-800"
           actions={
             <div className="flex items-center gap-2">
+              <ImportButton 
+                entityName="inventoryTransactions" 
+                onImportComplete={() => {
+                  fetchData(true)
+                }}
+              />
               <Link
                 href="/operations/receive"
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
@@ -395,15 +426,82 @@ export default function UnifiedInventoryPage() {
                 <Package2 className="h-4 w-4 mr-2" />
                 Ship Goods
               </Link>
-              <button 
-                type="button"
-                onClick={handleExport}
-                className="secondary-button"
-                title="Export"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </button>
+              <div className="relative">
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setShowExportMenu(!showExportMenu)
+                  }}
+                  className="secondary-button inline-flex items-center"
+                  title="Export options"
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="ml-2">Export</span>
+                  <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Export Dropdown Menu */}
+                {showExportMenu && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                    <div className="py-1" role="menu">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          handleExport(e, 'filtered')
+                          setShowExportMenu(false)
+                        }}
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <Filter className="h-4 w-4 mr-2 text-gray-500" />
+                        <div>
+                          <div className="font-medium">Export Filtered View</div>
+                          <div className="text-xs text-gray-500">Export only visible data</div>
+                        </div>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          handleExport(e, 'full')
+                          setShowExportMenu(false)
+                        }}
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <Package2 className="h-4 w-4 mr-2 text-gray-500" />
+                        <div>
+                          <div className="font-medium">Export All Data</div>
+                          <div className="text-xs text-gray-500">Export entire database</div>
+                        </div>
+                      </button>
+                      
+                      <div className="border-t border-gray-100"></div>
+                      
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          window.open('/api/export/missing-attributes', '_blank')
+                          setShowExportMenu(false)
+                        }}
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <AlertCircle className="h-4 w-4 mr-2 text-orange-500" />
+                        <div>
+                          <div className="font-medium">Missing Data Report</div>
+                          <div className="text-xs text-gray-500">Export records with missing fields</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           }
         />
@@ -835,7 +933,7 @@ export default function UnifiedInventoryPage() {
                           }}
                           className="flex items-center gap-1 hover:text-gray-700 transition-colors"
                         >
-                          Creation Date
+                          Transaction Date
                           {sortOrder === 'desc' ? (
                             <ArrowDown className="h-3 w-3" />
                           ) : (
@@ -844,46 +942,34 @@ export default function UnifiedInventoryPage() {
                         </button>
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pickup Date
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Warehouse
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        SKU
+                        SKU Code
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        SKU Description
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Batch/Lot
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Reference
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Cartons In
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Cartons
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pallets
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Units
+                        Cartons Out
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ship/Container
+                        Tracking Number
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pallet Config
+                        Reconciled
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        User
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Notes
+                        Created By
                       </th>
                     </tr>
                   </thead>
@@ -915,40 +1001,6 @@ export default function UnifiedInventoryPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {transaction.pickupDate ? (
-                            <div>
-                              <div className="text-gray-900">
-                                {new Date(transaction.pickupDate).toLocaleDateString('en-US', {
-                                  timeZone: 'America/Chicago',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(transaction.pickupDate).toLocaleTimeString('en-US', {
-                                  timeZone: 'America/Chicago',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {transaction.isReconciled ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Reconciled
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              Unreconciled
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             getTransactionColor(transaction.transactionType)
                           }`}>
@@ -959,15 +1011,25 @@ export default function UnifiedInventoryPage() {
                           {transaction.warehouse.name}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          <div>
-                            <div className="font-medium text-gray-900">{transaction.sku.skuCode}</div>
-                            <div className="text-xs text-gray-500 truncate max-w-[200px]" title={transaction.sku.description}>
-                              {transaction.sku.description}
-                            </div>
+                          <div className="font-medium text-gray-900">{transaction.sku.skuCode}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <div className="text-gray-500 truncate max-w-[200px]" title={transaction.sku.description}>
+                            {transaction.sku.description}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {transaction.batchLot}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <span className={transaction.cartonsIn > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                            {transaction.cartonsIn || '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <span className={transaction.cartonsOut > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>
+                            {transaction.cartonsOut || '-'}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           <div className="flex items-center gap-1">
@@ -976,126 +1038,31 @@ export default function UnifiedInventoryPage() {
                                 <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
                               </Tooltip>
                             )}
-                            <span>{transaction.referenceId}</span>
+                            <span className="truncate max-w-[120px]" title={transaction.trackingNumber || ''}>
+                              {transaction.trackingNumber || '-'}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-center">
-                          <div className="space-y-1">
-                            {transaction.cartonsIn > 0 && (
-                              <div className="text-green-600 font-medium">
-                                +{transaction.cartonsIn.toLocaleString()}
-                              </div>
-                            )}
-                            {transaction.cartonsOut > 0 && (
-                              <div className="text-red-600 font-medium">
-                                -{transaction.cartonsOut.toLocaleString()}
-                              </div>
-                            )}
-                            {transaction.cartonsIn === 0 && transaction.cartonsOut === 0 && (
-                              <div className="text-gray-400">-</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          <div className="space-y-1">
-                            {transaction.storagePalletsIn > 0 && (
-                              <div className="text-green-600 font-medium">
-                                +{transaction.storagePalletsIn}
-                              </div>
-                            )}
-                            {transaction.shippingPalletsOut > 0 && (
-                              <div className="text-red-600 font-medium">
-                                -{transaction.shippingPalletsOut}
-                              </div>
-                            )}
-                            {transaction.storagePalletsIn === 0 && transaction.shippingPalletsOut === 0 && (
-                              <div className="text-gray-400">-</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          <div className="space-y-1">
-                            {transaction.cartonsIn > 0 && (
-                              <div className="text-green-600 font-medium">
-                                +{(transaction.cartonsIn * (transaction.sku?.unitsPerCarton || 1)).toLocaleString()}
-                              </div>
-                            )}
-                            {transaction.cartonsOut > 0 && (
-                              <div className="text-red-600 font-medium">
-                                -{(transaction.cartonsOut * (transaction.sku?.unitsPerCarton || 1)).toLocaleString()}
-                              </div>
-                            )}
-                            {transaction.cartonsIn === 0 && transaction.cartonsOut === 0 && (
-                              <div className="text-gray-400">-</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {(transaction.shipName || transaction.containerNumber) ? (
-                            <div className="text-xs">
-                              {transaction.shipName && (
-                                <div className="text-gray-700" title="Ship Name">
-                                  {transaction.shipName}
-                                </div>
-                              )}
-                              {transaction.containerNumber && (
-                                <div className="text-gray-500" title="Container Number">
-                                  {transaction.containerNumber}
-                                </div>
-                              )}
-                            </div>
+                          {transaction.isReconciled ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Yes
+                            </span>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              No
+                            </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="text-xs text-gray-600">
-                            {(transaction.storageCartonsPerPallet || transaction.shippingCartonsPerPallet) ? (
-                              <div className="space-y-1">
-                                {transaction.storageCartonsPerPallet && (
-                                  <div title="Storage cartons per pallet">
-                                    S: {transaction.storageCartonsPerPallet}
-                                  </div>
-                                )}
-                                {transaction.shippingCartonsPerPallet && (
-                                  <div title="Shipping cartons per pallet">
-                                    P: {transaction.shippingCartonsPerPallet}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {transaction.createdBy.fullName}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          <div className="max-w-xs space-y-1">
-                            <div className="flex flex-wrap gap-1">
-                              {transaction.transactionType === 'SHIP' && transaction.modeOfTransportation && (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {transaction.modeOfTransportation}
-                                </div>
-                              )}
-                              {transaction.transactionType === 'SHIP' && transaction.fbaTrackingId && (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  {transaction.fbaTrackingId}
-                                </div>
-                              )}
-                            </div>
-                            <div className="truncate" title={transaction.notes || ''}>
-                              {transaction.notes || '-'}
-                            </div>
-                          </div>
                         </td>
                       </tr>
                       )
                     })}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={16} className="px-6 py-12">
+                        <td colSpan={11} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"

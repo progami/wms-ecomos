@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Package2, Plus, Save, X, AlertCircle, Upload, FileText, Loader2 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { Tooltip } from '@/components/ui/tooltip'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 
@@ -29,7 +30,7 @@ export default function WarehouseReceivePage() {
   const [skus, setSkus] = useState<Sku[]>([])
   const [skuLoading, setSkuLoading] = useState(true)
   const [shipName, setShipName] = useState('')
-  const [containerNumber, setContainerNumber] = useState('')
+  const [trackingNumber, setTrackingNumber] = useState('')
   const [tcNumber, setTcNumber] = useState('')
   const [ciNumber, setCiNumber] = useState('')
   const [packingListNumber, setPackingListNumber] = useState('')
@@ -50,7 +51,7 @@ export default function WarehouseReceivePage() {
       pallets: 0, 
       calculatedPallets: 0,
       units: 0,
-      unitsPerCarton: 1, // Now editable per batch
+      unitsPerCarton: 1, // From SKU master data
       storageCartonsPerPallet: 0,
       shippingCartonsPerPallet: 0,
       configLoaded: false,
@@ -111,7 +112,7 @@ export default function WarehouseReceivePage() {
         pallets: 0, 
         calculatedPallets: 0,
         units: 0,
-        unitsPerCarton: 1, // Now editable per batch
+        unitsPerCarton: 1, // From SKU master data
         storageCartonsPerPallet: 0,
         shippingCartonsPerPallet: 0,
         configLoaded: false,
@@ -228,18 +229,23 @@ export default function WarehouseReceivePage() {
     
     // If SKU code changed, fetch warehouse config and get next batch number
     if (field === 'skuCode' && value) {
-      // Don't auto-update units anymore - let user control unitsPerCarton
+      // Get units per carton from SKU master data
+      const selectedSku = skus.find(sku => sku.skuCode === value)
+      if (selectedSku) {
+        setItems(items.map(item => 
+          item.id === id ? { ...item, unitsPerCarton: selectedSku.unitsPerCarton } : item
+        ))
+      }
       await fetchLastBatchDefaults(id, value)
       await fetchNextBatchNumber(id, value)
     }
     
-    // If cartons or unitsPerCarton changed, recalculate units
-    if (field === 'cartons' || field === 'unitsPerCarton') {
+    // If cartons changed, recalculate units
+    if (field === 'cartons') {
       const item = items.find(i => i.id === id)
       if (item) {
-        const cartons = field === 'cartons' ? value : item.cartons
-        const unitsPerCarton = field === 'unitsPerCarton' ? value : item.unitsPerCarton
-        const units = cartons * unitsPerCarton
+        const cartons = value
+        const units = cartons * item.unitsPerCarton
         setItems(items.map(i => 
           i.id === id ? { ...i, units } : i
         ))
@@ -452,7 +458,7 @@ export default function WarehouseReceivePage() {
     if (ciNumber) fullNotes += `CI #: ${ciNumber}. `
     if (packingListNumber) fullNotes += `Packing List #: ${packingListNumber}. `
     if (shipName) fullNotes += `Ship: ${shipName}. `
-    if (containerNumber) fullNotes += `Container: ${containerNumber}. `
+    if (trackingNumber) fullNotes += `Tracking: ${trackingNumber}. `
     if (tcNumber) fullNotes += `TC #: ${tcNumber}. `
     if (notes) fullNotes += notes
     
@@ -479,7 +485,7 @@ export default function WarehouseReceivePage() {
           items: validItems,
           notes: fullNotes,
           shipName,
-          containerNumber,
+          trackingNumber,
           attachments: allAttachments.length > 0 ? allAttachments : null,
           warehouseId: session?.user.warehouseId, // Include warehouse ID if not staff
         }),
@@ -619,14 +625,20 @@ export default function WarehouseReceivePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Container Number
+                  <div className="flex items-center gap-1">
+                    Tracking Number
+                    <Tooltip 
+                      content="Container number for ocean/ground shipments" 
+                      iconSize="sm"
+                    />
+                  </div>
                 </label>
                 <input
                   type="text"
-                  value={containerNumber}
-                  onChange={(e) => setContainerNumber(e.target.value)}
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., MSKU1234567"
+                  placeholder="e.g., MSKU1234567 or FBA15FK7K9TS"
                 />
               </div>
             </div>
@@ -660,7 +672,13 @@ export default function WarehouseReceivePage() {
                       Cartons
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Units/Carton
+                      <div className="flex items-center justify-end gap-1">
+                        Units/Carton
+                        <Tooltip 
+                          content="From SKU master data" 
+                          iconSize="sm"
+                        />
+                      </div>
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Storage Cartons/Pallet
@@ -744,17 +762,9 @@ export default function WarehouseReceivePage() {
                         <input
                           type="number"
                           value={item.unitsPerCarton}
-                          onChange={(e) => {
-                            const newValue = parseInt(e.target.value) || 1
-                            updateItem(item.id, 'unitsPerCarton', newValue)
-                          }}
-                          className={`w-full px-2 py-1 border rounded text-right focus:outline-none focus:ring-1 focus:ring-primary ${
-                            item.configLoaded && item.unitsPerCarton > 1 ? 'bg-yellow-50' : ''
-                          }`}
-                          min="1"
-                          placeholder="1"
-                          title={item.configLoaded && item.unitsPerCarton > 1 ? 'Loaded from last batch (editable)' : 'Enter units per carton'}
-                          required
+                          className="w-full px-2 py-1 border rounded text-right bg-gray-100 cursor-not-allowed"
+                          readOnly
+                          title="Units per carton is defined by the SKU master data"
                         />
                       </td>
                       <td className="px-4 py-3">

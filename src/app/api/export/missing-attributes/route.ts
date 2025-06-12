@@ -40,7 +40,7 @@ export async function GET(_request: NextRequest) {
         if (!attachments.deliveryNote) missing.push('Delivery Note')
         if (!attachments.cubemaster) missing.push('Cube Master Stacking Style')
         if (!transaction.shipName) missing.push('Ship Name')
-        if (!transaction.containerNumber) missing.push('Container Number')
+        if (!transaction.trackingNumber) missing.push('Tracking Number')
       }
       
       if (transaction.transactionType === 'SHIP') {
@@ -57,7 +57,7 @@ export async function GET(_request: NextRequest) {
         batchLot: transaction.batchLot,
         referenceId: transaction.referenceId || '',
         shipName: transaction.shipName || '',
-        containerNumber: transaction.containerNumber || '',
+        trackingNumber: transaction.trackingNumber || '',
         missingAttributes: missing.join(', '),
         missingCount: missing.length
       }
@@ -88,7 +88,7 @@ export async function GET(_request: NextRequest) {
       'Batch/Lot',
       'Reference ID',
       'Ship Name',
-      'Container Number',
+      'Tracking Number',
       'Missing Attributes',
       'Missing Count'
     ]
@@ -104,7 +104,7 @@ export async function GET(_request: NextRequest) {
         row.batchLot,
         row.referenceId,
         row.shipName,
-        row.containerNumber,
+        row.trackingNumber,
         row.missingAttributes,
         row.missingCount.toString()
       ])

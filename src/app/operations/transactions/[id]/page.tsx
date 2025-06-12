@@ -36,14 +36,13 @@ interface Transaction {
   cartonsOut: number
   storagePalletsIn: number
   shippingPalletsOut: number
-  notes?: string | null
   createdBy: { id: string; fullName: string }
   createdAt: string
   updatedAt: string
   
   // Additional fields
   shipName?: string | null
-  containerNumber?: string | null
+  trackingNumber?: string | null
   pickupDate?: string | null
   attachments?: any
   
@@ -85,8 +84,6 @@ export default function TransactionDetailPage() {
   
   // Form states
   const [formData, setFormData] = useState({
-    // Common fields
-    notes: '',
     
     // Receive specific
     ciNumber: '',
@@ -94,11 +91,10 @@ export default function TransactionDetailPage() {
     tcNumber: '',
     supplier: '',
     shipName: '',
-    containerNumber: '',
+    trackingNumber: '',
     
     // Ship specific
     carrier: '',
-    fbaTrackingId: '',
     pickupDate: '',
     
     // Quantities (editable)
@@ -136,28 +132,25 @@ export default function TransactionDetailPage() {
       const data = await response.json()
       setTransaction(data)
       
-      // Parse notes to extract additional fields
-      const notes = data.notes || ''
-      const supplierMatch = notes.match(/Supplier: ([^.]+)/)
-      const ciMatch = notes.match(/CI #: ([^.]+)/)
-      const plMatch = notes.match(/Packing List #: ([^.]+)/)
-      const tcMatch = notes.match(/TC #: ([^.]+)/)
-      const carrierMatch = notes.match(/Carrier: ([^.]+)/)
-      const fbaMatch = notes.match(/FBA Tracking: ([^.]+)/)
-      const containerMatch = notes.match(/Container: ([^.]+)/)
-      const shipMatch = notes.match(/Ship: ([^.]+)/)
+      // Parse additional fields
+      const supplierMatch = null
+      const ciMatch = null
+      const plMatch = null
+      const tcMatch = null
+      const carrierMatch = null
+      const fbaMatch = null
+      const trackingMatch = null
+      const shipMatch = null
       
       // Set form data
       setFormData({
-        notes: notes.replace(/^(Supplier:|CI #:|Packing List #:|TC #:|Carrier:|FBA Tracking:|Container:|Ship:|Total Cartons:|Source:).+?(\.|$)/gm, '').trim(),
         ciNumber: data.referenceId || ciMatch?.[1]?.trim() || '',
         packingListNumber: plMatch?.[1]?.trim() || '',
         tcNumber: tcMatch?.[1]?.trim() || '',
         supplier: supplierMatch?.[1]?.trim() || '',
         shipName: data.shipName || shipMatch?.[1]?.trim() || '',
-        containerNumber: data.containerNumber || containerMatch?.[1]?.trim() || '',
+        trackingNumber: data.trackingNumber || trackingMatch?.[1]?.trim() || fbaMatch?.[1]?.trim() || '',
         carrier: carrierMatch?.[1]?.trim() || '',
-        fbaTrackingId: fbaMatch?.[1]?.trim() || '',
         pickupDate: data.pickupDate || '',
         cartons: data.transactionType === 'RECEIVE' ? data.cartonsIn : data.cartonsOut,
         pallets: data.transactionType === 'RECEIVE' ? data.storagePalletsIn : data.shippingPalletsOut,
@@ -259,17 +252,8 @@ export default function TransactionDetailPage() {
     setSaving(true)
     
     try {
-      // Build notes with all fields
+      // Build empty notes
       let fullNotes = ''
-      if (formData.supplier) fullNotes += `Supplier: ${formData.supplier}. `
-      if (formData.ciNumber) fullNotes += `CI #: ${formData.ciNumber}. `
-      if (formData.packingListNumber) fullNotes += `Packing List #: ${formData.packingListNumber}. `
-      if (formData.tcNumber) fullNotes += `TC #: ${formData.tcNumber}. `
-      if (formData.carrier) fullNotes += `Carrier: ${formData.carrier}. `
-      if (formData.fbaTrackingId) fullNotes += `FBA Tracking: ${formData.fbaTrackingId}. `
-      if (formData.shipName) fullNotes += `Ship: ${formData.shipName}. `
-      if (formData.containerNumber) fullNotes += `Container: ${formData.containerNumber}. `
-      if (formData.notes) fullNotes += formData.notes
       
       // Prepare attachment array
       const attachmentArray = Object.entries(attachments)
@@ -291,7 +275,7 @@ export default function TransactionDetailPage() {
         body: JSON.stringify({
           notes: fullNotes,
           shipName: formData.shipName || null,
-          containerNumber: formData.containerNumber || null,
+          trackingNumber: formData.trackingNumber || null,
           pickupDate: formData.pickupDate || null,
           referenceId: formData.ciNumber || transaction.referenceId,
           attachments: attachmentArray.length > 0 ? attachmentArray : null,
@@ -578,7 +562,7 @@ export default function TransactionDetailPage() {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Order Number
+                      Reference ID <span className="text-xs text-gray-500">(Order Number)</span>
                     </label>
                     <input
                       type="text"
@@ -611,19 +595,6 @@ export default function TransactionDetailPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      FBA Tracking ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.fbaTrackingId}
-                      onChange={(e) => setFormData({ ...formData, fbaTrackingId: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="e.g., FBA15K7TRCBF"
-                      readOnly={!editMode}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Pickup Date
                     </label>
                     <input
@@ -637,32 +608,54 @@ export default function TransactionDetailPage() {
                 </>
               )}
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ship Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.shipName}
-                  onChange={(e) => setFormData({ ...formData, shipName: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={isReceive ? "e.g., MV Ocean Star" : "Destination/Customer"}
-                  readOnly={!editMode}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Container Number
-                </label>
-                <input
-                  type="text"
-                  value={formData.containerNumber}
-                  onChange={(e) => setFormData({ ...formData, containerNumber: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., MSKU1234567"
-                  readOnly={!editMode}
-                />
-              </div>
+              {isReceive && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ship Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.shipName}
+                      onChange={(e) => setFormData({ ...formData, shipName: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="e.g., MV Ocean Star"
+                      readOnly={!editMode}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tracking Number
+                      <span className="ml-1 text-gray-400 text-xs">(Container #)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.trackingNumber}
+                      onChange={(e) => setFormData({ ...formData, trackingNumber: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="e.g., MSKU1234567"
+                      readOnly={!editMode}
+                    />
+                  </div>
+                </>
+              )}
+              
+              {isShip && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tracking Number
+                    <span className="ml-1 text-gray-400 text-xs">(FBA shipment ID)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.trackingNumber}
+                    onChange={(e) => setFormData({ ...formData, trackingNumber: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="e.g., FBA15K7TRCBF"
+                    readOnly={!editMode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -703,19 +696,14 @@ export default function TransactionDetailPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Units/Carton
+                Units/Carton <span className="text-xs text-gray-500">(From SKU)</span>
               </label>
               <input
                 type="number"
                 value={formData.unitsPerCarton}
-                onChange={(e) => {
-                  const unitsPerCarton = parseInt(e.target.value) || 1
-                  const units = formData.cartons * unitsPerCarton
-                  setFormData({ ...formData, unitsPerCarton, units })
-                }}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                readOnly={!editMode}
-                min="1"
+                className="w-full px-3 py-2 border rounded-md bg-gray-100 cursor-not-allowed"
+                readOnly
+                title="Units per carton is defined by the SKU and cannot be changed"
               />
             </div>
             <div>
@@ -859,18 +847,6 @@ export default function TransactionDetailPage() {
           )}
         </div>
 
-        {/* Notes */}
-        <div className="border rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Additional Notes</h3>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            rows={3}
-            placeholder="Any additional notes or comments..."
-            readOnly={!editMode}
-          />
-        </div>
 
         {/* Metadata */}
         <div className="border rounded-lg p-6 bg-gray-50">

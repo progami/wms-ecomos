@@ -90,7 +90,6 @@ const navigation = {
       items: [
         { name: 'Users', href: '/admin/users', icon: Users },
         { name: 'Settings', href: '/admin/settings', icon: Settings },
-        { name: 'Import Excel', href: '/admin/import-excel', icon: FileSpreadsheet },
       ]
     },
   ] as NavSection[],

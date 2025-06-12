@@ -15,20 +15,17 @@ const createInvoiceSchema = z.object({
   invoiceDate: z.string().datetime(),
   dueDate: z.string().datetime().optional(),
   totalAmount: z.number().positive(),
-  notes: z.string().optional(),
   lineItems: z.array(z.object({
     costCategory: z.enum(['Container', 'Carton', 'Pallet', 'Storage', 'Unit', 'Shipment', 'Accessorial']),
     costName: z.string().min(1),
     quantity: z.number().positive(),
     unitRate: z.number().positive().optional(),
-    amount: z.number().positive(),
-    notes: z.string().optional()
+    amount: z.number().positive()
   }))
 })
 
 const updateInvoiceSchema = z.object({
   status: z.enum(['pending', 'reconciled', 'disputed', 'paid']).optional(),
-  notes: z.string().optional(),
   dueDate: z.string().datetime().optional()
 })
 
@@ -218,7 +215,6 @@ export async function POST(req: NextRequest) {
         invoiceDate: new Date(validatedData.invoiceDate),
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
         totalAmount: validatedData.totalAmount,
-        notes: validatedData.notes,
         createdById: session.user.id,
         lineItems: {
           create: validatedData.lineItems.map(item => ({
@@ -226,8 +222,7 @@ export async function POST(req: NextRequest) {
             costName: item.costName,
             quantity: item.quantity,
             unitRate: item.unitRate,
-            amount: item.amount,
-            notes: item.notes
+            amount: item.amount
           }))
         }
       },
@@ -293,7 +288,6 @@ export async function PATCH(req: NextRequest) {
       where: { id: invoiceId },
       data: {
         status: validatedData.status,
-        notes: validatedData.notes,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
         updatedAt: new Date()
       },

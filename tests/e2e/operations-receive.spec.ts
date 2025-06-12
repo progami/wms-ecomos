@@ -20,7 +20,7 @@ test.describe('Receive Goods Operations', () => {
     
     // Shipment details
     await expect(page.locator('input[name="shipName"]')).toBeVisible()
-    await expect(page.locator('input[name="containerNumber"]')).toBeVisible()
+    await expect(page.locator('input[name="trackingNumber"]')).toBeVisible()
     
     // Notes
     await expect(page.locator('textarea[name="notes"]')).toBeVisible()

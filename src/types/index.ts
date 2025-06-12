@@ -87,7 +87,6 @@ export interface InventoryTransactionForm {
   transactionType: TransactionType
   quantity: number
   referenceId?: string
-  notes?: string
 }
 
 export interface InvoiceForm {
@@ -106,7 +105,6 @@ export interface InvoiceLineItemForm {
   quantity: number
   unitRate?: number
   amount: number
-  notes?: string
 }
 
 // Filter Types

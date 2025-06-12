@@ -23,7 +23,6 @@ interface InvoiceDetail {
   dueDate: string | null
   totalAmount: number
   status: 'pending' | 'reconciled' | 'disputed' | 'paid'
-  notes?: string
   lineItems: Array<{
     id: string
     costCategory: string
@@ -31,8 +30,7 @@ interface InvoiceDetail {
     quantity: number
     unitRate?: number
     amount: number
-    notes?: string
-  }>
+    }>
   reconciliations: Array<{
     id: string
     costCategory: string
@@ -535,13 +533,6 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                   </div>
                 </div>
 
-                {/* Notes */}
-                {invoice.notes && (
-                  <div>
-                    <h3 className="font-semibold mb-3">Notes</h3>
-                    <p className="text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="space-y-4">

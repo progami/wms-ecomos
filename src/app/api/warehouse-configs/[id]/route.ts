@@ -116,8 +116,7 @@ export async function PUT(
         storageCartonsPerPallet: data.storageCartonsPerPallet,
         shippingCartonsPerPallet: data.shippingCartonsPerPallet,
         maxStackingHeightCm: data.maxStackingHeightCm,
-        endDate: data.endDate ? new Date(data.endDate) : null,
-        notes: data.notes
+        endDate: data.endDate ? new Date(data.endDate) : null
       },
       include: {
         warehouse: true,

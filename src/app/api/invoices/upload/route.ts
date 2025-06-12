@@ -22,7 +22,6 @@ interface InvoiceUploadData {
     quantity: number
     unitRate?: number
     amount: number
-    notes?: string
   }>
 }
 
@@ -122,8 +121,7 @@ export async function POST(req: NextRequest) {
               costName: item.costName,
               quantity: item.quantity,
               unitRate: item.unitRate,
-              amount: item.amount,
-              notes: item.notes
+              amount: item.amount
             }))
           }
         },
@@ -313,8 +311,7 @@ function extractCSVLineItem(row: any): any {
     costName: extractCostName(row),
     quantity: extractQuantity(row),
     unitRate: extractUnitRate(row),
-    amount: extractAmount(row),
-    notes: extractNotes(row)
+    amount: extractAmount(row)
   }
 }
 
@@ -439,8 +436,7 @@ function extractLineItems(data: any[]): any[] {
         costName: extractCostName(row),
         quantity: extractQuantity(row),
         unitRate: extractUnitRate(row),
-        amount: amount,
-        notes: extractNotes(row)
+        amount: amount
       })
     }
   }
@@ -509,13 +505,6 @@ function extractUnitRate(row: any): number | undefined {
   return undefined
 }
 
-function extractNotes(row: any): string | undefined {
-  const noteKeys = ['Notes', 'Comments', 'Remarks', 'Note']
-  for (const key of noteKeys) {
-    if (row[key]) return String(row[key]).trim()
-  }
-  return undefined
-}
 
 // Map common 3PL cost categories to our system categories
 function mapCostCategory(category: string): string {

@@ -8,6 +8,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
+import { ImportButton } from '@/components/ui/import-button'
 
 interface CostRate {
   id: string
@@ -19,7 +20,6 @@ interface CostRate {
   unitOfMeasure: string
   effectiveDate: string
   endDate?: string
-  notes?: string
 }
 
 interface Warehouse {
@@ -200,13 +200,19 @@ export default function AdminRatesPage() {
           icon={DollarSign}
           actions={
             session?.user.role === 'admin' && (
-              <Link
-                href="/config/rates/new"
-                className="action-button"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Rate
-              </Link>
+              <div className="flex gap-2">
+                <ImportButton 
+                  entityName="costRates" 
+                  onImportComplete={fetchData}
+                />
+                <Link
+                  href="/config/rates/new"
+                  className="action-button"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Rate
+                </Link>
+              </div>
             )
           }
         />
@@ -376,9 +382,6 @@ export default function AdminRatesPage() {
                         )}
                         <td className="px-6 py-4 text-sm text-gray-900">
                           {rate.costName}
-                          {rate.notes && (
-                            <p className="text-xs text-gray-500 mt-1">{rate.notes}</p>
-                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
                           {formatCurrency(rate.costValue)}

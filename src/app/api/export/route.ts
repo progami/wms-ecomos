@@ -125,8 +125,7 @@ async function addInvoicesSheet(wb: XLSX.WorkBook, filters: any) {
       'Cost Name': item.costName,
       'Quantity': Number(item.quantity),
       'Unit Rate': item.unitRate ? Number(item.unitRate) : '',
-      'Amount': Number(item.amount),
-      'Notes': item.notes || ''
+      'Amount': Number(item.amount)
     }))
   )
 
@@ -216,7 +215,6 @@ async function addTransactionsSheet(wb: XLSX.WorkBook, filters: any) {
     'Cartons Out': tx.cartonsOut,
     'Storage Pallets In': tx.storagePalletsIn,
     'Shipping Pallets Out': tx.shippingPalletsOut,
-    'Notes': tx.notes || '',
     'Created By': tx.createdBy.fullName,
     'Created At': tx.createdAt.toISOString()
   }))
@@ -320,8 +318,7 @@ async function addCostsSheet(wb: XLSX.WorkBook, filters: any) {
     'Rate': Number(cost.applicableRate),
     'Calculated Cost': Number(cost.calculatedCost),
     'Adjustment': Number(cost.costAdjustmentValue),
-    'Final Cost': Number(cost.finalExpectedCost),
-    'Notes': cost.notes || ''
+    'Final Cost': Number(cost.finalExpectedCost)
   }))
 
   const ws = XLSX.utils.json_to_sheet(costData)
@@ -348,8 +345,7 @@ async function addCostsSheet(wb: XLSX.WorkBook, filters: any) {
     'Cost Value': Number(rate.costValue),
     'Unit of Measure': rate.unitOfMeasure,
     'Effective Date': rate.effectiveDate.toISOString().split('T')[0],
-    'End Date': rate.endDate?.toISOString().split('T')[0] || 'Current',
-    'Notes': rate.notes || ''
+    'End Date': rate.endDate?.toISOString().split('T')[0] || 'Current'
   }))
 
   const wsRates = XLSX.utils.json_to_sheet(rateData)

@@ -162,3 +162,8 @@ dist
 backups/
 *.sql
 *.dump
+
+# Secret files
+.mcp.json
+client_secret.json
+*_secret.json

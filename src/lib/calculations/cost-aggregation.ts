@@ -184,8 +184,8 @@ export async function calculateTransactionCosts(
   const inboundTransactions = transactions.filter(t => t.transactionType === 'RECEIVE');
   
   // Container unloading (one per receive batch with container)
-  const containerTransactions = inboundTransactions.filter(t => t.containerNumber);
-  const uniqueContainers = new Set(containerTransactions.map(t => t.containerNumber));
+  const containerTransactions = inboundTransactions.filter(t => t.trackingNumber);
+  const uniqueContainers = new Set(containerTransactions.map(t => t.trackingNumber));
   
   const containerRate = costRates.find(r => r.costCategory === CostCategory.Container);
   if (containerRate && uniqueContainers.size > 0) {
@@ -198,7 +198,7 @@ export async function calculateTransactionCosts(
       unitRate: Number(containerRate.costValue),
       unit: containerRate.unitOfMeasure,
       amount: uniqueContainers.size * Number(containerRate.costValue),
-      details: Array.from(uniqueContainers).map(containerNumber => ({
+      details: Array.from(uniqueContainers).map(trackingNumber => ({
         transactionType: 'RECEIVE',
         count: 1,
       })),

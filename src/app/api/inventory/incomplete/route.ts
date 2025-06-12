@@ -16,13 +16,13 @@ export async function GET(_request: Request) {
       ? { warehouseId: session.user.warehouseId }
       : {};
 
-    // Find RECEIVE transactions missing container or pickup date
+    // Find RECEIVE transactions missing tracking number or pickup date
     const incompleteReceive = await prisma.inventoryTransaction.findMany({
       where: {
         ...whereClause,
         transactionType: 'RECEIVE',
         OR: [
-          { containerNumber: null },
+          { trackingNumber: null },
           { pickupDate: null }
         ]
       },
@@ -31,7 +31,7 @@ export async function GET(_request: Request) {
         transactionId: true,
         transactionType: true,
         transactionDate: true,
-        containerNumber: true,
+        trackingNumber: true,
         pickupDate: true,
         attachments: true,
         sku: {
@@ -69,7 +69,7 @@ export async function GET(_request: Request) {
       const missingFields = [];
       
       if (tx.transactionType === 'RECEIVE') {
-        if (!tx.containerNumber) missingFields.push('container_number');
+        if (!tx.trackingNumber) missingFields.push('tracking_number');
         if (!tx.pickupDate) missingFields.push('pickup_date');
       } else if (tx.transactionType === 'SHIP') {
         if (!tx.pickupDate) missingFields.push('pickup_date');

@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
+import { generateExportConfig, applyExportConfig } from '@/lib/dynamic-export'
+import { inventoryTransactionConfig } from '@/lib/export-configurations'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -22,51 +24,60 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const skuCode = searchParams.get('skuCode')
     const batchLot = searchParams.get('batchLot')
+    const fullExport = searchParams.get('full') === 'true'
 
     // Build where clause
     const where: any = {}
     
-    // For staff, limit to their warehouse
-    if (session.user.role === 'staff' && session.user.warehouseId) {
-      where.warehouseId = session.user.warehouseId
-    } else if (warehouse) {
-      where.warehouseId = warehouse
-    }
+    // If full export is requested, skip all filters except staff warehouse restriction
+    if (!fullExport) {
+      // For staff, always limit to their warehouse
+      if (session.user.role === 'staff' && session.user.warehouseId) {
+        where.warehouseId = session.user.warehouseId
+      } else if (warehouse) {
+        where.warehouseId = warehouse
+      }
 
-    if (transactionType) {
-      where.transactionType = transactionType
-    }
+      if (transactionType) {
+        where.transactionType = transactionType
+      }
 
-    if (skuCode) {
-      where.sku = {
-        skuCode: {
-          contains: skuCode,
+      if (skuCode) {
+        where.sku = {
+          skuCode: {
+            contains: skuCode,
+            mode: 'insensitive'
+          }
+        }
+      }
+
+      if (batchLot) {
+        where.batchLot = {
+          contains: batchLot,
           mode: 'insensitive'
         }
       }
-    }
 
-    if (batchLot) {
-      where.batchLot = {
-        contains: batchLot,
-        mode: 'insensitive'
+      // Date filtering
+      if (viewMode === 'point-in-time' && date) {
+        const pointInTime = new Date(date)
+        pointInTime.setHours(23, 59, 59, 999)
+        where.transactionDate = { lte: pointInTime }
+      } else if (startDate || endDate) {
+        where.transactionDate = {}
+        if (startDate) {
+          where.transactionDate.gte = new Date(startDate)
+        }
+        if (endDate) {
+          const endDateTime = new Date(endDate)
+          endDateTime.setHours(23, 59, 59, 999)
+          where.transactionDate.lte = endDateTime
+        }
       }
-    }
-
-    // Date filtering
-    if (viewMode === 'point-in-time' && date) {
-      const pointInTime = new Date(date)
-      pointInTime.setHours(23, 59, 59, 999)
-      where.transactionDate = { lte: pointInTime }
-    } else if (startDate || endDate) {
-      where.transactionDate = {}
-      if (startDate) {
-        where.transactionDate.gte = new Date(startDate)
-      }
-      if (endDate) {
-        const endDateTime = new Date(endDate)
-        endDateTime.setHours(23, 59, 59, 999)
-        where.transactionDate.lte = endDateTime
+    } else {
+      // For full export, only apply warehouse restriction for staff users
+      if (session.user.role === 'staff' && session.user.warehouseId) {
+        where.warehouseId = session.user.warehouseId
       }
     }
 
@@ -91,26 +102,40 @@ export async function GET(request: NextRequest) {
     // Create workbook
     const wb = XLSX.utils.book_new()
 
-    // Inventory Ledger Sheet
-    const ledgerData = transactions.map(t => ({
-      'Transaction Date': new Date(t.transactionDate).toLocaleString('en-US', { timeZone: 'America/Chicago' }),
-      'Transaction ID': t.transactionId,
-      'Type': t.transactionType,
-      'Warehouse': t.warehouse.name,
-      'SKU Code': t.sku.skuCode,
-      'SKU Description': t.sku.description,
-      'Batch/Lot': t.batchLot,
-      'Reference': t.referenceId,
-      'Cartons In': t.cartonsIn,
-      'Cartons Out': t.cartonsOut,
-      'Storage Pallets In': t.storagePalletsIn,
-      'Shipping Pallets Out': t.shippingPalletsOut,
-      'Notes': t.notes || '',
-      'Created By': t.createdBy.fullName,
-      'Created At': new Date(t.createdAt).toLocaleString('en-US', { timeZone: 'America/Chicago' })
-    }))
+    // Use dynamic export configuration
+    const fieldConfigs = generateExportConfig('InventoryTransaction', inventoryTransactionConfig)
+    const ledgerData = applyExportConfig(transactions, fieldConfigs)
 
-    const ledgerSheet = XLSX.utils.json_to_sheet(ledgerData)
+    let ledgerSheet
+    
+    if (ledgerData.length > 0) {
+      // Normal case - data exists
+      ledgerSheet = XLSX.utils.json_to_sheet(ledgerData)
+      
+      // Auto-size columns
+      const colWidths = Object.keys(ledgerData[0] || {}).map(key => ({
+        wch: Math.max(
+          key.length,
+          ...ledgerData.slice(0, 100).map(row => String(row[key] || '').length)
+        ) + 2
+      }))
+      ledgerSheet['!cols'] = colWidths
+    } else {
+      // Empty data - create headers manually
+      const headers = fieldConfigs.map(config => config.columnName || config.fieldName)
+      const headerRow = headers.reduce((acc, header, index) => {
+        const col = XLSX.utils.encode_col(index)
+        acc[`${col}1`] = { t: 's', v: header }
+        return acc
+      }, {} as any)
+      
+      ledgerSheet = {
+        ...headerRow,
+        '!ref': `A1:${XLSX.utils.encode_col(headers.length - 1)}1`,
+        '!cols': headers.map(header => ({ wch: Math.max(header.length + 2, 15) }))
+      }
+    }
+    
     XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Inventory Ledger')
 
     // If point-in-time, add inventory summary sheet
@@ -159,9 +184,12 @@ export async function GET(request: NextRequest) {
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
     
     // Create filename
+    const dateStr = new Date().toISOString().split('T')[0]
     const filename = viewMode === 'point-in-time' 
       ? `inventory_ledger_as_of_${date}.xlsx`
-      : `inventory_ledger_${new Date().toISOString().split('T')[0]}.xlsx`
+      : fullExport 
+        ? `inventory_ledger_full_export_${dateStr}.xlsx`
+        : `inventory_ledger_${dateStr}.xlsx`
 
     // Return file
     return new NextResponse(buf, {

@@ -21,7 +21,6 @@ export default function NewSkuPage() {
     cartonDimensionsCm: '',
     cartonWeightKg: '',
     packagingType: '',
-    notes: '',
     isActive: true
   })
   
@@ -87,8 +86,7 @@ export default function NewSkuPage() {
         material: formData.material || undefined,
         unitDimensionsCm: formatDimensions(unitDimensions),
         cartonDimensionsCm: formatDimensions(cartonDimensions),
-        packagingType: formData.packagingType || undefined,
-        notes: formData.notes || undefined
+        packagingType: formData.packagingType || undefined
       }
 
       const response = await fetch('/api/skus', {
@@ -373,18 +371,6 @@ export default function NewSkuPage() {
           <div className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Additional Information</h2>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  rows={3}
-                  placeholder="Additional notes or specifications..."
-                />
-              </div>
 
               <div className="flex items-center">
                 <input

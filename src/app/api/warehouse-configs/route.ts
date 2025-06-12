@@ -71,7 +71,6 @@ export async function POST(request: NextRequest) {
         shippingCartonsPerPallet: data.shippingCartonsPerPallet,
         maxStackingHeightCm: data.maxStackingHeightCm,
         effectiveDate: new Date(data.effectiveDate),
-        notes: data.notes,
         createdById: session.user.id
       },
       include: {

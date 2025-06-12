@@ -29,7 +29,7 @@ interface Transaction {
   batchLot: string
   referenceId: string
   shipName?: string
-  containerNumber?: string
+  trackingNumber?: string
   pickupDate?: string
   attachments?: any
 }
@@ -100,7 +100,7 @@ export default function ImportAttributesPage() {
     
     // Check for required fields based on transaction type
     if (transaction.transactionType === 'RECEIVE') {
-      if (!transaction.containerNumber) missing.push('Container Number')
+      if (!transaction.trackingNumber) missing.push('Tracking Number')
       if (!attachments.packingList) missing.push('Packing List')
       if (!attachments.commercialInvoice) missing.push('Commercial Invoice')
       if (!attachments.deliveryNote) missing.push('Delivery Note')
@@ -375,7 +375,7 @@ export default function ImportAttributesPage() {
                             setSelectedTransaction(transaction)
                             setAdditionalAttributes({
                               shipName: transaction.shipName || '',
-                              containerNumber: transaction.containerNumber || ''
+                              trackingNumber: transaction.trackingNumber || ''
                             })
                           }}
                           className="text-primary hover:text-primary-dark"
@@ -526,16 +526,16 @@ export default function ImportAttributesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Container Number</label>
+                <label className="block text-sm font-medium mb-1">Tracking Number</label>
                 <input
                   type="text"
-                  value={additionalAttributes.containerNumber || ''}
+                  value={additionalAttributes.trackingNumber || ''}
                   onChange={(e) => setAdditionalAttributes({
                     ...additionalAttributes,
-                    containerNumber: e.target.value
+                    trackingNumber: e.target.value
                   })}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Enter container number"
+                  placeholder="Enter tracking number"
                 />
               </div>
 

@@ -164,11 +164,10 @@ async function main() {
             cartonsOut,
             storagePalletsIn: palletsIn,
             shippingPalletsOut: palletsOut,
-            notes,
             transactionDate,
             pickupDate,
             shipName,
-            containerNumber,
+            trackingNumber: containerNumber,
             createdById: adminUser.id,
             isReconciled: false
           }

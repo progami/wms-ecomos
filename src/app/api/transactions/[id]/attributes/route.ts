@@ -18,7 +18,7 @@ export async function PATCH(
     const body = await request.json()
     const { 
       shipName, 
-      containerNumber, 
+      trackingNumber, 
       pickupDate, 
       notes, 
       attachments,
@@ -51,7 +51,7 @@ export async function PATCH(
     // Prepare update data
     const updateData: any = {
       ...(shipName !== undefined && { shipName }),
-      ...(containerNumber !== undefined && { containerNumber }),
+      ...(trackingNumber !== undefined && { trackingNumber }),
       ...(pickupDate !== undefined && { pickupDate: pickupDate ? new Date(pickupDate) : null }),
       ...(notes !== undefined && { notes }),
       ...(referenceId !== undefined && { referenceId }),
@@ -208,7 +208,7 @@ export async function PATCH(
       }
       
       // Track other changes
-      const fieldsToTrack = ['shipName', 'containerNumber', 'pickupDate', 'notes', 'referenceId']
+      const fieldsToTrack = ['shipName', 'trackingNumber', 'pickupDate', 'notes', 'referenceId']
       fieldsToTrack.forEach(field => {
         if (body[field] !== undefined && body[field] !== currentTransaction[field as keyof typeof currentTransaction]) {
           changes.push({

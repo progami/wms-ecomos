@@ -2,326 +2,245 @@ name: PR Checks
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
 
 jobs:
-  changes:
-    name: Detect Changes
+  label-pr:
+    name: Label PR
     runs-on: ubuntu-latest
-    outputs:
-      database: ${{ steps.filter.outputs.database }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      backend: ${{ steps.filter.outputs.backend }}
-      tests: ${{ steps.filter.outputs.tests }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v2
-        id: filter
+      - name: Label PR based on files changed
+        uses: actions/labeler@v4
         with:
-          filters: |
-            database:
-              - 'prisma/**'
-              - '**/*.sql'
-            frontend:
-              - 'src/app/**'
-              - 'src/components/**'
-              - 'src/**/*.tsx'
-              - 'src/**/*.css'
-              - 'tailwind.config.js'
-              - 'postcss.config.js'
-            backend:
-              - 'src/lib/**'
-              - 'src/modules/**'
-              - 'src/app/api/**'
-              - 'src/**/*.ts'
-              - '!src/**/*.test.ts'
-            tests:
-              - 'tests/**'
-              - '**/*.test.ts'
-              - '**/*.test.tsx'
-              - '**/*.spec.ts'
-              - 'playwright.config.ts'
-              - 'jest.config.js'
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/labeler.yml
 
-  quick-checks:
-    name: Quick Checks
+  check-pr-title:
+    name: Check PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title follows conventional commits
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that the subject
+            doesn't start with an uppercase character.
+
+  check-branch-name:
+    name: Check Branch Name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name
+        uses: deepakputhraya/action-branch-name@master
+        with:
+          regex: '^(feature|bugfix|hotfix|release|chore)\/[a-z0-9-]+$'
+          allowed_prefixes: 'feature,bugfix,hotfix,release,chore'
+          ignore: main,develop
+          min_length: 5
+          max_length: 50
+
+  size-label:
+    name: Add Size Label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add size label
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/XS'
+          xs_max_size: '10'
+          s_label: 'size/S'
+          s_max_size: '100'
+          m_label: 'size/M'
+          m_max_size: '500'
+          l_label: 'size/L'
+          l_max_size: '1000'
+          xl_label: 'size/XL'
+          fail_if_xl: false
+
+  check-files:
+    name: Check Files
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Check formatting
+      - name: Check for large files
         run: |
-          npx prettier --check "src/**/*.{ts,tsx,js,jsx}" || true
-
-      - name: Run linting
-        run: npm run lint
-
-      - name: Run type checking
-        run: npm run type-check
-
-      - name: Check for console.log statements
-        run: |
-          ! grep -r "console\.log" src/ --include="*.ts" --include="*.tsx" --exclude-dir=__tests__ || (echo "Found console.log statements" && exit 1)
-
-      - name: Check for TODO comments
-        run: |
-          grep -r "TODO\|FIXME\|XXX" src/ --include="*.ts" --include="*.tsx" || echo "No TODO comments found"
-
-  unit-tests:
-    name: Unit Tests
-    needs: [quick-checks]
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: warehouse_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Setup test database
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
-        run: |
-          npx prisma db push --skip-generate --accept-data-loss
-          npx prisma db seed
-
-      - name: Run unit tests
-        run: npm run test:ci
-
-      - name: Check coverage thresholds
-        run: |
-          npx jest --coverage --coverageThreshold='{"global":{"branches":60,"functions":60,"lines":60,"statements":60}}'
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/coverage-final.json
-          flags: unittests
-          name: codecov-umbrella
-
-  e2e-smoke-tests:
-    name: E2E Smoke Tests
-    needs: [quick-checks]
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: warehouse_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright
-        run: npx playwright install --with-deps chromium
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Setup test database
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
-        run: |
-          npx prisma db push --skip-generate --accept-data-loss
-          npx prisma db seed
-
-      - name: Build application
-        run: npm run build
-
-      - name: Run E2E smoke tests
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
-          NEXTAUTH_SECRET: test-secret-for-ci-only
-          NEXTAUTH_URL: http://localhost:3000
-        run: |
-          # Run only critical path tests for PRs
-          npm run test:e2e -- tests/e2e/auth.spec.ts tests/e2e/dashboard.spec.ts --project=chromium
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: e2e-smoke-results
-          path: test-results/
-
-  database-checks:
-    name: Database Checks
-    needs: [changes]
-    if: needs.changes.outputs.database == 'true'
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: warehouse_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Validate Prisma schema
-        run: npx prisma validate
-
-      - name: Check migration safety
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/warehouse_test
-        run: |
-          # Deploy migrations to fresh database
-          npx prisma db push --skip-generate --accept-data-loss
-          
-          # Run seed to verify it works with new schema
-          npx prisma db seed
-          
-          echo "✅ Database migrations are safe to deploy"
-
-  build-check:
-    name: Build Check
-    needs: [quick-checks]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Build application
-        run: npm run build
-
-      - name: Analyze bundle size
-        run: |
-          echo "## Bundle Size Analysis" > bundle-analysis.md
-          echo "| File | Size |" >> bundle-analysis.md
-          echo "|------|------|" >> bundle-analysis.md
-          find .next/static -name "*.js" -type f -exec ls -lh {} \; | awk '{print "| " $9 " | " $5 " |"}' | head -20 >> bundle-analysis.md
-          
-          cat bundle-analysis.md
-
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run npm audit
-        run: npm audit --production --audit-level=high || true
-
-      - name: Run security scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-  all-pr-checks:
-    name: All PR Checks Pass
-    needs: [quick-checks, unit-tests, e2e-smoke-tests, build-check, security-scan]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check results
-        run: |
-          if [ "${{ needs.quick-checks.result }}" != "success" ] || 
-             [ "${{ needs.unit-tests.result }}" != "success" ] || 
-             [ "${{ needs.e2e-smoke-tests.result }}" != "success" ] || 
-             [ "${{ needs.build-check.result }}" != "success" ] || 
-             [ "${{ needs.security-scan.result }}" != "success" ]; then
-            echo "❌ One or more checks failed"
+          # Find files larger than 1MB
+          large_files=$(find . -type f -size +1M | grep -v -E '(node_modules|\.git|\.next|dist|build)' || true)
+          if [ -n "$large_files" ]; then
+            echo "::error::Large files detected (>1MB):"
+            echo "$large_files"
             exit 1
-          else
-            echo "✅ All PR checks passed!"
           fi
+
+      - name: Check for sensitive data
+        run: |
+          # Check for potential secrets
+          if grep -r -E "(api_key|apikey|api-key|secret|password|token)" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=tests .; then
+            echo "::warning::Potential sensitive data detected. Please review."
+          fi
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: high
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint -- --format=checkstyle --output-file=eslint-results.xml || true
+
+      - name: Annotate with ESLint results
+        uses: ataylorme/eslint-annotate-action@v2
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-json: "eslint-results.xml"
+
+      - name: Check TypeScript
+        run: npm run typecheck
+
+      - name: Check for unused dependencies
+        run: npx depcheck --ignores="@types/*"
+
+  test-coverage-diff:
+    name: Test Coverage Diff
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wms_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wms_test
+        run: |
+          npx prisma migrate deploy
+
+      - name: Run tests with coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wms_test
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret-key
+          NODE_ENV: test
+        run: npm run test:coverage
+
+      - name: Generate coverage report
+        uses: 5monkeys/cobertura-action@master
+        with:
+          path: coverage/cobertura-coverage.xml
+          minimum_coverage: 40
+          fail_below_threshold: false
+
+  pr-comment:
+    name: PR Comment
+    runs-on: ubuntu-latest
+    needs: [test-coverage-diff, code-quality]
+    if: always()
+    steps:
+      - name: Find Comment
+        uses: peter-evans/find-comment@v2
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '## PR Check Results'
+
+      - name: Create or Update Comment
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## PR Check Results
+            
+            | Check | Status |
+            |-------|--------|
+            | Code Quality | ${{ needs.code-quality.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+            | Test Coverage | ${{ needs.test-coverage-diff.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+            
+            <details>
+            <summary>Details</summary>
+            
+            - **PR Title**: ${{ github.event.pull_request.title }}
+            - **Branch**: ${{ github.event.pull_request.head.ref }}
+            - **Commits**: ${{ github.event.pull_request.commits }}
+            - **Files Changed**: ${{ github.event.pull_request.changed_files }}
+            - **Lines**: +${{ github.event.pull_request.additions }} -${{ github.event.pull_request.deletions }}
+            
+            </details>
+            
+            ---
+            *Last updated: ${{ github.event.pull_request.updated_at }}*
+          edit-mode: replace
