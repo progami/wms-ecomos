@@ -39,7 +39,7 @@ jobs:
     needs: lint
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -94,7 +94,7 @@ jobs:
     needs: lint
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -141,7 +141,7 @@ jobs:
     needs: [unit-tests, integration-tests]
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
