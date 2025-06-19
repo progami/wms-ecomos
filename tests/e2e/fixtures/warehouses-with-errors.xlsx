@@ -1,0 +1,4 @@
+Warehouse Name,Address,City,State,Zip,Country
+Main Warehouse,123 Main St,New York,NY,10001,USA
+,456 Oak Ave,Los Angeles,CA,90001,USA
+Secondary Warehouse,789 Pine St,,TX,75001,USA

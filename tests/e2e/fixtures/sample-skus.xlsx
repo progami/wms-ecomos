@@ -1,0 +1,4 @@
+SKU Code,Product Name,UOM,Description,Unit Cost
+SKU001,Product 1,EACH,Test product 1,10.50
+SKU002,Product 2,CASE,Test product 2,25.00
+SKU003,Product 3,PALLET,Test product 3,100.00

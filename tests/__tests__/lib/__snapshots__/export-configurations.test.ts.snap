@@ -1,0 +1,14 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Export Configurations inventoryTransactionConfig should have correct field order 1`] = `
+[
+  "warehouseName",
+  "skuCode",
+  "quantity",
+  "transactionNumber",
+  "type",
+  "createdByEmail",
+  "createdAt",
+  "updatedAt",
+]
+`;

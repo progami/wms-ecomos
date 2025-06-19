@@ -43,7 +43,20 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ComposedChart,
+  Legend,
+  ScatterChart,
+  Scatter,
+  ZAxis
 } from 'recharts'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 
@@ -103,6 +116,7 @@ export default function AdminDashboardPage() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('yearToDate')
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false)
   const [storageCostView, setStorageCostView] = useState<'weekly' | 'monthly'>('weekly')
+  const [useDemoData, setUseDemoData] = useState(false)
   
   const timeRanges: Record<string, TimeRange> = useMemo(() => ({
     current: {
@@ -177,6 +191,136 @@ export default function AdminDashboardPage() {
       setLoadingStats(false)
     }
   }, [selectedTimeRange, timeRanges])
+
+  // Generate dummy data for investor demo
+  const generateDummyData = useCallback(() => {
+    // Generate inventory trend data (showing growth)
+    const inventoryTrend = []
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - 90)
+    let baseInventory = 15000
+    
+    for (let i = 0; i < 90; i++) {
+      const date = new Date(startDate)
+      date.setDate(date.getDate() + i)
+      
+      // Add some realistic fluctuation with overall growth trend
+      const dailyChange = Math.random() * 800 - 200 // -200 to +600 daily change
+      const growthFactor = 1 + (i / 90) * 0.3 // 30% growth over 90 days
+      baseInventory = Math.max(10000, baseInventory + dailyChange)
+      
+      inventoryTrend.push({
+        date: format(date, 'MMM dd'),
+        inventory: Math.round(baseInventory * growthFactor)
+      })
+    }
+
+    // Generate category distribution data
+    const categoryData = [
+      { name: 'Electronics', value: 8500, growth: 15 },
+      { name: 'Apparel', value: 6200, growth: 22 },
+      { name: 'Home & Garden', value: 4800, growth: 8 },
+      { name: 'Sports & Outdoors', value: 3200, growth: 18 },
+      { name: 'Beauty & Health', value: 2800, growth: 25 },
+      { name: 'Toys & Games', value: 1500, growth: 12 }
+    ]
+
+    // Generate SKU performance data
+    const skuPerformance = [
+      { sku: 'Electronics', turnover: 85, stockLevel: 92, efficiency: 88 },
+      { sku: 'Apparel', turnover: 78, stockLevel: 85, efficiency: 82 },
+      { sku: 'Home & Garden', turnover: 65, stockLevel: 78, efficiency: 71 },
+      { sku: 'Sports', turnover: 72, stockLevel: 88, efficiency: 80 },
+      { sku: 'Beauty', turnover: 82, stockLevel: 75, efficiency: 78 },
+      { sku: 'Toys', turnover: 58, stockLevel: 82, efficiency: 70 }
+    ]
+
+    // Generate inventory value scatter data
+    const inventoryValueData = []
+    for (let i = 0; i < 50; i++) {
+      inventoryValueData.push({
+        quantity: Math.floor(Math.random() * 1000) + 100,
+        value: Math.floor(Math.random() * 50000) + 5000,
+        turnover: Math.floor(Math.random() * 30) + 5,
+        category: categoryData[Math.floor(Math.random() * categoryData.length)].name
+      })
+    }
+
+    // Generate monthly growth comparison
+    const monthlyGrowth = []
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+    months.forEach((month, index) => {
+      monthlyGrowth.push({
+        month,
+        lastYear: Math.floor(Math.random() * 5000) + 10000,
+        thisYear: Math.floor(Math.random() * 5000) + 12000 + (index * 500)
+      })
+    })
+
+    // Generate cost trend data
+    const costTrend = []
+    const costStartDate = new Date()
+    costStartDate.setDate(costStartDate.getDate() - 84) // 12 weeks
+    
+    for (let i = 0; i < 12; i++) {
+      const weekDate = new Date(costStartDate)
+      weekDate.setDate(weekDate.getDate() + (i * 7))
+      
+      // Generate realistic weekly storage costs
+      const baseCost = 3500 + (i * 50) // Growing trend
+      const variation = Math.random() * 500 - 250
+      
+      costTrend.push({
+        date: format(weekDate, 'MMM dd'),
+        cost: Math.round(baseCost + variation)
+      })
+    }
+
+    // Generate warehouse distribution
+    const warehouseDistribution = [
+      { name: 'London Central', value: 8500, percentage: 31 },
+      { name: 'Manchester North', value: 6200, percentage: 23 },
+      { name: 'Birmingham Hub', value: 4800, percentage: 18 },
+      { name: 'Glasgow Depot', value: 3200, percentage: 12 },
+      { name: 'Bristol South', value: 2800, percentage: 10 },
+      { name: 'Leeds East', value: 1500, percentage: 6 }
+    ]
+
+    // Generate recent transactions
+    const transactionTypes = ['RECEIVE', 'SHIP', 'TRANSFER']
+    const skus = ['ELEC-1234', 'APP-5678', 'HOME-9012', 'SPRT-3456', 'BEAU-7890']
+    const warehouses = warehouseDistribution.map(w => w.name)
+    
+    const recentTransactions = []
+    for (let i = 0; i < 10; i++) {
+      const date = new Date()
+      date.setHours(date.getHours() - (i * 4))
+      
+      recentTransactions.push({
+        id: `TRX-${1000 + i}`,
+        type: transactionTypes[Math.floor(Math.random() * transactionTypes.length)],
+        sku: skus[Math.floor(Math.random() * skus.length)],
+        quantity: Math.floor(Math.random() * 100) + 10,
+        warehouse: warehouses[Math.floor(Math.random() * warehouses.length)],
+        date: date.toISOString(),
+        details: i % 3 === 0 ? 'Express delivery' : null
+      })
+    }
+
+    return {
+      inventoryTrend,
+      categoryData,
+      skuPerformance,
+      inventoryValueData,
+      monthlyGrowth,
+      costTrend,
+      warehouseDistribution,
+      recentTransactions
+    }
+  }, [])
+
+  // Use dummy data for demo
+  const dummyData = useMemo(() => generateDummyData(), [generateDummyData])
 
   useEffect(() => {
     // Only fetch if we haven't already
@@ -309,11 +453,21 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <PageHeader
             title="Admin Dashboard"
-            subtitle={`Welcome back, ${session?.user?.name || 'Admin'}`}
-            description="Monitor system performance, track inventory metrics, and manage warehouse operations."
+            subtitle="System Overview"
             icon={BarChart3}
           />
           <div className="flex items-center gap-3">
+            {/* Demo Data Toggle */}
+            <label className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useDemoData}
+                onChange={(e) => setUseDemoData(e.target.checked)}
+                className="w-4 h-4 text-primary rounded focus:ring-primary"
+              />
+              <span className="text-sm">Demo Data</span>
+            </label>
+            
             {/* Time Range Selector */}
             <div className="relative">
               <button
@@ -387,7 +541,7 @@ export default function AdminDashboardPage() {
                 icon={Package2}
                 trend={`${stats.inventoryTrend === 'up' ? '+' : ''}${stats.inventoryChange}% from last period`}
                 trendUp={stats.inventoryTrend === 'up' ? true : stats.inventoryTrend === 'down' ? false : null}
-                sparklineData={chartData?.inventoryTrend.slice(-7).map(d => d.inventory) || []}
+                sparklineData={useDemoData ? dummyData.inventoryTrend.slice(-7).map(d => d.inventory) : (chartData?.inventoryTrend?.slice(-7).map(d => d.inventory) || [])}
                 color="blue"
               />
               <EnhancedDashboardCard
@@ -397,7 +551,7 @@ export default function AdminDashboardPage() {
                 icon={DollarSign}
                 trend={`${stats.costTrend === 'up' ? '+' : ''}${stats.costChange}% from last period`}
                 trendUp={stats.costTrend === 'up' ? true : stats.costTrend === 'down' ? false : null}
-                sparklineData={chartData?.costTrend.slice(-7).map(d => d.cost) || []}
+                sparklineData={useDemoData ? dummyData.costTrend.slice(-7).map(d => d.cost) : (chartData?.costTrend?.slice(-7).map(d => d.cost) || [])}
                 color="green"
               />
               <EnhancedDashboardCard
@@ -467,8 +621,45 @@ export default function AdminDashboardPage() {
           )}
         </div>
 
+        {/* Enhanced Inventory Analytics Section */}
+        {useDemoData && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Inventory Analytics</h2>
+              <span className="text-sm text-muted-foreground">Demo data for investor presentation</span>
+            </div>
+
+            {/* Key Metrics Summary */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                <p className="text-sm text-blue-700 dark:text-blue-300">Total SKUs</p>
+                <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">1,247</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">+12% from last month</p>
+              </div>
+              <div className="border rounded-lg p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+                <p className="text-sm text-green-700 dark:text-green-300">Inventory Value</p>
+                <p className="text-2xl font-bold text-green-900 dark:text-green-100">£2.4M</p>
+                <p className="text-xs text-green-600 dark:text-green-400">+18% growth</p>
+              </div>
+              <div className="border rounded-lg p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
+                <p className="text-sm text-purple-700 dark:text-purple-300">Avg. Turnover</p>
+                <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">4.2x</p>
+                <p className="text-xs text-purple-600 dark:text-purple-400">Industry leading</p>
+              </div>
+              <div className="border rounded-lg p-4 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20">
+                <p className="text-sm text-orange-700 dark:text-orange-300">Fill Rate</p>
+                <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">98.5%</p>
+                <p className="text-xs text-orange-600 dark:text-orange-400">Above target</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Charts Section */}
-        {chartData ? (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold">Warehouse Metrics</h2>
+          
+          {/* Main Charts Grid */}
           <div className="grid gap-6 md:grid-cols-2">
             {/* Inventory Levels Chart */}
             <div className="border rounded-lg p-6">
@@ -476,37 +667,31 @@ export default function AdminDashboardPage() {
                 <h3 className="text-lg font-semibold">Total Inventory Levels</h3>
                 <p className="text-sm text-muted-foreground">Daily inventory snapshots (cartons)</p>
               </div>
-              {chartData.inventoryTrend.length > 0 ? (
-                <div style={{ width: '100%', height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData.inventoryTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorInventory" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value: any) => [`${value.toLocaleString()} cartons`, 'Inventory']}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="inventory"
-                        stroke="#3B82F6"
-                        fillOpacity={1}
-                        fill="url(#colorInventory)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">No inventory data for selected period</p>
-                </div>
-              )}
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={useDemoData ? dummyData.inventoryTrend : (chartData?.inventoryTrend || [])} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorInventory" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value: any) => [`${value.toLocaleString()} cartons`, 'Inventory']}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="inventory"
+                      stroke="#3B82F6"
+                      fillOpacity={1}
+                      fill="url(#colorInventory)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
             {/* Storage Cost Chart */}
@@ -549,13 +734,12 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               </div>
-              {chartData.costTrend.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={
-                    storageCostView === 'weekly' 
-                      ? chartData.costTrend 
-                      : aggregateMonthlyStorageCosts(chartData.costTrend)
-                  }>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={
+                  storageCostView === 'weekly' 
+                    ? (useDemoData ? dummyData.costTrend : (chartData?.costTrend || []))
+                    : aggregateMonthlyStorageCosts(useDemoData ? dummyData.costTrend : (chartData?.costTrend || []))
+                }>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
@@ -572,21 +756,6 @@ export default function AdminDashboardPage() {
                     />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex flex-col items-center justify-center">
-                  <DollarSign className="h-12 w-12 text-gray-300 mb-3" />
-                  <p className="text-sm text-muted-foreground">No storage cost data available</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Storage costs are calculated weekly on Mondays
-                  </p>
-                  <Link 
-                    href="/admin/reports" 
-                    className="text-xs text-primary hover:underline mt-3"
-                  >
-                    Generate storage ledger report
-                  </Link>
-                </div>
-              )}
             </div>
 
             {/* Warehouse Distribution */}
@@ -595,26 +764,29 @@ export default function AdminDashboardPage() {
                 <h3 className="text-lg font-semibold">Current Inventory by Warehouse</h3>
                 <p className="text-sm text-muted-foreground">Distribution of cartons across locations</p>
               </div>
-              {chartData.warehouseDistribution.length > 0 ? (
+              {useDemoData || chartData?.warehouseDistribution?.length > 0 ? (
                 <div className="space-y-4">
                   {/* Summary Stats */}
                   <div className="grid grid-cols-2 gap-4 pb-4 border-b">
                     <div>
                       <p className="text-sm text-muted-foreground">Total Warehouses</p>
-                      <p className="text-2xl font-bold">{chartData.warehouseDistribution.length}</p>
+                      <p className="text-2xl font-bold">{useDemoData ? dummyData.warehouseDistribution.length : chartData.warehouseDistribution.length}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Cartons</p>
                       <p className="text-2xl font-bold">
-                        {chartData.warehouseDistribution.reduce((sum, w) => sum + w.value, 0).toLocaleString()}
+                        {useDemoData 
+                          ? dummyData.warehouseDistribution.reduce((sum, w) => sum + w.value, 0).toLocaleString()
+                          : chartData.warehouseDistribution.reduce((sum, w) => sum + w.value, 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
                   
                   {/* Simple Bar Chart Alternative */}
                   <div className="space-y-3">
-                    {chartData.warehouseDistribution.map((warehouse, _index) => {
-                      const maxValue = Math.max(...chartData.warehouseDistribution.map(w => w.value))
+                    {(useDemoData ? dummyData.warehouseDistribution : chartData.warehouseDistribution).map((warehouse, _index) => {
+                      const data = useDemoData ? dummyData.warehouseDistribution : chartData.warehouseDistribution
+                      const maxValue = Math.max(...data.map(w => w.value))
                       const widthPercentage = maxValue > 0 ? (warehouse.value / maxValue) * 100 : 0
                       
                       return (
@@ -640,7 +812,7 @@ export default function AdminDashboardPage() {
                   
                   {/* Detailed List */}
                   <div className="pt-2">
-                    {chartData.warehouseDistribution
+                    {(useDemoData ? dummyData.warehouseDistribution : chartData.warehouseDistribution)
                       .sort((a, b) => b.value - a.value)
                       .map((warehouse, index) => (
                         <div key={warehouse.name} className="flex items-center justify-between py-2 border-b last:border-0">
@@ -670,12 +842,179 @@ export default function AdminDashboardPage() {
               )}
             </div>
 
+            {/* Inventory by Category - Pie Chart */}
+            <div className="border rounded-lg p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">Inventory Distribution by Category</h3>
+                <p className="text-sm text-muted-foreground">Current stock allocation across product categories</p>
+              </div>
+              <div style={{ width: '100%', height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={(useDemoData ? dummyData.categoryData : []).map(item => ({
+                        ...item,
+                        percentage: Math.round((item.value / (useDemoData ? dummyData.categoryData : []).reduce((sum, d) => sum + d.value, 0)) * 100)
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percentage }: any) => `${name}: ${percentage}%`}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {(useDemoData ? dummyData.categoryData : []).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: any) => [`${value.toLocaleString()} units`, 'Inventory']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {useDemoData && (
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {dummyData.categoryData.map((category, index) => (
+                    <div key={category.name} className="flex items-center gap-2 text-sm">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="text-xs">{category.name}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        +{category.growth}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SKU Performance Radar Chart */}
+            <div className="border rounded-lg p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">SKU Performance Metrics</h3>
+                <p className="text-sm text-muted-foreground">Multi-dimensional performance analysis by category</p>
+              </div>
+              <div style={{ width: '100%', height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={useDemoData ? dummyData.skuPerformance : []}>
+                    <PolarGrid strokeDasharray="3 3" />
+                    <PolarAngleAxis dataKey="sku" />
+                    <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                    <Radar name="Turnover Rate" dataKey="turnover" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
+                    <Radar name="Stock Level" dataKey="stockLevel" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
+                    <Radar name="Efficiency" dataKey="efficiency" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} />
+                    <Legend />
+                    <Tooltip />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Inventory Insights Row */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Inventory Value Analysis - Scatter Plot */}
+            <div className="border rounded-lg p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">Inventory Value Analysis</h3>
+                <p className="text-sm text-muted-foreground">Quantity vs Value relationship by SKU</p>
+              </div>
+              <div style={{ width: '100%', height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      type="number" 
+                      dataKey="quantity" 
+                      name="Quantity" 
+                      unit=" units"
+                      label={{ value: 'Quantity (units)', position: 'insideBottom', offset: -5 }}
+                    />
+                    <YAxis 
+                      type="number" 
+                      dataKey="value" 
+                      name="Value" 
+                      unit="£"
+                      label={{ value: 'Value (£)', angle: -90, position: 'insideLeft' }}
+                    />
+                    <ZAxis type="number" dataKey="turnover" range={[64, 400]} />
+                    <Tooltip 
+                      cursor={{ strokeDasharray: '3 3' }}
+                      content={({ active, payload }: any) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded shadow-lg border">
+                              <p className="font-semibold">{data.category}</p>
+                              <p className="text-sm">Quantity: {data.quantity} units</p>
+                              <p className="text-sm">Value: £{data.value.toLocaleString()}</p>
+                              <p className="text-sm">Turnover: {data.turnover} days</p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Scatter name="SKUs" data={useDemoData ? dummyData.inventoryValueData : []} fill="#8B5CF6" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Bubble size indicates turnover rate</span>
+                <button className="text-primary hover:underline">View detailed analysis →</button>
+              </div>
+            </div>
+
+            {/* YoY Growth Comparison */}
+            <div className="border rounded-lg p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold">Year-over-Year Growth</h3>
+                <p className="text-sm text-muted-foreground">Monthly inventory growth comparison</p>
+              </div>
+              <div style={{ width: '100%', height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={useDemoData ? dummyData.monthlyGrowth : []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="lastYear" fill="#94A3B8" name="Last Year" />
+                    <Bar dataKey="thisYear" fill="#3B82F6" name="This Year" />
+                    <Line 
+                      type="monotone" 
+                      dataKey="thisYear" 
+                      stroke="#10B981" 
+                      strokeWidth={3}
+                      dot={{ fill: '#10B981', r: 6 }}
+                      name="Growth Trend"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-green-600">+23%</p>
+                  <p className="text-xs text-muted-foreground">YoY Growth</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">£384K</p>
+                  <p className="text-xs text-muted-foreground">Additional Value</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-purple-600">92%</p>
+                  <p className="text-xs text-muted-foreground">Target Achievement</p>
+                </div>
+              </div>
+            </div>
+
             {/* Recent Activity */}
             <div className="border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4">Recent Transactions</h3>
-              {chartData.recentTransactions.length > 0 ? (
-                <div className="space-y-3">
-                  {chartData.recentTransactions.map((transaction) => (
+              <div className="space-y-3">
+                {(useDemoData ? dummyData.recentTransactions : (chartData?.recentTransactions || [])).map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${
@@ -705,13 +1044,8 @@ export default function AdminDashboardPage() {
                       </p>
                     </div>
                   </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">No recent transactions</p>
-                </div>
-              )}
+                ))}
+              </div>
               <Link 
                 href="/admin/inventory" 
                 className="inline-flex items-center text-sm text-primary hover:underline mt-4"
@@ -720,23 +1054,7 @@ export default function AdminDashboardPage() {
               </Link>
             </div>
           </div>
-        ) : (
-          <div className="border rounded-lg p-6">
-            <div className="text-center py-12">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-medium mb-2">No Analytics Data Available</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Charts will appear here once you have transaction data in the selected time period.
-              </p>
-              <Link 
-                href="/operations/receive" 
-                className="inline-flex items-center text-sm text-primary hover:underline"
-              >
-                Start by receiving inventory <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* System Actions - Enhanced */}
         <div className="border rounded-lg p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">

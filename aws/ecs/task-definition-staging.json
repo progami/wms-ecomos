@@ -1,0 +1,89 @@
+{
+  "family": "wms-task-staging",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "wms-container",
+      "image": "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/wms-app:staging-latest",
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "staging"
+        },
+        {
+          "name": "PORT",
+          "value": "3000"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/database-url"
+        },
+        {
+          "name": "NEXTAUTH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/nextauth-secret"
+        },
+        {
+          "name": "NEXTAUTH_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/nextauth-url"
+        },
+        {
+          "name": "AMAZON_SP_APP_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/amazon-sp-app-id"
+        },
+        {
+          "name": "AMAZON_REFRESH_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/amazon-refresh-token"
+        },
+        {
+          "name": "AMAZON_MARKETPLACE_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/amazon-marketplace-id"
+        },
+        {
+          "name": "AMAZON_REGION",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/amazon-region"
+        },
+        {
+          "name": "AMAZON_SP_APP_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/amazon-sp-app-client-id"
+        },
+        {
+          "name": "AMAZON_SP_APP_CLIENT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/amazon-sp-app-client-secret"
+        },
+        {
+          "name": "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:wms/staging/google-maps-api-key"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/wms-staging",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
