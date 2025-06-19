@@ -6,6 +6,8 @@
 
 # testing
 /coverage
+/test-results
+*.playwright-artifacts-*
 
 # next.js
 /.next/
