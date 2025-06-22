@@ -991,7 +991,7 @@ export default function UnifiedInventoryPage() {
                     </p>
                   </div>
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">{sortOrder === 'desc' ? 'Latest → Oldest' : 'Oldest → Latest'}</span>
+                    <span className="font-medium">{sortOrder === 'desc' ? 'Latest' : 'Oldest'}</span>
                   </div>
                 </div>
               </div>
