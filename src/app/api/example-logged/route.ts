@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withLogging } from '@/lib/logger/middleware';
 import { apiLogger, businessLogger, perfLogger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 // Example of a fully logged API route
 export const GET = withLogging(async (request: NextRequest) => {
