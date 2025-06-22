@@ -26,7 +26,16 @@ function generateExportFields(columns: typeof INVENTORY_TRANSACTION_COLUMNS) {
         field.format = (value: any) => {
           if (!value) return 'No'
           const attachments = value as any
-          return attachments.commercialInvoice ? 'Yes' : 'No'
+          return attachments.commercialInvoice || attachments.commercial_invoice ? 'Yes' : 'No'
+        }
+      }
+      
+      if (col.fieldName === 'hasBillOfLading') {
+        field.fieldName = 'attachments'
+        field.format = (value: any) => {
+          if (!value) return 'No'
+          const attachments = value as any
+          return attachments.billOfLading || attachments.bill_of_lading ? 'Yes' : 'No'
         }
       }
       
@@ -35,16 +44,52 @@ function generateExportFields(columns: typeof INVENTORY_TRANSACTION_COLUMNS) {
         field.format = (value: any) => {
           if (!value) return 'No'
           const attachments = value as any
-          return attachments.packingList ? 'Yes' : 'No'
+          return attachments.packingList || attachments.packing_list ? 'Yes' : 'No'
         }
       }
       
-      if (col.fieldName === 'hasTcGrs') {
+      if (col.fieldName === 'hasDeliveryNote') {
         field.fieldName = 'attachments'
         field.format = (value: any) => {
           if (!value) return 'No'
           const attachments = value as any
-          return attachments.tcGrs ? 'Yes' : 'No'
+          return attachments.deliveryNote || attachments.delivery_note ? 'Yes' : 'No'
+        }
+      }
+      
+      if (col.fieldName === 'hasCubeMaster') {
+        field.fieldName = 'attachments'
+        field.format = (value: any) => {
+          if (!value) return 'No'
+          const attachments = value as any
+          return attachments.cubeMaster || attachments.cube_master ? 'Yes' : 'No'
+        }
+      }
+      
+      if (col.fieldName === 'hasTransactionCertificate') {
+        field.fieldName = 'attachments'
+        field.format = (value: any) => {
+          if (!value) return 'No'
+          const attachments = value as any
+          return attachments.transactionCertificate || attachments.transaction_certificate || attachments.tcGrs ? 'Yes' : 'No'
+        }
+      }
+      
+      if (col.fieldName === 'hasCustomDeclaration') {
+        field.fieldName = 'attachments'
+        field.format = (value: any) => {
+          if (!value) return 'No'
+          const attachments = value as any
+          return attachments.customDeclaration || attachments.custom_declaration ? 'Yes' : 'No'
+        }
+      }
+      
+      if (col.fieldName === 'hasProofOfPickup') {
+        field.fieldName = 'attachments'
+        field.format = (value: any) => {
+          if (!value) return 'No'
+          const attachments = value as any
+          return attachments.proofOfPickup || attachments.proof_of_pickup ? 'Yes' : 'No'
         }
       }
       

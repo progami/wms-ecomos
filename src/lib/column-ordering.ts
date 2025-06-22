@@ -200,13 +200,22 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     showInExport: true
   },
 
-  // Metadata Group
+  // Document Fields Group
   {
     fieldName: 'hasCommercialInvoice',
-    displayName: 'Has Invoice',
+    displayName: 'Has Commercial Invoice',
     exportName: 'Has Commercial Invoice',
     group: 'metadata',
     order: 19,
+    showInUI: false,
+    showInExport: true
+  },
+  {
+    fieldName: 'hasBillOfLading',
+    displayName: 'Has Bill of Lading',
+    exportName: 'Has Bill of Lading',
+    group: 'metadata',
+    order: 20,
     showInUI: false,
     showInExport: true
   },
@@ -215,25 +224,63 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has Packing List',
     exportName: 'Has Packing List',
     group: 'metadata',
-    order: 20,
-    showInUI: false,
-    showInExport: true
-  },
-  {
-    fieldName: 'hasTcGrs',
-    displayName: 'Has TC GRS',
-    exportName: 'Has TC GRS',
-    group: 'metadata',
     order: 21,
     showInUI: false,
     showInExport: true
   },
   {
+    fieldName: 'hasDeliveryNote',
+    displayName: 'Has Delivery Note',
+    exportName: 'Has Delivery Note',
+    group: 'metadata',
+    order: 22,
+    showInUI: false,
+    showInExport: true
+  },
+  {
+    fieldName: 'hasCubeMaster',
+    displayName: 'Has Cube Master',
+    exportName: 'Has Cube Master',
+    group: 'metadata',
+    order: 23,
+    showInUI: false,
+    showInExport: true
+  },
+  {
+    fieldName: 'hasTransactionCertificate',
+    displayName: 'Has TC GRS',
+    exportName: 'Has Transaction Certificate (TC GRS)',
+    group: 'metadata',
+    order: 24,
+    showInUI: false,
+    showInExport: true
+  },
+  {
+    fieldName: 'hasCustomDeclaration',
+    displayName: 'Has CDS',
+    exportName: 'Has Custom Declaration (CDS)',
+    group: 'metadata',
+    order: 25,
+    showInUI: false,
+    showInExport: true
+  },
+  {
+    fieldName: 'hasProofOfPickup',
+    displayName: 'Has Proof of Pickup',
+    exportName: 'Has Proof of Pickup',
+    group: 'metadata',
+    order: 26,
+    showInUI: false,
+    showInExport: true
+  },
+  
+  // Metadata Group
+  {
     fieldName: 'createdBy',
     displayName: 'Created By',
     exportName: 'Created By',
     group: 'metadata',
-    order: 22,
+    order: 27,
     showInUI: true,
     showInExport: true,
     isRelation: true,
@@ -244,7 +291,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Created At',
     exportName: 'Created At',
     group: 'metadata',
-    order: 23,
+    order: 28,
     showInUI: false,
     showInExport: true
   }
