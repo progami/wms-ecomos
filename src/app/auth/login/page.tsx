@@ -18,13 +18,7 @@ export default function LoginPage() {
     password: '',
   })
   
-  // Set default values on mount
-  useEffect(() => {
-    setFormData({
-      emailOrUsername: 'admin',
-      password: 'SecureWarehouse2024!',
-    })
-  }, [])
+  // Removed auto-fill on mount to allow buttons to work properly
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
