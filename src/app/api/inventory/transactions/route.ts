@@ -10,6 +10,7 @@ import { TransactionType } from '@prisma/client';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { getPaginationParams, getPaginationSkipTake, createPaginatedResponse } from '@/lib/database/pagination';
+import { triggerCostCalculation, shouldCalculateCosts, validateTransactionForCostCalculation } from '@/lib/triggers/inventory-transaction-triggers';
 
 const transactionSchema = z.object({
   transactionType: z.nativeEnum(TransactionType),
@@ -90,6 +91,39 @@ export async function POST(request: NextRequest) {
       sanitizedData,
       session.user.id
     );
+
+    // Trigger cost calculations asynchronously
+    if (shouldCalculateCosts(result.transaction.transactionType)) {
+      const transactionData = {
+        transactionId: result.transaction.transactionId,
+        warehouseId: result.transaction.warehouseId,
+        skuId: result.transaction.skuId,
+        batchLot: result.transaction.batchLot,
+        transactionType: result.transaction.transactionType,
+        transactionDate: result.transaction.transactionDate,
+        cartonsIn: result.transaction.cartonsIn,
+        cartonsOut: result.transaction.cartonsOut,
+        storagePalletsIn: result.transaction.storagePalletsIn,
+        shippingPalletsOut: result.transaction.shippingPalletsOut,
+        storageCartonsPerPallet: result.transaction.storageCartonsPerPallet || undefined,
+        shippingCartonsPerPallet: result.transaction.shippingCartonsPerPallet || undefined,
+      };
+
+      if (validateTransactionForCostCalculation(transactionData)) {
+        // Trigger cost calculation without awaiting
+        triggerCostCalculation(transactionData, session.user.id).catch(error => {
+          console.error('Failed to trigger cost calculation:', error);
+          // Log but don't fail the request
+          auditLog({
+            entityType: 'CostCalculation',
+            entityId: result.transaction.transactionId,
+            action: 'TRIGGER_FAILED',
+            userId: session.user.id,
+            data: { error: error.message }
+          });
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

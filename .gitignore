@@ -169,3 +169,6 @@ backups/
 .mcp.json
 client_secret.json
 *_secret.json
+
+# Import/Export templates
+templates/

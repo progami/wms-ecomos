@@ -69,9 +69,17 @@ export default function LoginPage() {
         // Set up demo environment only if not already set up
         toast.loading('Setting up demo environment...', { id: 'demo-setup' })
         
+        const csrfToken = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('csrf-token='))
+          ?.split('=')[1];
+        
         const setupResponse = await fetch('/api/demo/setup', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(csrfToken && { 'x-csrf-token': csrfToken })
+          },
         })
 
         if (!setupResponse.ok) {

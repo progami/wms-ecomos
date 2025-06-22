@@ -174,7 +174,13 @@ class EdgeLogger {
     this.buffer = [];
 
     try {
-      const response = await fetch(this.flushEndpoint, {
+      // Construct the full URL for the logs endpoint
+      const baseUrl = this.isBrowser 
+        ? window.location.origin 
+        : (process.env.NEXTAUTH_URL || 'http://localhost:3000');
+      const url = `${baseUrl}${this.flushEndpoint}`;
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

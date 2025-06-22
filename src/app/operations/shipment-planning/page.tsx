@@ -6,7 +6,8 @@ import { useSession } from 'next-auth/react'
 import { 
   Package, TrendingUp, Truck, Mail, Calendar, AlertCircle, 
   RefreshCw, ChevronRight, Clock, Building, BarChart3,
-  ArrowUp, ArrowDown, Send, FileText, Check, X, Search
+  ArrowUp, ArrowDown, Send, FileText, Check, X, Search,
+  ShoppingCart, Settings, Link as LinkIcon
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
@@ -17,6 +18,17 @@ import {
   getStockUrgency, 
   getUrgencyReason 
 } from '@/lib/config/shipment-planning'
+import { 
+  calculateRestockMetrics, 
+  optimizeShipmentQuantity,
+  RestockCalculationInput,
+  RestockCalculationResult 
+} from '@/lib/algorithms/restock-algorithm'
+import { RestockAlertCard, RestockAlertRow } from '@/components/operations/restock-alert-card'
+import { 
+  validateAmazonCredentials, 
+  DEFAULT_AMAZON_CONFIG 
+} from '@/lib/config/amazon-integration'
 
 interface FBAStockItem {
   skuId: string
@@ -31,6 +43,7 @@ interface FBAStockItem {
   reorderPoint: number
   optimalShipmentCartons: number
   lastUpdated: string
+  restockMetrics?: RestockCalculationResult
 }
 
 interface ShipmentSuggestion {
@@ -53,6 +66,8 @@ export default function ShipmentPlanningPage() {
   const [showOnlyLowStock, setShowOnlyLowStock] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [lowStockCount, setLowStockCount] = useState(0)
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
+  const [showAmazonStatus, setShowAmazonStatus] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -86,18 +101,24 @@ export default function ShipmentPlanningPage() {
           const reorderDays = SHIPMENT_PLANNING_CONFIG.REORDER_DAYS
           const defaultCartonsPerPallet = item.cartonsPerPallet || SHIPMENT_PLANNING_CONFIG.DEFAULT_CARTONS_PER_PALLET
           
-          // Calculate suggested shipment
-          const reorderPoint = dailySalesVelocity * reorderDays
-          const targetStock = dailySalesVelocity * targetDaysOfStock
-          const suggestedUnits = Math.max(0, targetStock - item.amazonQty)
-          const suggestedCartons = Math.ceil(suggestedUnits / (item.unitsPerCarton || 1))
+          // Calculate restock metrics using the new algorithm
+          const restockInput: RestockCalculationInput = {
+            currentStock: item.amazonQty,
+            dailySalesVelocity,
+            leadTimeDays: 7, // Default lead time, TODO: make configurable
+            safetyStockDays: 7, // Default safety stock, TODO: make configurable
+            unitsPerCarton: item.unitsPerCarton || 1,
+            cartonsPerPallet: defaultCartonsPerPallet,
+            targetStockDays: targetDaysOfStock
+          }
           
-          // Calculate optimal shipment size (round to pallet quantities)
-          const optimalPallets = suggestedCartons > 0 
-            ? Math.max(SHIPMENT_PLANNING_CONFIG.MINIMUM_PALLETS_TO_SHIP, 
-                      Math.ceil(suggestedCartons / defaultCartonsPerPallet))
-            : 0
-          const optimalCartons = optimalPallets * defaultCartonsPerPallet
+          const restockMetrics = calculateRestockMetrics(restockInput)
+          
+          // Optimize shipment quantity
+          const { optimizedCartons, pallets } = optimizeShipmentQuantity(
+            restockMetrics.suggestedCartons,
+            defaultCartonsPerPallet
+          )
 
           return {
             skuId: item.skuId,
@@ -108,10 +129,11 @@ export default function ShipmentPlanningPage() {
             unitsPerCarton: item.unitsPerCarton || 1,
             dailySalesVelocity,
             daysOfStock,
-            suggestedShipmentCartons: suggestedCartons,
-            reorderPoint,
-            optimalShipmentCartons: optimalCartons,
-            lastUpdated: item.lastUpdated || new Date().toISOString()
+            suggestedShipmentCartons: restockMetrics.suggestedCartons,
+            reorderPoint: restockMetrics.restockPoint,
+            optimalShipmentCartons: optimizedCartons,
+            lastUpdated: item.lastUpdated || new Date().toISOString(),
+            restockMetrics
           }
         })
         
@@ -137,8 +159,8 @@ export default function ShipmentPlanningPage() {
     const newSuggestions: ShipmentSuggestion[] = []
     
     items.forEach(item => {
-      const urgency = getStockUrgency(item.daysOfStock)
-      const reason = getUrgencyReason(item.daysOfStock, urgency)
+      const urgency = item.restockMetrics?.urgencyLevel || getStockUrgency(item.daysOfStock)
+      const reason = item.restockMetrics?.recommendation || getUrgencyReason(item.daysOfStock, urgency)
       
       if (urgency !== 'low' && item.warehouseStock > 0) {
         newSuggestions.push({
@@ -152,8 +174,15 @@ export default function ShipmentPlanningPage() {
       }
     })
     
-    // Sort by urgency
+    // Sort by urgency score if available, otherwise by urgency level
     newSuggestions.sort((a, b) => {
+      const itemA = items.find(i => i.skuCode === a.skuCode)
+      const itemB = items.find(i => i.skuCode === b.skuCode)
+      
+      if (itemA?.restockMetrics?.urgencyScore && itemB?.restockMetrics?.urgencyScore) {
+        return itemB.restockMetrics.urgencyScore - itemA.restockMetrics.urgencyScore
+      }
+      
       const urgencyOrder = { critical: 0, high: 1, medium: 2, low: 3 }
       return urgencyOrder[a.urgency] - urgencyOrder[b.urgency]
     })
@@ -251,9 +280,16 @@ export default function ShipmentPlanningPage() {
       <div className="space-y-6">
         <PageHeader
           title="FBA Shipment Planning"
-          description="Monitor FBA stock levels and plan replenishments"
+          description="Monitor FBA stock levels and plan replenishments with intelligent restock recommendations"
           actions={
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAmazonStatus(!showAmazonStatus)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Amazon Integration
+              </button>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
@@ -262,17 +298,63 @@ export default function ShipmentPlanningPage() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh FBA Data
               </button>
-              <button
-                onClick={handleCreateShipment}
-                disabled={selectedItems.size === 0}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-50"
+              <Link
+                href="/operations/ship"
+                onClick={() => {
+                  // Store selected items for the ship page
+                  if (selectedItems.size > 0) {
+                    const shipmentItems = Array.from(selectedItems).map(skuCode => {
+                      const item = stockItems.find(i => i.skuCode === skuCode)
+                      return {
+                        skuCode,
+                        suggestedCartons: item?.optimalShipmentCartons || 0
+                      }
+                    })
+                    sessionStorage.setItem('shipmentPlan', JSON.stringify({
+                      items: shipmentItems,
+                      source: 'fba-planning',
+                      createdAt: new Date().toISOString()
+                    }))
+                  }
+                }}
+                className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 ${selectedItems.size === 0 ? 'opacity-50 pointer-events-none' : ''}`}
               >
-                <Truck className="h-4 w-4 mr-2" />
-                Create Shipment ({selectedItems.size})
-              </button>
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Create Shipment Plan ({selectedItems.size})
+              </Link>
             </div>
           }
         />
+
+        {/* Amazon Integration Status */}
+        {showAmazonStatus && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Settings className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-blue-900">Amazon Integration Status</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Integration not yet configured. Future SP API integration will enable:
+                </p>
+                <ul className="mt-2 space-y-1 text-sm text-blue-700">
+                  <li>• Automatic inventory sync</li>
+                  <li>• Direct shipment creation to Amazon</li>
+                  <li>• Real-time FBA fee calculations</li>
+                  <li>• Shipment tracking updates</li>
+                </ul>
+                <button className="mt-3 text-sm font-medium text-blue-900 hover:text-blue-800">
+                  Configure Integration →
+                </button>
+              </div>
+              <button
+                onClick={() => setShowAmazonStatus(false)}
+                className="text-blue-400 hover:text-blue-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Low Stock Alert */}
         {lowStockCount > 0 && (
@@ -334,22 +416,76 @@ export default function ShipmentPlanningPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             </div>
           </div>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showOnlyLowStock}
-              onChange={(e) => setShowOnlyLowStock(e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            <span className="text-sm">Show only low stock items</span>
-          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showOnlyLowStock}
+                onChange={(e) => setShowOnlyLowStock(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm">Show only low stock items</span>
+            </label>
+            <div className="flex items-center gap-2 border-l pl-4">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded ${viewMode === 'table' ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+                title="Table view"
+              >
+                <BarChart3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded ${viewMode === 'cards' ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
+                title="Card view"
+              >
+                <Package className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Stock Table */}
-        <div className="border rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
+        {/* Stock Display */}
+        {viewMode === 'cards' ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredStockItems
+              .filter(item => item.restockMetrics && item.restockMetrics.urgencyLevel !== 'low')
+              .map((item) => (
+                <RestockAlertCard
+                  key={item.skuCode}
+                  skuCode={item.skuCode}
+                  description={item.description}
+                  currentStock={item.fbaStock}
+                  dailySalesVelocity={item.dailySalesVelocity}
+                  daysOfStock={item.daysOfStock}
+                  restockPoint={item.restockMetrics?.restockPoint || 0}
+                  suggestedQuantity={item.restockMetrics?.optimalOrderQuantity || 0}
+                  suggestedCartons={item.optimalShipmentCartons}
+                  suggestedPallets={item.restockMetrics?.suggestedPallets || 0}
+                  urgencyLevel={item.restockMetrics?.urgencyLevel || 'low'}
+                  urgencyScore={item.restockMetrics?.urgencyScore || 0}
+                  recommendation={item.restockMetrics?.recommendation || ''}
+                  leadTimeDays={7} // TODO: make configurable
+                  safetyStockDays={7} // TODO: make configurable
+                  onSelect={(selected) => {
+                    const newSelected = new Set(selectedItems)
+                    if (selected) {
+                      newSelected.add(item.skuCode)
+                    } else {
+                      newSelected.delete(item.skuCode)
+                    }
+                    setSelectedItems(newSelected)
+                  }}
+                  isSelected={selectedItems.has(item.skuCode)}
+                />
+              ))
+            }
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Select
                 </th>
@@ -411,8 +547,17 @@ export default function ShipmentPlanningPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {item.dailySalesVelocity}/day
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${getStockStatusColor(item.daysOfStock)}`}>
-                    {item.daysOfStock} days
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right`}>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className={`font-medium ${getStockStatusColor(item.daysOfStock)}`}>
+                        {item.daysOfStock} days
+                      </span>
+                      {item.restockMetrics && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getUrgencyBadge(item.restockMetrics.urgencyLevel)}`}>
+                          {item.restockMetrics.urgencyLevel}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                     {item.suggestedShipmentCartons > 0 ? (
@@ -430,9 +575,10 @@ export default function ShipmentPlanningPage() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Summary Stats */}
         <div className="grid gap-4 md:grid-cols-4">

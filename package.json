@@ -38,7 +38,10 @@
     "logs:clear": "rm -rf logs/*",
     "type-check": "tsc --noEmit --skipLibCheck",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "calculate:storage:weekly": "tsx scripts/weekly-storage-calculation.ts",
+    "test:cost-calculations": "tsx scripts/test-cost-calculations.ts",
+    "test:operations": "tsx src/scripts/test-operations-workflow.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

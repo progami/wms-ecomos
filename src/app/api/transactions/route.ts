@@ -6,6 +6,7 @@ import { TransactionType } from '@prisma/client'
 import { withTransaction, withRetry, updateInventoryBatch } from '@/lib/database/transaction-utils'
 import { businessLogger, perfLogger } from '@/lib/logger/index'
 import { sanitizeForDisplay, validateAlphanumeric, validatePositiveInteger } from '@/lib/security/input-sanitization'
+import { triggerCostCalculation, shouldCalculateCosts, validateTransactionForCostCalculation } from '@/lib/triggers/inventory-transaction-triggers'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -442,6 +443,37 @@ export async function POST(request: NextRequest) {
       duration,
       avgDurationPerItem: duration / itemsArray.length
     });
+    
+    // Trigger cost calculations for all created transactions
+    for (const transaction of result) {
+      if (shouldCalculateCosts(transaction.transactionType)) {
+        const transactionData = {
+          transactionId: transaction.transactionId,
+          warehouseId: transaction.warehouseId,
+          skuId: transaction.skuId,
+          batchLot: transaction.batchLot,
+          transactionType: transaction.transactionType,
+          transactionDate: transaction.transactionDate,
+          cartonsIn: transaction.cartonsIn,
+          cartonsOut: transaction.cartonsOut,
+          storagePalletsIn: transaction.storagePalletsIn,
+          shippingPalletsOut: transaction.shippingPalletsOut,
+          storageCartonsPerPallet: transaction.storageCartonsPerPallet || undefined,
+          shippingCartonsPerPallet: transaction.shippingCartonsPerPallet || undefined,
+        };
+
+        if (validateTransactionForCostCalculation(transactionData)) {
+          // Trigger cost calculation without awaiting
+          triggerCostCalculation(transactionData, session.user.id).catch(error => {
+            console.error(`Failed to trigger cost calculation for ${transaction.transactionId}:`, error);
+            businessLogger.error('Cost calculation trigger failed', {
+              transactionId: transaction.transactionId,
+              error: error.message
+            });
+          });
+        }
+      }
+    }
     
     return NextResponse.json({
       success: true,

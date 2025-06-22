@@ -327,10 +327,10 @@ export const importConfigs: Record<string, ImportEntityConfig> = {
     displayName: 'Inventory Transactions',
     uniqueFields: [], // No unique fields for transactions - we'll always create new records
     fieldMappings: [
-      // Transaction ID is auto-generated internally, not imported
+      // ========== Date/Time Fields (Required and Optional) ==========
       {
         dbField: 'transactionDate',
-        excelColumns: ['transaction_date', 'Transaction Date', 'Date', 'Timestamp'],
+        excelColumns: ['Transaction Date', 'transaction_date', 'Date', 'Timestamp'], // Matches export name first
         type: 'date',
         required: true,
         transform: transformers.parseDate,
@@ -338,55 +338,64 @@ export const importConfigs: Record<string, ImportEntityConfig> = {
       },
       {
         dbField: 'pickupDate',
-        excelColumns: ['pickup_date', 'Pickup Date'],
+        excelColumns: ['Pickup Date', 'pickup_date'], // Optional - Matches export name first
         type: 'date',
         required: false,
         transform: transformers.parseDate,
       },
+      
+      // ========== Type/Status Fields (Required and Optional) ==========
+      {
+        dbField: 'transactionType',
+        excelColumns: ['Type', 'transaction_type', 'Transaction_Type', 'Transaction Type'], // Matches export name first
+        type: 'string',
+        required: true,
+        transform: transformers.toUpperCase,
+        defaultValue: 'RECEIVE',
+        validate: (value: string) => ['RECEIVE', 'SHIP', 'ADJUST_IN', 'ADJUST_OUT', 'TRANSFER'].includes(value.toUpperCase()),
+      },
       {
         dbField: 'isReconciled',
-        excelColumns: ['is_reconciled', 'Reconciled', 'Is Reconciled'],
+        excelColumns: ['Is Reconciled', 'is_reconciled', 'Reconciled'], // Optional - Matches export name first
         type: 'boolean',
         required: false,
         transform: transformers.parseBoolean,
         defaultValue: false,
       },
-      {
-        dbField: 'transactionType',
-        excelColumns: ['transaction_type', 'Transaction_Type', 'Type'],
-        type: 'string',
-        required: true,
-        transform: transformers.toUpperCase,
-        defaultValue: 'RECEIVE',
-      },
+      
+      // ========== Location Fields (Required) ==========
       {
         dbField: 'warehouse',
-        excelColumns: ['warehouse', 'Warehouse', 'Warehouse Name'],
+        excelColumns: ['Warehouse', 'warehouse', 'Warehouse Name'], // Matches export name
         type: 'string',
         required: true,
       },
+      
+      // ========== Product Fields (Required and Optional) ==========
       {
         dbField: 'sku',
-        excelColumns: ['sku', 'SKU', 'sku_code'],
+        excelColumns: ['SKU Code', 'sku', 'SKU', 'sku_code'], // Matches export name first
         type: 'string',
         required: true,
       },
       {
         dbField: 'batchLot',
-        excelColumns: ['batch_lot', 'Batch/Lot', 'Shipment', 'Batch'],
+        excelColumns: ['Batch/Lot', 'batch_lot', 'Shipment', 'Batch'], // Matches export name first
         type: 'string',
         required: true,
         defaultValue: 'DEFAULT',
       },
       {
         dbField: 'referenceId',
-        excelColumns: ['reference_id', 'Reference_ID', 'Reference ID', 'Reference_ID (Email tag)'],
+        excelColumns: ['Reference', 'reference_id', 'Reference_ID', 'Reference ID', 'Reference_ID (Email tag)'], // Optional - Matches export name first
         type: 'string',
         required: false,
       },
+      
+      // ========== Quantity Fields (Required and Optional) ==========
       {
         dbField: 'cartonsIn',
-        excelColumns: ['cartons_in', 'Cartons_In', 'Cartons In'],
+        excelColumns: ['Cartons In', 'cartons_in', 'Cartons_In'], // Matches export name first
         type: 'number',
         required: true,
         transform: transformers.parseNumber,
@@ -394,7 +403,7 @@ export const importConfigs: Record<string, ImportEntityConfig> = {
       },
       {
         dbField: 'cartonsOut',
-        excelColumns: ['cartons_out', 'Cartons_Out', 'Cartons Out'],
+        excelColumns: ['Cartons Out', 'cartons_out', 'Cartons_Out'], // Matches export name first
         type: 'number',
         required: true,
         transform: transformers.parseNumber,
@@ -402,7 +411,7 @@ export const importConfigs: Record<string, ImportEntityConfig> = {
       },
       {
         dbField: 'storagePalletsIn',
-        excelColumns: ['storage_pallets_in', 'Pallets_In', 'Storage Pallets In'],
+        excelColumns: ['Storage Pallets In', 'storage_pallets_in', 'Pallets_In'], // Matches export name first
         type: 'number',
         required: true,
         transform: transformers.parseNumber,
@@ -410,44 +419,56 @@ export const importConfigs: Record<string, ImportEntityConfig> = {
       },
       {
         dbField: 'shippingPalletsOut',
-        excelColumns: ['shipping_pallets_out', 'Pallets_Out', 'Shipping Pallets Out'],
+        excelColumns: ['Shipping Pallets Out', 'shipping_pallets_out', 'Pallets_Out'], // Matches export name first
         type: 'number',
         required: true,
         transform: transformers.parseNumber,
         defaultValue: 0,
       },
       {
-        dbField: 'shipName',
-        excelColumns: ['ship_name', 'Ship Name', 'Vessel'],
-        type: 'string',
-        required: false,
-      },
-      {
-        dbField: 'trackingNumber',
-        excelColumns: ['tracking_number', 'Tracking Number', 'Tracking'],
-        type: 'string',
-        required: false,
-      },
-      {
-        dbField: 'modeOfTransportation',
-        excelColumns: ['mode_of_transportation', 'Mode of Transportation', 'Transport Mode'],
-        type: 'string',
-        required: false,
-      },
-      {
         dbField: 'storageCartonsPerPallet',
-        excelColumns: ['storage_cartons_per_pallet', 'Storage CPP', 'Storage Cartons/Pallet'],
+        excelColumns: ['Storage Cartons/Pallet', 'storage_cartons_per_pallet', 'Storage CPP'], // Optional - Matches export name first
         type: 'number',
         required: false,
         transform: transformers.parseNumber,
       },
       {
         dbField: 'shippingCartonsPerPallet',
-        excelColumns: ['shipping_cartons_per_pallet', 'Shipping CPP', 'Shipping Cartons/Pallet'],
+        excelColumns: ['Shipping Cartons/Pallet', 'shipping_cartons_per_pallet', 'Shipping CPP'], // Optional - Matches export name first
         type: 'number',
         required: false,
         transform: transformers.parseNumber,
       },
+      
+      // ========== Shipping/Transport Fields (All Optional) ==========
+      {
+        dbField: 'trackingNumber',
+        excelColumns: ['Tracking Number', 'tracking_number', 'Tracking'], // Optional - Matches export name first
+        type: 'string',
+        required: false,
+      },
+      {
+        dbField: 'shipName',
+        excelColumns: ['Ship Name', 'ship_name', 'Vessel'], // Optional - Matches export name first
+        type: 'string',
+        required: false,
+      },
+      {
+        dbField: 'modeOfTransportation',
+        excelColumns: ['Mode of Transportation', 'mode_of_transportation', 'Transport Mode'], // Optional - Matches export name first
+        type: 'string',
+        required: false,
+      },
+      
+      // ========== Metadata Fields (System-Generated - Not Imported) ==========
+      // Note: The following fields exist in the database but are system-generated:
+      // - id: UUID auto-generated
+      // - transactionId: Auto-generated unique transaction ID
+      // - createdAt: Auto-set to current timestamp
+      // - createdById: Set from user session during import
+      // - warehouseId: Resolved from warehouse name lookup
+      // - skuId: Resolved from SKU code lookup
+      // - attachments: JSON field - can be added via API separately
     ],
   },
 }
