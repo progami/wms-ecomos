@@ -1,5 +1,0 @@
-transaction_date,transaction_type,warehouse,sku,batch_lot,cartons_in,cartons_out,storage_pallets_in,shipping_pallets_out,reference_id,ship_name,tracking_number,mode_of_transportation,pickup_date,is_reconciled
-2024-01-15,RECEIVE,FMC,TEST-001,BATCH001,100,0,2,0,PO-2024-001,OOCL VESSEL,CONT123456,Sea,2024-01-10,TRUE
-2024-01-20,SHIP,FMC,TEST-001,BATCH001,0,20,0,1,SO-2024-001,,TRK789012,Road,2024-01-20,TRUE
-2024-02-01,RECEIVE,VGlobal,TEST-002,BATCH002,50,0,1,0,PO-2024-002,MSC SHIP,CONT234567,Sea,2024-01-25,TRUE
-2024-02-10,SHIP,VGlobal,TEST-002,BATCH002,0,10,0,1,SO-2024-002,,TRK890123,Road,2024-02-10,FALSE

@@ -1,4 +1,0 @@
-SKU,ASIN,Product Description,Pack Size,Material,Unit Dimensions (cm),Unit Weight (kg),Units/Carton,Carton Dimensions (cm),Carton Weight (kg),Packaging Type,Notes,Active
-TEST-001,B08ABC123,Test Product 1,1,Plastic,10x10x10,0.5,12,40x30x30,6.5,Box,Sample product for testing,TRUE
-TEST-002,B08DEF456,Test Product 2,2,Metal,15x15x15,1.0,6,45x35x35,7.0,Box,Another test product,TRUE
-TEST-003,B08GHI789,Test Product 3,1,Wood,20x20x20,2.0,4,50x40x40,9.0,Crate,Third test product,TRUE
