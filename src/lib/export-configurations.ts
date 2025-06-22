@@ -20,17 +20,31 @@ function generateExportFields(columns: typeof INVENTORY_TRANSACTION_COLUMNS) {
         field.format = (value: any) => value || ''
       }
       
-      // Special formatting for attachments
-      if (col.fieldName === 'attachments') {
+      // Special formatting for document boolean fields
+      if (col.fieldName === 'hasCommercialInvoice') {
+        field.fieldName = 'attachments'
         field.format = (value: any) => {
-          if (!value) return ''
+          if (!value) return 'No'
           const attachments = value as any
-          const types = []
-          if (attachments.packingList) types.push('Packing List')
-          if (attachments.commercialInvoice) types.push('Invoice')
-          if (attachments.deliveryNote) types.push('Delivery Note')
-          if (attachments.cubemaster) types.push('Cubemaster')
-          return types.join(', ')
+          return attachments.commercialInvoice ? 'Yes' : 'No'
+        }
+      }
+      
+      if (col.fieldName === 'hasPackingList') {
+        field.fieldName = 'attachments'
+        field.format = (value: any) => {
+          if (!value) return 'No'
+          const attachments = value as any
+          return attachments.packingList ? 'Yes' : 'No'
+        }
+      }
+      
+      if (col.fieldName === 'hasTcGrs') {
+        field.fieldName = 'attachments'
+        field.format = (value: any) => {
+          if (!value) return 'No'
+          const attachments = value as any
+          return attachments.tcGrs ? 'Yes' : 'No'
         }
       }
       

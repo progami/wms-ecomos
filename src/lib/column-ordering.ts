@@ -202,11 +202,29 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
 
   // Metadata Group
   {
-    fieldName: 'attachments',
-    displayName: 'Attachments',
-    exportName: 'Attachments',
+    fieldName: 'hasCommercialInvoice',
+    displayName: 'Has Invoice',
+    exportName: 'Has Commercial Invoice',
     group: 'metadata',
     order: 19,
+    showInUI: false,
+    showInExport: true
+  },
+  {
+    fieldName: 'hasPackingList',
+    displayName: 'Has Packing List',
+    exportName: 'Has Packing List',
+    group: 'metadata',
+    order: 20,
+    showInUI: false,
+    showInExport: true
+  },
+  {
+    fieldName: 'hasTcGrs',
+    displayName: 'Has TC GRS',
+    exportName: 'Has TC GRS',
+    group: 'metadata',
+    order: 21,
     showInUI: false,
     showInExport: true
   },
@@ -215,7 +233,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Created By',
     exportName: 'Created By',
     group: 'metadata',
-    order: 20,
+    order: 22,
     showInUI: true,
     showInExport: true,
     isRelation: true,
@@ -226,7 +244,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Created At',
     exportName: 'Created At',
     group: 'metadata',
-    order: 21,
+    order: 23,
     showInUI: false,
     showInExport: true
   }
