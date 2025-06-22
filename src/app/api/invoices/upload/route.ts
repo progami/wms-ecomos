@@ -109,10 +109,14 @@ export async function POST(req: NextRequest) {
         data: {
           invoiceNumber: invoiceData.invoiceNumber,
           warehouseId: warehouse.id,
+          customerId: session.user.id, // Using the creator as customer for now
           billingPeriodStart: new Date(invoiceData.billingPeriodStart),
           billingPeriodEnd: new Date(invoiceData.billingPeriodEnd),
           invoiceDate: new Date(invoiceData.invoiceDate),
+          issueDate: new Date(), // Setting issue date to now
           dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : null,
+          subtotal: invoiceData.totalAmount, // Setting subtotal same as total for now
+          taxAmount: 0, // Setting tax to 0 for now
           totalAmount: invoiceData.totalAmount,
           createdById: session.user.id,
           lineItems: {

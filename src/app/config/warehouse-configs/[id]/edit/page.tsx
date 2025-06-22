@@ -67,7 +67,7 @@ export default function EditWarehouseConfigPage() {
         })
       } else {
         toast.error('Configuration not found')
-        router.push('/admin/settings/warehouse-configs')
+        router.push('/config/warehouse-configs')
       }
     } catch (error) {
       toast.error('Failed to load configuration')
@@ -100,7 +100,7 @@ export default function EditWarehouseConfigPage() {
 
       if (response.ok) {
         toast.success('Configuration updated successfully')
-        router.push('/admin/settings/warehouse-configs')
+        router.push('/config/warehouse-configs')
       } else {
         const error = await response.json()
         toast.error(error.message || 'Failed to update configuration')

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { getPaginationParams, getPaginationSkipTake, createPaginatedResponse } from '@/lib/database/pagination'
+import { sanitizeSearchQuery } from '@/lib/security/input-sanitization'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
@@ -16,6 +18,9 @@ export async function GET(req: NextRequest) {
     const date = searchParams.get('date')
     const showZeroStock = searchParams.get('showZeroStock') === 'true'
     const skuCode = searchParams.get('skuCode')
+    
+    // Get pagination params
+    const paginationParams = getPaginationParams(req)
 
     // If point-in-time date is provided, calculate balances from transactions
     if (date) {
@@ -166,9 +171,20 @@ export async function GET(req: NextRequest) {
 
     // Filter by SKU code if provided
     if (skuCode) {
-      where.sku = { skuCode }
+      where.sku = { 
+        skuCode: {
+          contains: sanitizeSearchQuery(skuCode),
+          mode: 'insensitive'
+        }
+      }
     }
 
+    // Get total count for pagination
+    const total = await prisma.inventoryBalance.count({ where })
+
+    // Get paginated results
+    const { skip, take } = getPaginationSkipTake(paginationParams)
+    
     const balances = await prisma.inventoryBalance.findMany({
       where,
       include: {
@@ -178,10 +194,12 @@ export async function GET(req: NextRequest) {
       orderBy: [
         { sku: { skuCode: 'asc' } },
         { batchLot: 'asc' }
-      ]
+      ],
+      skip,
+      take
     })
 
-    return NextResponse.json(balances)
+    return NextResponse.json(createPaginatedResponse(balances, total, paginationParams))
   } catch (error) {
     console.error('Error fetching inventory balances:', error)
     return NextResponse.json(

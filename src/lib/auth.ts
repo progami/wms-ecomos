@@ -3,30 +3,8 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { UserRole } from '@prisma/client'
-
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string
-      email: string
-      name: string
-      role: UserRole
-      warehouseId?: string
-    }
-  }
-  
-  interface User {
-    role: UserRole
-    warehouseId?: string
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    role: UserRole
-    warehouseId?: string
-  }
-}
+import { createUserSession, invalidateUserSession } from './security/session-manager'
+import { authLogger, securityLogger } from '@/lib/logger'
 
 export const authOptions: NextAuthOptions = {
   // Remove adapter when using JWT strategy with credentials
@@ -35,7 +13,8 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
+  // Only enable debug when explicitly set via environment variable
+  debug: process.env.NEXTAUTH_DEBUG === 'true',
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -44,10 +23,18 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        console.info('Auth attempt for:', credentials?.emailOrUsername)
+        const clientIp = 'unknown'; // In a real scenario, this would come from the request
+        authLogger.info('Authentication attempt', {
+          username: credentials?.emailOrUsername,
+          ip: clientIp,
+          timestamp: new Date().toISOString()
+        });
         
         if (!credentials?.emailOrUsername || !credentials?.password) {
-          console.info('Missing credentials')
+          authLogger.warn('Missing credentials in auth attempt', {
+            hasUsername: !!credentials?.emailOrUsername,
+            hasPassword: !!credentials?.password
+          });
           throw new Error('Invalid credentials')
         }
 
@@ -65,9 +52,29 @@ export const authOptions: NextAuthOptions = {
             warehouse: true,
           },
         })
+        
+        // Check if account is locked
+        if (user && user.lockedUntil && user.lockedUntil > new Date()) {
+          authLogger.warn('Login attempt on locked account', {
+            username: credentials.emailOrUsername,
+            lockedUntil: user.lockedUntil,
+            ip: clientIp
+          });
+          throw new Error('Account is temporarily locked due to too many failed login attempts. Please try again later.')
+        }
 
         if (!user || !user.isActive) {
-          console.info('User not found or inactive:', credentials.emailOrUsername)
+          authLogger.warn('Failed login attempt - user not found or inactive', {
+            username: credentials.emailOrUsername,
+            userExists: !!user,
+            isActive: user?.isActive,
+            ip: clientIp
+          });
+          securityLogger.warn('Invalid login attempt', {
+            username: credentials.emailOrUsername,
+            reason: !user ? 'user_not_found' : 'user_inactive',
+            ip: clientIp
+          });
           throw new Error('Invalid credentials')
         }
 
@@ -77,11 +84,56 @@ export const authOptions: NextAuthOptions = {
         )
 
         if (!isPasswordValid) {
-          console.info('Invalid password for:', credentials.emailOrUsername)
+          authLogger.warn('Failed login attempt - invalid password', {
+            username: credentials.emailOrUsername,
+            userId: user.id,
+            ip: clientIp
+          });
+          securityLogger.warn('Invalid password attempt', {
+            username: credentials.emailOrUsername,
+            userId: user.id,
+            ip: clientIp,
+            attemptCount: 1 // In production, track failed attempts
+          });
+          
+          // Check if we should lock the account
+          const { getAuthRateLimiter, authRateLimitConfig } = await import('./security/auth-rate-limiter')
+          const limiter = getAuthRateLimiter()
+          const attempts = await limiter.checkAuthLimit(
+            { headers: { get: () => clientIp } } as any,
+            credentials.emailOrUsername,
+            authRateLimitConfig
+          )
+          
+          if (attempts.shouldLockAccount) {
+            const lockUntil = new Date(Date.now() + authRateLimitConfig.lockoutDuration * 4) // Lock for 20 minutes
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                lockedUntil: lockUntil,
+                lockedReason: 'Too many failed login attempts'
+              }
+            })
+            
+            securityLogger.error('User account locked due to failed attempts', {
+              username: credentials.emailOrUsername,
+              userId: user.id,
+              lockUntil: lockUntil.toISOString()
+            })
+          }
+          
           throw new Error('Invalid credentials')
         }
         
-        console.info('Login successful for:', user.email)
+        authLogger.info('Successful login', {
+          userId: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          warehouseId: user.warehouseId,
+          isDemo: user.isDemo,
+          ip: clientIp
+        });
 
         // Update last login
         await prisma.user.update({
@@ -89,22 +141,64 @@ export const authOptions: NextAuthOptions = {
           data: { lastLoginAt: new Date() },
         })
 
+        // Create secure session
+        const sessionId = await createUserSession(
+          user.id,
+          user.role,
+          user.warehouseId
+        )
+
+        authLogger.info('Session created', {
+          userId: user.id,
+          sessionId,
+          role: user.role
+        });
+
         return {
           id: user.id,
           email: user.email,
           name: user.fullName,
           role: user.role,
           warehouseId: user.warehouseId || undefined,
+          sessionId,
+          isDemo: user.isDemo,
         }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.role = user.role
         token.warehouseId = user.warehouseId
+        token.sessionId = user.sessionId
+        token.isDemo = user.isDemo
       }
+      
+      // Skip session validation for now
+      // The in-memory session storage gets cleared on server restart
+      // causing all existing JWT tokens to fail validation
+      // TODO: Implement persistent session storage if needed
+      
+      // Only validate on explicit update trigger (e.g., role changes)
+      if (trigger === 'update' && token.sub) {
+        // Validate user still exists and is active
+        const user = await prisma.user.findUnique({
+          where: { id: token.sub }
+        });
+        
+        if (!user || !user.isActive) {
+          authLogger.warn('User no longer active or deleted', {
+            userId: token.sub
+          });
+          throw new Error('User account not active')
+        }
+        
+        // Update token with latest user data
+        token.role = user.role
+        token.warehouseId = user.warehouseId
+      }
+      
       return token
     },
     async session({ session, token }) {
@@ -112,6 +206,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub!
         session.user.role = token.role
         session.user.warehouseId = token.warehouseId
+        session.user.sessionId = token.sessionId
+        session.user.isDemo = token.isDemo
       }
       return session
     },

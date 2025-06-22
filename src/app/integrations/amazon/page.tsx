@@ -28,8 +28,30 @@ export default function AmazonIntegrationPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [selectedView, setSelectedView] = useState<'all' | 'warehouse' | 'amazon' | 'lowstock'>('all')
   const [sortBy, setSortBy] = useState<'sku' | 'total' | 'trend'>('sku')
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  // Generate demo data
+  const generateDemoData = (): InventoryComparison[] => {
+    return [
+      { sku: 'SKU001', description: 'Premium Widget A', warehouseQty: 500, amazonQty: 150, total: 650, trend: 'up', percentChange: 12 },
+      { sku: 'SKU002', description: 'Standard Widget B', warehouseQty: 300, amazonQty: 200, total: 500, trend: 'stable', percentChange: 0 },
+      { sku: 'SKU003', description: 'Economy Widget C', warehouseQty: 50, amazonQty: 75, total: 125, trend: 'down', percentChange: -8 },
+      { sku: 'SKU004', description: 'Deluxe Widget D', warehouseQty: 800, amazonQty: 300, total: 1100, trend: 'up', percentChange: 15 },
+      { sku: 'SKU005', description: 'Basic Widget E', warehouseQty: 0, amazonQty: 25, total: 25, trend: 'down', percentChange: -20 },
+      { sku: 'TEST-SKU-001', description: 'Test Product Alpha', warehouseQty: 200, amazonQty: 100, total: 300, trend: 'stable', percentChange: 0 },
+      { sku: 'TEST-SKU-002', description: 'Test Product Beta', warehouseQty: 150, amazonQty: 50, total: 200, trend: 'up', percentChange: 5 },
+      { sku: 'TEST-SKU-003', description: 'Test Product Gamma', warehouseQty: 0, amazonQty: 0, total: 0, trend: 'stable', percentChange: 0 },
+    ]
+  }
 
   useEffect(() => {
+    if (isDemoMode) {
+      setInventory(generateDemoData())
+      setLastRefresh(new Date())
+      setLoading(false)
+      return
+    }
+
     const fetchAndSyncInventory = async () => {
       setLoading(true)
       try {
@@ -87,7 +109,7 @@ export default function AmazonIntegrationPage() {
     if (status === 'authenticated' && session?.user?.role === 'admin') {
       fetchAndSyncInventory()
     }
-  }, [status, session])
+  }, [status, session, isDemoMode])
 
   const filteredInventory = inventory
     .filter(item => {
@@ -153,6 +175,25 @@ export default function AmazonIntegrationPage() {
           textColor="text-orange-800"
         />
 
+        {/* Demo Mode Toggle */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-yellow-800">Demo Mode</h3>
+              <p className="text-xs text-yellow-600 mt-1">Toggle to use sample data without Amazon API credentials</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isDemoMode}
+                onChange={(e) => setIsDemoMode(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600"></div>
+            </label>
+          </div>
+        </div>
+
         {/* Actions Bar */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="relative flex-1 max-w-md">
@@ -167,6 +208,13 @@ export default function AmazonIntegrationPage() {
           </div>
           <button
             onClick={async () => {
+              if (isDemoMode) {
+                setInventory(generateDemoData())
+                setLastRefresh(new Date())
+                toast.success('Demo data refreshed')
+                return
+              }
+              
               setLoading(true)
               try {
                 // Skip warehouse setup - it should be done manually
@@ -488,10 +536,10 @@ export default function AmazonIntegrationPage() {
 
         {/* Amazon API Status */}
         {lastRefresh && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-green-800">
-              <strong>Amazon FBA Connected:</strong> Production API active. Last synced: {lastRefresh.toLocaleString()}
-              <br />Click "Refresh Data" to sync the latest inventory from Amazon FBA.
+          <div className={`border rounded-lg p-4 ${isDemoMode ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}>
+            <p className={`text-sm ${isDemoMode ? 'text-yellow-800' : 'text-green-800'}`}>
+              <strong>{isDemoMode ? 'Demo Mode Active:' : 'Amazon FBA Connected:'}</strong> {isDemoMode ? 'Using sample data for testing' : 'Production API active'}. Last synced: {lastRefresh.toLocaleString()}
+              <br />{isDemoMode ? 'Toggle off demo mode to connect to real Amazon FBA API' : 'Click "Refresh Data" to sync the latest inventory from Amazon FBA'}.
             </p>
           </div>
         )}

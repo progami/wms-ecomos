@@ -4,11 +4,13 @@ import { authOptions } from '@/lib/auth'
 import { getWarehouseFilter } from '@/lib/auth-utils'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { businessLogger, apiLogger, perfLogger } from '@/lib/logger'
+import { sanitizeForDisplay, sanitizeSearchQuery, escapeRegex, validatePositiveInteger } from '@/lib/security/input-sanitization'
 export const dynamic = 'force-dynamic'
 
-// Validation schemas
+// Validation schemas with sanitization
 const createInvoiceSchema = z.object({
-  invoiceNumber: z.string().min(1),
+  invoiceNumber: z.string().min(1).transform(val => sanitizeForDisplay(val)),
   warehouseId: z.string().uuid(),
   billingPeriodStart: z.string().datetime(),
   billingPeriodEnd: z.string().datetime(),
@@ -17,7 +19,7 @@ const createInvoiceSchema = z.object({
   totalAmount: z.number().positive(),
   lineItems: z.array(z.object({
     costCategory: z.enum(['Container', 'Carton', 'Pallet', 'Storage', 'Unit', 'Shipment', 'Accessorial']),
-    costName: z.string().min(1),
+    costName: z.string().min(1).transform(val => sanitizeForDisplay(val)),
     quantity: z.number().positive(),
     unitRate: z.number().positive().optional(),
     amount: z.number().positive()
@@ -38,13 +40,13 @@ export async function GET(req: NextRequest) {
     }
 
     const searchParams = req.nextUrl.searchParams
-    const search = searchParams.get('search')
+    const search = searchParams.get('search') ? sanitizeSearchQuery(searchParams.get('search')!) : null
     const warehouseId = searchParams.get('warehouseId')
     const status = searchParams.get('status')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10')))
     const skip = (page - 1) * limit
 
     // Get warehouse filter based on user role
@@ -57,11 +59,15 @@ export async function GET(req: NextRequest) {
     const where: any = { ...warehouseFilter }
     
     if (search) {
+      const escapedSearch = escapeRegex(search)
+      const searchFloat = parseFloat(search)
       where.OR = [
-        { invoiceNumber: { contains: search, mode: 'insensitive' } },
-        { warehouse: { name: { contains: search, mode: 'insensitive' } } },
-        { totalAmount: { equals: parseFloat(search) || undefined } }
+        { invoiceNumber: { contains: escapedSearch, mode: 'insensitive' } },
+        { warehouse: { name: { contains: escapedSearch, mode: 'insensitive' } } }
       ]
+      if (!isNaN(searchFloat)) {
+        where.OR.push({ totalAmount: { equals: searchFloat } })
+      }
     }
 
     if (status) {
@@ -138,9 +144,15 @@ export async function GET(req: NextRequest) {
 
 // POST /api/invoices - Create new invoice
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
+      apiLogger.warn('Unauthorized invoice creation attempt', {
+        path: '/api/invoices',
+        method: 'POST'
+      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -206,14 +218,27 @@ export async function POST(req: NextRequest) {
 
     // Create invoice with line items
     try {
+      businessLogger.info('Creating new invoice', {
+        invoiceNumber: validatedData.invoiceNumber,
+        warehouseId: validatedData.warehouseId,
+        totalAmount: validatedData.totalAmount,
+        lineItemCount: validatedData.lineItems.length,
+        userId: session.user.id,
+        userRole: session.user.role
+      });
+      
       const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber: validatedData.invoiceNumber,
         warehouseId: validatedData.warehouseId,
+        customerId: session.user.id, // Using the creator as customer for now
         billingPeriodStart: new Date(validatedData.billingPeriodStart),
         billingPeriodEnd: new Date(validatedData.billingPeriodEnd),
         invoiceDate: new Date(validatedData.invoiceDate),
+        issueDate: new Date(), // Setting issue date to now
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+        subtotal: validatedData.totalAmount, // Setting subtotal same as total for now
+        taxAmount: 0, // Setting tax to 0 for now
         totalAmount: validatedData.totalAmount,
         createdById: session.user.id,
         lineItems: {
@@ -239,10 +264,31 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    const duration = Date.now() - startTime;
+    businessLogger.info('Invoice created successfully', {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      warehouseId: invoice.warehouseId,
+      totalAmount: invoice.totalAmount,
+      duration,
+      userId: session.user.id
+    });
+    
+    perfLogger.log('Invoice creation completed', {
+      duration,
+      invoiceId: invoice.id,
+      lineItemCount: validatedData.lineItems.length
+    });
+    
     return NextResponse.json(invoice, { status: 201 })
     } catch (prismaError: any) {
       // Handle other database errors
-      console.error('Database error:', prismaError)
+      businessLogger.error('Failed to create invoice - database error', {
+        error: prismaError.message,
+        code: prismaError.code,
+        invoiceNumber: validatedData.invoiceNumber,
+        userId: session.user.id
+      });
       return NextResponse.json(
         { error: 'Failed to create invoice' },
         { status: 500 }
@@ -255,7 +301,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error creating invoice:', error)
+    businessLogger.error('Failed to create invoice', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: session?.user?.id,
+      duration: Date.now() - startTime
+    });
     return NextResponse.json(
       { error: 'Failed to create invoice' },
       { status: 500 }
@@ -345,6 +395,11 @@ export async function DELETE(req: NextRequest) {
     }
 
     if (invoice.status === 'paid') {
+      businessLogger.warn('Attempted to delete paid invoice', {
+        invoiceId,
+        invoiceNumber: invoice.invoiceNumber,
+        userId: session.user.id
+      });
       return NextResponse.json(
         { error: 'Cannot delete paid invoices' },
         { status: 400 }
@@ -355,6 +410,13 @@ export async function DELETE(req: NextRequest) {
     await prisma.invoice.delete({
       where: { id: invoiceId }
     })
+
+    businessLogger.info('Invoice deleted successfully', {
+      invoiceId,
+      invoiceNumber: invoice.invoiceNumber,
+      userId: session.user.id,
+      userRole: session.user.role
+    });
 
     return NextResponse.json({ message: 'Invoice deleted successfully' })
   } catch (error) {

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Download } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { getImportConfig } from '@/lib/import-config'
+import { Button } from '@/components/ui/button'
 
 interface ImportResult {
   imported: number
@@ -107,13 +108,14 @@ export function ImportButton({ entityName, onImportComplete, className = '' }: I
 
   return (
     <>
-      <button
+      <Button
         onClick={() => setIsOpen(true)}
-        className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${className}`}
+        variant="outline"
+        className={className}
       >
         <Upload className="h-4 w-4 mr-2" />
         Import {config.displayName}
-      </button>
+      </Button>
 
       {isOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -126,12 +128,14 @@ export function ImportButton({ entityName, onImportComplete, className = '' }: I
                   <h3 className="text-lg font-medium text-gray-900">
                     Import {config.displayName}
                   </h3>
-                  <button
+                  <Button
                     onClick={handleClose}
-                    className="text-gray-400 hover:text-gray-500"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
                   >
                     <X className="h-5 w-5" />
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="space-y-4">

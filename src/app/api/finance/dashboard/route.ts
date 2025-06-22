@@ -91,6 +91,9 @@ export async function GET() {
           lte: currentBillingPeriod.end,
         },
       },
+      select: {
+        totalAmount: true,
+      },
     })
     
     const overdueCount = overdueInvoices.length
@@ -121,8 +124,17 @@ export async function GET() {
     const recentInvoices = await prisma.invoice.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
-      include: {
-        warehouse: true,
+      select: {
+        id: true,
+        invoiceNumber: true,
+        status: true,
+        totalAmount: true,
+        createdAt: true,
+        warehouse: {
+          select: {
+            name: true,
+          },
+        },
         disputes: {
           orderBy: { createdAt: 'desc' },
           take: 1,

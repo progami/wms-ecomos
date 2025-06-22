@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
+import { DemoWelcome } from '@/components/ui/demo-welcome'
 import { toast } from 'react-hot-toast'
 import {
   AreaChart,
@@ -247,7 +248,7 @@ export default function AdminDashboardPage() {
     }
 
     // Generate monthly growth comparison
-    const monthlyGrowth = []
+    const monthlyGrowth: Array<{ month: string; lastYear: number; thisYear: number }> = []
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
     months.forEach((month, index) => {
       monthlyGrowth.push({
@@ -448,6 +449,7 @@ export default function AdminDashboardPage() {
 
   return (
     <DashboardLayout>
+      <DemoWelcome />
       <div className="space-y-6">
         {/* Enhanced Header with Actions */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -764,28 +766,28 @@ export default function AdminDashboardPage() {
                 <h3 className="text-lg font-semibold">Current Inventory by Warehouse</h3>
                 <p className="text-sm text-muted-foreground">Distribution of cartons across locations</p>
               </div>
-              {useDemoData || chartData?.warehouseDistribution?.length > 0 ? (
+              {useDemoData || (chartData?.warehouseDistribution && chartData.warehouseDistribution.length > 0) ? (
                 <div className="space-y-4">
                   {/* Summary Stats */}
                   <div className="grid grid-cols-2 gap-4 pb-4 border-b">
                     <div>
                       <p className="text-sm text-muted-foreground">Total Warehouses</p>
-                      <p className="text-2xl font-bold">{useDemoData ? dummyData.warehouseDistribution.length : chartData.warehouseDistribution.length}</p>
+                      <p className="text-2xl font-bold">{useDemoData ? dummyData.warehouseDistribution.length : chartData?.warehouseDistribution?.length || 0}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Cartons</p>
                       <p className="text-2xl font-bold">
                         {useDemoData 
                           ? dummyData.warehouseDistribution.reduce((sum, w) => sum + w.value, 0).toLocaleString()
-                          : chartData.warehouseDistribution.reduce((sum, w) => sum + w.value, 0).toLocaleString()}
+                          : chartData?.warehouseDistribution?.reduce((sum, w) => sum + w.value, 0).toLocaleString() || '0'}
                       </p>
                     </div>
                   </div>
                   
                   {/* Simple Bar Chart Alternative */}
                   <div className="space-y-3">
-                    {(useDemoData ? dummyData.warehouseDistribution : chartData.warehouseDistribution).map((warehouse, _index) => {
-                      const data = useDemoData ? dummyData.warehouseDistribution : chartData.warehouseDistribution
+                    {(useDemoData ? dummyData.warehouseDistribution : chartData?.warehouseDistribution || []).map((warehouse, _index) => {
+                      const data = useDemoData ? dummyData.warehouseDistribution : chartData?.warehouseDistribution || []
                       const maxValue = Math.max(...data.map(w => w.value))
                       const widthPercentage = maxValue > 0 ? (warehouse.value / maxValue) * 100 : 0
                       
@@ -812,7 +814,7 @@ export default function AdminDashboardPage() {
                   
                   {/* Detailed List */}
                   <div className="pt-2">
-                    {(useDemoData ? dummyData.warehouseDistribution : chartData.warehouseDistribution)
+                    {(useDemoData ? dummyData.warehouseDistribution : chartData?.warehouseDistribution || [])
                       .sort((a, b) => b.value - a.value)
                       .map((warehouse, index) => (
                         <div key={warehouse.name} className="flex items-center justify-between py-2 border-b last:border-0">

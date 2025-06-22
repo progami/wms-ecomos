@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import { ImportButton } from '@/components/ui/import-button'
+import { fetchWithCSRF } from '@/lib/fetch-with-csrf'
 
 interface CostRate {
   id: string
@@ -57,14 +58,14 @@ export default function AdminRatesPage() {
   const fetchData = async () => {
     try {
       // Fetch rates
-      const ratesResponse = await fetch('/api/settings/rates')
+      const ratesResponse = await fetchWithCSRF('/api/settings/rates')
       if (ratesResponse.ok) {
         const data = await ratesResponse.json()
         setRates(data)
       }
 
       // Fetch warehouses
-      const warehouseResponse = await fetch('/api/warehouses')
+      const warehouseResponse = await fetchWithCSRF('/api/warehouses')
       if (warehouseResponse.ok) {
         const data = await warehouseResponse.json()
         setWarehouses(data)

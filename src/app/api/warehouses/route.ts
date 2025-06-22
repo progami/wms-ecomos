@@ -3,28 +3,33 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { sanitizeForDisplay, validateAlphanumeric } from '@/lib/security/input-sanitization'
 export const dynamic = 'force-dynamic'
 
-// Validation schemas
+// Validation schemas with sanitization
 const createWarehouseSchema = z.object({
-  code: z.string().min(1).max(10),
-  name: z.string().min(1),
-  address: z.string().optional(),
+  code: z.string().min(1).max(10).refine(validateAlphanumeric, {
+    message: "Warehouse code must be alphanumeric"
+  }).transform(val => sanitizeForDisplay(val)),
+  name: z.string().min(1).transform(val => sanitizeForDisplay(val)),
+  address: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
   contactEmail: z.string().email().optional(),
-  contactPhone: z.string().optional(),
+  contactPhone: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   isActive: z.boolean().default(true)
 })
 
 const updateWarehouseSchema = z.object({
-  code: z.string().min(1).max(10).optional(),
-  name: z.string().min(1).optional(),
-  address: z.string().optional(),
+  code: z.string().min(1).max(10).optional().refine(val => !val || validateAlphanumeric(val), {
+    message: "Warehouse code must be alphanumeric"
+  }).transform(val => val ? sanitizeForDisplay(val) : val),
+  name: z.string().min(1).optional().transform(val => val ? sanitizeForDisplay(val) : val),
+  address: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
   contactEmail: z.string().email().optional().nullable(),
-  contactPhone: z.string().optional().nullable(),
+  contactPhone: z.string().optional().nullable().transform(val => val ? sanitizeForDisplay(val) : val),
   isActive: z.boolean().optional()
 })
 

@@ -39,105 +39,59 @@ interface NavSection {
   }>
 }
 
-const navigation = {
-  admin: [
-    {
-      title: '',
-      items: [
-        { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
-      ]
-    },
-    {
-      title: 'Operations',
-      items: [
-        { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
-        { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
-        { name: 'Receive Goods', href: '/operations/receive', icon: Package },
-        { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
-        { name: 'Import Attributes', href: '/operations/import-attributes', icon: Upload },
-        { name: 'Pallet Variance', href: '/operations/pallet-variance', icon: AlertTriangle },
-      ]
-    },
-    {
-      title: 'Finance',
-      items: [
-        { name: 'Dashboard', href: '/finance/dashboard', icon: DollarSign },
-        { name: 'Invoices', href: '/finance/invoices', icon: FileText },
-        { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-        { name: 'Storage Ledger', href: '/finance/storage-ledger', icon: Calendar },
-        { name: 'Cost Ledger', href: '/finance/cost-ledger', icon: BarChart3 },
-      ]
-    },
-    {
-      title: 'Configuration',
-      items: [
-        { name: 'Products (SKUs)', href: '/config/products', icon: Package },
-        { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
-        { name: 'Locations', href: '/config/locations', icon: Building },
-        { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
-        { name: 'Invoice Templates', href: '/config/invoice-templates', icon: FileText },
-      ]
-    },
-    {
-      title: 'Analytics',
-      items: [
-        { name: 'Reports', href: '/reports', icon: BarChart3 },
-        { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
-      ]
-    },
-    {
-      title: 'Admin',
-      items: [
-        { name: 'Users', href: '/admin/users', icon: Users },
-        { name: 'Settings', href: '/admin/settings', icon: Settings },
-      ]
-    },
-  ] as NavSection[],
-  staff: [
-    {
-      title: '',
-      items: [
-        { name: 'Dashboard', href: '/dashboard', icon: Home },
-      ]
-    },
-    {
-      title: 'Operations',
-      items: [
-        { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
-        { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
-        { name: 'Receive Goods', href: '/operations/receive', icon: Package },
-        { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
-        { name: 'Import Attributes', href: '/operations/import-attributes', icon: Upload },
-        { name: 'Pallet Variance', href: '/operations/pallet-variance', icon: AlertTriangle },
-      ]
-    },
-    {
-      title: 'Finance',
-      items: [
-        { name: 'Invoices', href: '/finance/invoices', icon: FileText },
-        { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
-        { name: 'Storage Ledger', href: '/finance/storage-ledger', icon: Calendar },
-        { name: 'Cost Ledger', href: '/finance/cost-ledger', icon: BarChart3 },
-      ]
-    },
-    {
-      title: 'Configuration',
-      items: [
-        { name: 'Products (SKUs)', href: '/config/products', icon: Package },
-        { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
-        { name: 'Locations', href: '/config/locations', icon: Building },
-        { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
-        { name: 'Invoice Templates', href: '/config/invoice-templates', icon: FileText },
-      ]
-    },
-    {
-      title: 'Analytics',
-      items: [
-        { name: 'Reports', href: '/reports', icon: BarChart3 },
-        { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
-      ]
-    },
-  ] as NavSection[],
+const baseNavigation: NavSection[] = [
+  {
+    title: '',
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: Home },
+    ]
+  },
+  {
+    title: 'Operations',
+    items: [
+      { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
+      { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
+      { name: 'Receive Goods', href: '/operations/receive', icon: Package },
+      { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
+      { name: 'Import Attributes', href: '/operations/import-attributes', icon: Upload },
+      { name: 'Pallet Variance', href: '/operations/pallet-variance', icon: AlertTriangle },
+    ]
+  },
+  {
+    title: 'Finance',
+    items: [
+      { name: 'Dashboard', href: '/finance/dashboard', icon: DollarSign },
+      { name: 'Invoices', href: '/finance/invoices', icon: FileText },
+      { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
+      { name: 'Storage Ledger', href: '/finance/storage-ledger', icon: Calendar },
+      { name: 'Cost Ledger', href: '/finance/cost-ledger', icon: BarChart3 },
+    ]
+  },
+  {
+    title: 'Configuration',
+    items: [
+      { name: 'Products (SKUs)', href: '/config/products', icon: Package },
+      { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
+      { name: 'Locations', href: '/config/locations', icon: Building },
+      { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
+      { name: 'Invoice Templates', href: '/config/invoice-templates', icon: FileText },
+    ]
+  },
+  {
+    title: 'Analytics',
+    items: [
+      { name: 'Reports', href: '/reports', icon: BarChart3 },
+      { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
+    ]
+  },
+]
+
+const adminOnlySection: NavSection = {
+  title: 'Admin',
+  items: [
+    { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Settings', href: '/admin/settings', icon: Settings },
+  ]
 }
 
 export function MainNav() {
@@ -147,9 +101,14 @@ export function MainNav() {
 
   if (!session) return null
 
-  // Check if user has admin role (system_admin in database)
+  // Check if user has admin role
   const isAdmin = session.user.role === 'admin'
-  const userNavigation = isAdmin ? navigation.admin : navigation.staff
+  
+  // Build navigation based on role
+  const userNavigation = [...baseNavigation]
+  if (isAdmin) {
+    userNavigation.push(adminOnlySection)
+  }
 
   return (
     <>
@@ -157,7 +116,7 @@ export function MainNav() {
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center">
-            <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2">
               <Package2 className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold">WMS</span>
             </Link>
@@ -260,7 +219,7 @@ export function MainNav() {
               </div>
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 pb-4">
                 <div className="flex h-16 shrink-0 items-center">
-                  <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} className="flex items-center gap-2">
+                  <Link href="/dashboard" className="flex items-center gap-2">
                     <Package2 className="h-8 w-8 text-primary" />
                     <span className="text-xl font-bold">WMS</span>
                   </Link>

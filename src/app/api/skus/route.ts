@@ -3,22 +3,23 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
+import { sanitizeForDisplay, sanitizeSearchQuery, escapeRegex } from '@/lib/security/input-sanitization'
 export const dynamic = 'force-dynamic'
 
-// Validation schemas
+// Validation schemas with sanitization
 const createSkuSchema = z.object({
-  skuCode: z.string().min(1).max(50),
-  asin: z.string().optional(),
-  description: z.string().min(1),
+  skuCode: z.string().min(1).max(50).transform(val => sanitizeForDisplay(val)),
+  asin: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
+  description: z.string().min(1).transform(val => sanitizeForDisplay(val)),
   packSize: z.number().int().positive(),
-  material: z.string().optional(),
-  unitDimensionsCm: z.string().optional(),
+  material: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
+  unitDimensionsCm: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   unitWeightKg: z.number().positive().optional(),
   unitsPerCarton: z.number().int().positive(),
-  cartonDimensionsCm: z.string().optional(),
+  cartonDimensionsCm: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   cartonWeightKg: z.number().positive().optional(),
-  packagingType: z.string().optional(),
-  notes: z.string().optional(),
+  packagingType: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
+  notes: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   isActive: z.boolean().default(true)
 })
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const search = searchParams.get('search')
+    const search = searchParams.get('search') ? sanitizeSearchQuery(searchParams.get('search')!) : null
     const includeInactive = searchParams.get('includeInactive') === 'true'
 
     const where: any = {}
@@ -46,10 +47,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
+      const escapedSearch = escapeRegex(search)
       where.OR = [
-        { skuCode: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { asin: { contains: search, mode: 'insensitive' } }
+        { skuCode: { contains: escapedSearch, mode: 'insensitive' } },
+        { description: { contains: escapedSearch, mode: 'insensitive' } },
+        { asin: { contains: escapedSearch, mode: 'insensitive' } }
       ]
     }
 

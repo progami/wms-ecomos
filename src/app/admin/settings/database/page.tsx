@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { toast } from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { DemoDataManager } from '@/components/demo-data-manager'
 
 interface BackupSchedule {
   enabled: boolean
@@ -200,6 +201,9 @@ export default function DatabaseSettingsPage() {
             <p className="text-sm text-gray-600">Last Backup</p>
           </div>
         </div>
+
+        {/* Demo Data Manager */}
+        <DemoDataManager />
 
         {/* Backup & Restore */}
         <div className="bg-white border rounded-lg p-6">

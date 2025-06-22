@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TransactionType } from '@prisma/client'
+import { withTransaction, withRetry, updateInventoryBatch } from '@/lib/database/transaction-utils'
+import { businessLogger, perfLogger } from '@/lib/logger/index'
+import { sanitizeForDisplay, validateAlphanumeric, validatePositiveInteger } from '@/lib/security/input-sanitization'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -33,7 +36,23 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ transactions })
+    // Extract notes from attachments for each transaction
+    const transactionsWithNotes = transactions.map(transaction => {
+      let notes = null;
+      if (transaction.attachments && Array.isArray(transaction.attachments)) {
+        const notesAttachment = (transaction.attachments as any[]).find(att => att.type === 'notes');
+        if (notesAttachment) {
+          notes = notesAttachment.content;
+        }
+      }
+      
+      return {
+        ...transaction,
+        notes
+      };
+    });
+
+    return NextResponse.json({ transactions: transactionsWithNotes })
   } catch (error) {
     console.error('Failed to fetch transactions:', error)
     return NextResponse.json({ 
@@ -51,32 +70,82 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { type, referenceNumber, date, pickupDate, items, shipName, trackingNumber, attachments, modeOfTransportation } = body
+    const { type, transactionType, referenceNumber, referenceId, date, transactionDate, pickupDate, items, shipName, trackingNumber, attachments, modeOfTransportation, notes, 
+            warehouseId: bodyWarehouseId, skuId, batchLot, cartonsIn, cartonsOut, storagePalletsIn, shippingPalletsOut } = body
+    
+    // Sanitize text inputs
+    const sanitizedReferenceNumber = referenceNumber ? sanitizeForDisplay(referenceNumber) : null
+    const sanitizedReferenceId = referenceId ? sanitizeForDisplay(referenceId) : null
+    const sanitizedShipName = shipName ? sanitizeForDisplay(shipName) : null
+    const sanitizedTrackingNumber = trackingNumber ? sanitizeForDisplay(trackingNumber) : null
+    const sanitizedModeOfTransportation = modeOfTransportation ? sanitizeForDisplay(modeOfTransportation) : null
+    const sanitizedNotes = notes ? sanitizeForDisplay(notes) : null
+
+    // Handle both 'type' and 'transactionType' fields for backward compatibility
+    const txType = type || transactionType
+    const refNumber = sanitizedReferenceNumber || sanitizedReferenceId
+    const txDate = date || transactionDate
 
     // Validate transaction type
-    if (!type || !['RECEIVE', 'SHIP'].includes(type)) {
+    if (!txType || !['RECEIVE', 'SHIP', 'ADJUST_IN', 'ADJUST_OUT'].includes(txType)) {
       return NextResponse.json({ 
-        error: 'Invalid transaction type. Must be RECEIVE or SHIP' 
+        error: 'Invalid transaction type. Must be RECEIVE, SHIP, ADJUST_IN, or ADJUST_OUT' 
       }, { status: 400 })
     }
 
-    // Validate required fields
-    if (!referenceNumber || !date || !items || !Array.isArray(items) || items.length === 0) {
+    // Build items array for adjustment transactions
+    let itemsArray = items
+    if (['ADJUST_IN', 'ADJUST_OUT'].includes(txType)) {
+      // For adjustments, create single item from individual fields
+      if (!skuId || !batchLot) {
+        return NextResponse.json({ 
+          error: 'Missing required fields for adjustment: skuId and batchLot' 
+        }, { status: 400 })
+      }
+      
+      // Get SKU code from skuId
+      const sku = await prisma.sku.findUnique({
+        where: { id: skuId }
+      })
+      
+      if (!sku) {
+        return NextResponse.json({ 
+          error: 'SKU not found' 
+        }, { status: 404 })
+      }
+      
+      itemsArray = [{
+        skuCode: sku.skuCode,
+        batchLot: batchLot,
+        cartons: cartonsIn || cartonsOut || 0,
+        pallets: storagePalletsIn || shippingPalletsOut || 0
+      }]
+    }
+
+    // Validate required fields for non-adjustment transactions
+    if (['RECEIVE', 'SHIP'].includes(txType) && (!refNumber || !txDate || !itemsArray || !Array.isArray(itemsArray) || itemsArray.length === 0)) {
       return NextResponse.json({ 
         error: 'Missing required fields: PI/CI/PO number, date, and items' 
       }, { status: 400 })
     }
 
+    // Validate required fields for all transactions
+    if (!refNumber || !txDate) {
+      return NextResponse.json({ 
+        error: 'Missing required fields: reference number and date' 
+      }, { status: 400 })
+    }
+
     // Validate date is not in the future
-    const transactionDate = new Date(date)
+    const transactionDateObj = new Date(txDate)
     const today = new Date()
     today.setHours(23, 59, 59, 999)
     
-    if (isNaN(transactionDate.getTime())) {
+    if (isNaN(transactionDateObj.getTime())) {
       return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
     }
     
-    if (transactionDate > today) {
+    if (transactionDateObj > today) {
       return NextResponse.json({ 
         error: 'Transaction date cannot be in the future' 
       }, { status: 400 })
@@ -85,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Validate date is not too far in the past (e.g., 1 year)
     const oneYearAgo = new Date()
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-    if (transactionDate < oneYearAgo) {
+    if (transactionDateObj < oneYearAgo) {
       return NextResponse.json({ 
         error: 'Transaction date is too far in the past (max 1 year)' 
       }, { status: 400 })
@@ -96,7 +165,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No warehouse assigned' }, { status: 400 })
     }
 
-    const warehouseId = session.user.warehouseId || body.warehouseId
+    const warehouseId = session.user.warehouseId || bodyWarehouseId
 
     if (!warehouseId) {
       return NextResponse.json({ error: 'Warehouse ID required' }, { status: 400 })
@@ -105,8 +174,8 @@ export async function POST(request: NextRequest) {
     // Check for duplicate transaction (prevent double submission)
     const recentDuplicate = await prisma.inventoryTransaction.findFirst({
       where: {
-        referenceId: referenceNumber,
-        transactionType: type as TransactionType,
+        referenceId: refNumber,
+        transactionType: txType as TransactionType,
         warehouseId,
         createdAt: {
           gte: new Date(Date.now() - 60000) // Within last minute
@@ -127,19 +196,19 @@ export async function POST(request: NextRequest) {
       select: { transactionDate: true, transactionId: true }
     })
 
-    if (lastTransaction && transactionDate < lastTransaction.transactionDate) {
+    if (lastTransaction && transactionDateObj < lastTransaction.transactionDate) {
       return NextResponse.json({ 
         error: `Cannot create backdated transactions. The last transaction in this warehouse was on ${lastTransaction.transactionDate.toLocaleDateString()}. New transactions must have a date on or after this date.`,
         details: {
           lastTransactionDate: lastTransaction.transactionDate,
-          attemptedDate: transactionDate,
+          attemptedDate: transactionDateObj,
           lastTransactionId: lastTransaction.transactionId
         }
       }, { status: 400 })
     }
 
     // Validate all items before processing
-    for (const item of items) {
+    for (const item of itemsArray) {
       // Validate item structure
       if (!item.skuCode || !item.batchLot || typeof item.cartons !== 'number') {
         return NextResponse.json({ 
@@ -170,17 +239,19 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Validate batch/lot is not empty
+      // Validate and sanitize batch/lot
       if (!item.batchLot || item.batchLot.trim() === '') {
         return NextResponse.json({ 
           error: `Batch/Lot is required for SKU ${item.skuCode}` 
         }, { status: 400 })
       }
+      item.batchLot = sanitizeForDisplay(item.batchLot)
+      item.skuCode = sanitizeForDisplay(item.skuCode)
     }
 
     // Check for duplicate SKU/batch combinations in the request
     const itemKeys = new Set()
-    for (const item of items) {
+    for (const item of itemsArray) {
       const key = `${item.skuCode}-${item.batchLot}`
       if (itemKeys.has(key)) {
         return NextResponse.json({ 
@@ -191,7 +262,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify all SKUs exist and check inventory for SHIP transactions
-    for (const item of items) {
+    for (const item of itemsArray) {
       const sku = await prisma.sku.findFirst({
         where: { skuCode: item.skuCode }
       })
@@ -202,8 +273,8 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
 
-      // For SHIP transactions, verify inventory availability
-      if (type === 'SHIP') {
+      // For SHIP and ADJUST_OUT transactions, verify inventory availability
+      if (['SHIP', 'ADJUST_OUT'].includes(txType)) {
         const balance = await prisma.inventoryBalance.findFirst({
           where: {
             warehouseId,
@@ -229,159 +300,173 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 })
     }
 
-    // Create transactions for each item
-    const transactions = []
+    // Start performance tracking
+    const startTime = Date.now();
     
-    for (const item of items) {
-      // Get SKU (already validated above)
-      const sku = await prisma.sku.findFirst({
-        where: { skuCode: item.skuCode }
-      })
-      
-      if (!sku) {
-        throw new Error(`SKU not found: ${item.skuCode}`)
-      }
-
-      // Generate transaction ID in format similar to Excel data
-      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-      const sequenceNum: number = transactions.length + 1
-      const transactionId = `${warehouse.code}-${type.slice(0, 3)}-${timestamp}-${sequenceNum.toString().padStart(3, '0')}`
-      
-      // Calculate pallet values
-      let calculatedStoragePalletsIn = null
-      let calculatedShippingPalletsOut = null
-      let palletVarianceNotes = null
-      let batchShippingCartonsPerPallet = item.shippingCartonsPerPallet
-      
-      if (type === 'RECEIVE' && item.storageCartonsPerPallet > 0) {
-        calculatedStoragePalletsIn = Math.ceil(item.cartons / item.storageCartonsPerPallet)
-        if (item.pallets !== calculatedStoragePalletsIn) {
-          palletVarianceNotes = `Storage pallet variance: Actual ${item.pallets}, Calculated ${calculatedStoragePalletsIn} (${item.cartons} cartons @ ${item.storageCartonsPerPallet}/pallet)`
-        }
-      } else if (type === 'SHIP') {
-        // For SHIP, get the batch-specific config from inventory balance
-        const balance = await prisma.inventoryBalance.findFirst({
-          where: {
-            warehouseId,
-            skuId: sku.id,
-            batchLot: item.batchLot,
-          }
-        })
+    // Create transactions with proper database transaction and locking
+    const result = await withRetry(async () => {
+      return withTransaction(async (tx) => {
+        const transactions = [];
+        const inventoryUpdates = [];
         
-        if (balance?.shippingCartonsPerPallet) {
-          batchShippingCartonsPerPallet = balance.shippingCartonsPerPallet
-          calculatedShippingPalletsOut = Math.ceil(item.cartons / batchShippingCartonsPerPallet)
-          if (item.pallets !== calculatedShippingPalletsOut) {
-            palletVarianceNotes = `Shipping pallet variance: Actual ${item.pallets}, Calculated ${calculatedShippingPalletsOut} (${item.cartons} cartons @ ${batchShippingCartonsPerPallet}/pallet)`
+        // Pre-fetch all SKUs to reduce queries
+        const skuCodes = itemsArray.map(item => item.skuCode);
+        const skus = await tx.sku.findMany({
+          where: { skuCode: { in: skuCodes } }
+        });
+        const skuMap = new Map(skus.map(sku => [sku.skuCode, sku]));
+        
+        for (const item of itemsArray) {
+          const sku = skuMap.get(item.skuCode);
+          if (!sku) {
+            throw new Error(`SKU not found: ${item.skuCode}`);
           }
-        }
-      }
+
+          // Generate transaction ID in format similar to Excel data
+          const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+          const sequenceNum: number = transactions.length + 1
+          const transactionId = `${warehouse.code}-${txType.slice(0, 3)}-${timestamp}-${sequenceNum.toString().padStart(3, '0')}`
       
-      // Auto-generate reference ID based on format: {TrackingNumber}-{Warehouse}-{Batch}
-      const autoGeneratedReferenceId = trackingNumber && warehouse?.code && item.batchLot 
-        ? `${trackingNumber}-${warehouse.code}-${item.batchLot}`
-        : referenceNumber // Fallback to provided reference number if components missing
+          // Calculate pallet values
+          let calculatedStoragePalletsIn = null
+          let calculatedShippingPalletsOut = null
+          let palletVarianceNotes = null
+          let batchShippingCartonsPerPallet = item.shippingCartonsPerPallet
       
-      const transaction = await prisma.inventoryTransaction.create({
-        data: {
-          transactionId,
-          warehouseId,
-          skuId: sku.id,
-          batchLot: item.batchLot || 'NONE',
-          transactionType: type as TransactionType,
-          referenceId: autoGeneratedReferenceId,
-          cartonsIn: type === 'RECEIVE' ? item.cartons : 0,
-          cartonsOut: type === 'SHIP' ? item.cartons : 0,
-          storagePalletsIn: type === 'RECEIVE' ? (item.pallets || 0) : 0,
-          shippingPalletsOut: type === 'SHIP' ? (item.pallets || 0) : 0,
-          storageCartonsPerPallet: type === 'RECEIVE' ? item.storageCartonsPerPallet : null,
-          shippingCartonsPerPallet: type === 'RECEIVE' ? item.shippingCartonsPerPallet : (type === 'SHIP' ? batchShippingCartonsPerPallet : null),
-          shipName: type === 'RECEIVE' ? shipName : null,
-          trackingNumber: trackingNumber || null,
-          modeOfTransportation: type === 'SHIP' ? modeOfTransportation : null,
-          attachments: type === 'RECEIVE' && attachments ? attachments : null,
-          transactionDate: new Date(date),
-          pickupDate: pickupDate ? new Date(pickupDate) : new Date(date), // Use provided pickup date or default to transaction date
-          createdById: session.user.id,
-        }
-      })
-
-      transactions.push(transaction)
-
-      // Update inventory balance
-      const balance = await prisma.inventoryBalance.findFirst({
-        where: {
-          warehouseId,
-          skuId: sku.id,
-          batchLot: item.batchLot || 'NONE',
-        }
-      })
-
-      const currentBalance = balance?.currentCartons || 0
-      const newBalance = type === 'RECEIVE' 
-        ? currentBalance + item.cartons
-        : currentBalance - item.cartons
-
-      // Additional check to prevent negative inventory
-      if (newBalance < 0) {
-        return NextResponse.json({ 
-          error: `Operation would result in negative inventory for SKU ${item.skuCode} batch ${item.batchLot}` 
-        }, { status: 400 })
-      }
-
-      // Calculate pallets based on batch-specific config or existing balance config
-      let storageCartonsPerPallet = item.storageCartonsPerPallet
-      let shippingCartonsPerPallet = item.shippingCartonsPerPallet
-      
-      // For SHIP transactions, use the config from the existing balance
-      if (type === 'SHIP' && balance) {
-        storageCartonsPerPallet = balance.storageCartonsPerPallet || 1
-        shippingCartonsPerPallet = balance.shippingCartonsPerPallet || 1
-      }
-      
-      const currentPallets = storageCartonsPerPallet && newBalance > 0
-        ? Math.ceil(newBalance / storageCartonsPerPallet)
-        : 0
-
-      if (balance) {
-        await prisma.inventoryBalance.update({
-          where: { id: balance.id },
-          data: {
-            currentCartons: Math.max(0, newBalance),
-            currentPallets,
-            currentUnits: Math.max(0, newBalance) * sku.unitsPerCarton,
-            lastTransactionDate: new Date(date),
-            // Only update config for RECEIVE transactions
-            ...(type === 'RECEIVE' && {
-              storageCartonsPerPallet: item.storageCartonsPerPallet,
-              shippingCartonsPerPallet: item.shippingCartonsPerPallet,
-            }),
+          if (['RECEIVE', 'ADJUST_IN'].includes(txType)) {
+            // For adjustments, use provided pallets value directly
+            if (txType === 'ADJUST_IN' && item.pallets) {
+              calculatedStoragePalletsIn = item.pallets
+            } else if (item.storageCartonsPerPallet > 0) {
+              calculatedStoragePalletsIn = Math.ceil(item.cartons / item.storageCartonsPerPallet)
+              if (item.pallets !== calculatedStoragePalletsIn) {
+                palletVarianceNotes = `Storage pallet variance: Actual ${item.pallets}, Calculated ${calculatedStoragePalletsIn} (${item.cartons} cartons @ ${item.storageCartonsPerPallet}/pallet)`
+              }
+            }
+          } else if (['SHIP', 'ADJUST_OUT'].includes(txType)) {
+            // For SHIP, get the batch-specific config from inventory balance with lock
+            const balances = await tx.$queryRaw<any[]>`
+              SELECT * FROM "inventory_balances" 
+              WHERE "warehouse_id" = ${warehouseId} 
+              AND "sku_id" = ${sku.id} 
+              AND "batch_lot" = ${item.batchLot}
+              FOR UPDATE
+            `;
+            const balance = balances[0];
+            
+            if (txType === 'ADJUST_OUT' && item.pallets) {
+              calculatedShippingPalletsOut = item.pallets
+            } else if (balance?.shippingCartonsPerPallet) {
+              batchShippingCartonsPerPallet = balance.shipping_cartons_per_pallet
+              calculatedShippingPalletsOut = Math.ceil(item.cartons / batchShippingCartonsPerPallet)
+              if (item.pallets !== calculatedShippingPalletsOut) {
+                palletVarianceNotes = `Shipping pallet variance: Actual ${item.pallets}, Calculated ${calculatedShippingPalletsOut} (${item.cartons} cartons @ ${batchShippingCartonsPerPallet}/pallet)`
+              }
+            }
           }
-        })
-      } else if (type === 'RECEIVE' && newBalance > 0) {
-        await prisma.inventoryBalance.create({
-          data: {
+      
+          // Auto-generate reference ID based on format: {TrackingNumber}-{Warehouse}-{Batch}
+          const autoGeneratedReferenceId = sanitizedTrackingNumber && warehouse?.code && item.batchLot 
+            ? `${sanitizedTrackingNumber}-${warehouse.code}-${item.batchLot}`
+            : refNumber // Fallback to provided reference number if components missing
+          
+          const transaction = await tx.inventoryTransaction.create({
+            data: {
+              transactionId,
+              warehouseId,
+              skuId: sku.id,
+              batchLot: item.batchLot || 'NONE',
+              transactionType: txType as TransactionType,
+              referenceId: autoGeneratedReferenceId,
+              cartonsIn: ['RECEIVE', 'ADJUST_IN'].includes(txType) ? item.cartons : 0,
+              cartonsOut: ['SHIP', 'ADJUST_OUT'].includes(txType) ? item.cartons : 0,
+              storagePalletsIn: ['RECEIVE', 'ADJUST_IN'].includes(txType) ? (item.pallets || calculatedStoragePalletsIn || 0) : 0,
+              shippingPalletsOut: ['SHIP', 'ADJUST_OUT'].includes(txType) ? (item.pallets || calculatedShippingPalletsOut || 0) : 0,
+              storageCartonsPerPallet: txType === 'RECEIVE' ? item.storageCartonsPerPallet : null,
+              shippingCartonsPerPallet: txType === 'RECEIVE' ? item.shippingCartonsPerPallet : (txType === 'SHIP' ? batchShippingCartonsPerPallet : null),
+              shipName: txType === 'RECEIVE' ? sanitizedShipName : null,
+              trackingNumber: sanitizedTrackingNumber || null,
+              modeOfTransportation: txType === 'SHIP' ? sanitizedModeOfTransportation : null,
+              attachments: (() => {
+                const combinedAttachments = attachments || [];
+                // For SHIP and adjustment transactions, add notes as a special attachment entry
+                if (['SHIP', 'ADJUST_IN', 'ADJUST_OUT'].includes(txType) && sanitizedNotes) {
+                  return [...combinedAttachments, { type: 'notes', content: sanitizedNotes }];
+                }
+                return combinedAttachments.length > 0 ? combinedAttachments : null;
+              })(),
+              transactionDate: new Date(txDate),
+              pickupDate: pickupDate ? new Date(pickupDate) : new Date(txDate), // Use provided pickup date or default to transaction date
+              createdById: session.user.id,
+            }
+          })
+
+          transactions.push(transaction)
+          
+          // Prepare inventory update
+          const cartonsChange = ['RECEIVE', 'ADJUST_IN'].includes(txType) ? item.cartons : -item.cartons;
+          inventoryUpdates.push({
             warehouseId,
             skuId: sku.id,
             batchLot: item.batchLot || 'NONE',
-            currentCartons: newBalance,
-            currentPallets,
-            currentUnits: newBalance * sku.unitsPerCarton,
-            storageCartonsPerPallet: item.storageCartonsPerPallet,
-            shippingCartonsPerPallet: item.shippingCartonsPerPallet,
-            lastTransactionDate: new Date(date),
-          }
-        })
-      }
-    }
+            cartonsChange,
+            transactionType: txType
+          });
+        }
 
+        // Update all inventory balances in batch with proper locking
+        await updateInventoryBatch(inventoryUpdates);
+        
+        return transactions;
+      });
+    });
+
+    const duration = Date.now() - startTime;
+    
+    // Log successful transaction completion
+    businessLogger.info('Inventory transaction completed successfully', {
+      transactionType: txType,
+      referenceNumber: refNumber,
+      warehouseId,
+      transactionCount: result.length,
+      transactionIds: result.map(t => t.transactionId),
+      totalCartons: itemsArray.reduce((sum, item) => sum + item.cartons, 0),
+      duration,
+      userId: session.user.id
+    });
+    
+    // Log performance metrics
+    perfLogger.log('Transaction processing completed', {
+      transactionType: txType,
+      itemCount: itemsArray.length,
+      duration,
+      avgDurationPerItem: duration / itemsArray.length
+    });
+    
     return NextResponse.json({
       success: true,
-      message: `${transactions.length} transactions created`,
-      transactionIds: transactions.map(t => t.transactionId),
+      message: `${result.length} transactions created`,
+      transactionIds: result.map(t => t.transactionId),
     })
-  } catch (error) {
-    console.error('Transaction error:', error)
+  } catch (error: any) {
+    console.error('Transaction error:', error);
+    
+    // Check for specific error types
+    if (error.message?.includes('Insufficient inventory')) {
+      return NextResponse.json({ 
+        error: error.message
+      }, { status: 400 })
+    }
+    
+    if (error.message?.includes('could not serialize') || 
+        error.message?.includes('deadlock') ||
+        error.message?.includes('concurrent update')) {
+      return NextResponse.json({ 
+        error: 'Transaction conflict detected. Please try again.',
+        details: 'Another transaction is modifying the same inventory. Please retry your request.'
+      }, { status: 409 })
+    }
+    
     return NextResponse.json({ 
       error: 'Failed to create transaction',
       details: error instanceof Error ? error.message : 'Unknown error'

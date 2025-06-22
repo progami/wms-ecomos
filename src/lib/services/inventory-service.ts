@@ -1,0 +1,350 @@
+import { Prisma, TransactionType } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
+import { withTransaction, TransactionOptions } from '@/lib/database/transaction-utils'
+import { auditLog } from '@/lib/security/audit-logger'
+import { sanitizeForDisplay } from '@/lib/security/input-sanitization'
+import { Money } from '@/lib/financial/money-utils'
+import { z } from 'zod'
+
+// Input validation schemas
+const inventoryTransactionSchema = z.object({
+  warehouseId: z.string().uuid(),
+  skuId: z.string().uuid(),
+  batchLot: z.string().min(1).max(100),
+  transactionType: z.nativeEnum(TransactionType),
+  referenceId: z.string().optional(),
+  cartonsIn: z.number().int().min(0).default(0),
+  cartonsOut: z.number().int().min(0).default(0),
+  storagePalletsIn: z.number().int().min(0).default(0),
+  shippingPalletsOut: z.number().int().min(0).default(0),
+  transactionDate: z.date(),
+  pickupDate: z.date().optional(),
+  shippingCartonsPerPallet: z.number().int().positive().optional(),
+  storageCartonsPerPallet: z.number().int().positive().optional(),
+  shipName: z.string().optional(),
+  trackingNumber: z.string().optional(),
+  modeOfTransportation: z.string().optional(),
+  attachments: z.any().optional(),
+})
+
+type InventoryTransactionInput = z.infer<typeof inventoryTransactionSchema>
+
+export class InventoryService {
+  /**
+   * Create an inventory transaction with proper locking and validation
+   */
+  static async createTransaction(
+    input: InventoryTransactionInput,
+    userId: string,
+    options: TransactionOptions = {}
+  ) {
+    // Validate input
+    const validatedInput = inventoryTransactionSchema.parse(input)
+    
+    return withTransaction(async (tx) => {
+      // Lock the inventory balance row for update using raw query
+      const balances = await tx.$queryRaw<any[]>`
+        SELECT * FROM "inventory_balances" 
+        WHERE "warehouse_id" = ${validatedInput.warehouseId} 
+        AND "sku_id" = ${validatedInput.skuId} 
+        AND "batch_lot" = ${validatedInput.batchLot}
+        FOR UPDATE
+      `;
+      
+      const balance = balances[0]
+
+      // Calculate new balance
+      let currentCartons = balance?.current_cartons || 0
+      let currentPallets = balance?.current_pallets || 0
+      
+      currentCartons += validatedInput.cartonsIn - validatedInput.cartonsOut
+      
+      // Validate that balance won't go negative
+      if (currentCartons < 0) {
+        throw new Error(`Insufficient inventory: ${currentCartons} cartons would remain`)
+      }
+
+      // Get SKU details for unit calculation
+      const sku = await tx.sku.findUnique({
+        where: { id: validatedInput.skuId }
+      })
+      
+      if (!sku) {
+        throw new Error('SKU not found')
+      }
+
+      const currentUnits = currentCartons * sku.unitsPerCarton
+
+      // Calculate pallets based on configuration
+      if (currentCartons > 0) {
+        const cartonsPerPallet = validatedInput.storageCartonsPerPallet || 
+                                balance?.storage_cartons_per_pallet || 
+                                1
+        currentPallets = Math.ceil(currentCartons / cartonsPerPallet)
+      } else {
+        currentPallets = 0
+      }
+
+      // Generate transaction ID
+      const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+
+      // Create the transaction
+      const transaction = await tx.inventoryTransaction.create({
+        data: {
+          ...validatedInput,
+          transactionId,
+          createdById: userId,
+        },
+        include: {
+          warehouse: true,
+          sku: true,
+        }
+      })
+
+      // Update or create the balance
+      const updatedBalance = await tx.inventoryBalance.upsert({
+        where: {
+          warehouseId_skuId_batchLot: {
+            warehouseId: validatedInput.warehouseId,
+            skuId: validatedInput.skuId,
+            batchLot: validatedInput.batchLot,
+          }
+        },
+        update: {
+          currentCartons,
+          currentPallets,
+          currentUnits,
+          lastTransactionDate: validatedInput.transactionDate,
+          lastUpdated: new Date(),
+          shippingCartonsPerPallet: validatedInput.shippingCartonsPerPallet || balance?.shipping_cartons_per_pallet,
+          storageCartonsPerPallet: validatedInput.storageCartonsPerPallet || balance?.storage_cartons_per_pallet,
+        },
+        create: {
+          warehouseId: validatedInput.warehouseId,
+          skuId: validatedInput.skuId,
+          batchLot: validatedInput.batchLot,
+          currentCartons,
+          currentPallets,
+          currentUnits,
+          lastTransactionDate: validatedInput.transactionDate,
+          shippingCartonsPerPallet: validatedInput.shippingCartonsPerPallet,
+          storageCartonsPerPallet: validatedInput.storageCartonsPerPallet,
+        }
+      })
+
+      // Audit log
+      await auditLog({
+        entityType: 'InventoryTransaction',
+        entityId: transaction.id,
+        action: 'CREATE',
+        userId,
+        data: {
+          transactionType: validatedInput.transactionType,
+          cartonsIn: validatedInput.cartonsIn,
+          cartonsOut: validatedInput.cartonsOut,
+          newBalance: currentCartons,
+        }
+      })
+
+      return { transaction, balance: updatedBalance }
+    }, {
+      ...options,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    })
+  }
+
+  /**
+   * Get inventory balance with optimistic locking
+   */
+  static async getBalance(
+    warehouseId: string,
+    skuId: string,
+    batchLot: string
+  ) {
+    const balance = await prisma.inventoryBalance.findUnique({
+      where: {
+        warehouseId_skuId_batchLot: {
+          warehouseId,
+          skuId,
+          batchLot,
+        }
+      },
+      include: {
+        warehouse: true,
+        sku: true,
+      }
+    })
+
+    return balance
+  }
+
+  /**
+   * Bulk create transactions with proper validation and locking
+   */
+  static async createBulkTransactions(
+    transactions: InventoryTransactionInput[],
+    userId: string,
+    options: TransactionOptions = {}
+  ) {
+    // Validate all inputs first
+    const validatedTransactions = transactions.map(t => inventoryTransactionSchema.parse(t))
+    
+    return withTransaction(async (tx) => {
+      const results = []
+      
+      // Group by warehouse/sku/batch to minimize lock contention
+      const grouped = validatedTransactions.reduce((acc, t) => {
+        const key = `${t.warehouseId}-${t.skuId}-${t.batchLot}`
+        if (!acc[key]) acc[key] = []
+        acc[key].push(t)
+        return acc
+      }, {} as Record<string, typeof validatedTransactions>)
+
+      // Process each group
+      for (const [key, groupTransactions] of Object.entries(grouped)) {
+        const [warehouseId, skuId, batchLot] = key.split('-')
+        
+        // Lock the balance for this group using raw query
+        const balances = await tx.$queryRaw<any[]>`
+          SELECT * FROM "inventory_balances" 
+          WHERE "warehouse_id" = ${warehouseId} 
+          AND "sku_id" = ${skuId} 
+          AND "batch_lot" = ${batchLot}
+          FOR UPDATE
+        `;
+        
+        const balance = balances[0]
+
+        let currentCartons = balance?.current_cartons || 0
+        const createdTransactions = []
+
+        // Process transactions in order
+        for (const t of groupTransactions) {
+          currentCartons += t.cartonsIn - t.cartonsOut
+          
+          if (currentCartons < 0) {
+            throw new Error(`Insufficient inventory for ${skuId}/${batchLot}: ${currentCartons} cartons would remain`)
+          }
+
+          const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+          
+          const transaction = await tx.inventoryTransaction.create({
+            data: {
+              ...t,
+              transactionId,
+              createdById: userId,
+            }
+          })
+          
+          createdTransactions.push(transaction)
+        }
+
+        // Update balance once for the group
+        const sku = await tx.sku.findUnique({ where: { id: skuId } })
+        const currentUnits = currentCartons * (sku?.unitsPerCarton || 1)
+        const lastTransaction = groupTransactions[groupTransactions.length - 1]
+        const cartonsPerPallet = lastTransaction.storageCartonsPerPallet || 
+                                balance?.storage_cartons_per_pallet || 
+                                1
+        const currentPallets = currentCartons > 0 ? Math.ceil(currentCartons / cartonsPerPallet) : 0
+
+        await tx.inventoryBalance.upsert({
+          where: {
+            warehouseId_skuId_batchLot: {
+              warehouseId,
+              skuId,
+              batchLot,
+            }
+          },
+          update: {
+            currentCartons,
+            currentPallets,
+            currentUnits,
+            lastTransactionDate: lastTransaction.transactionDate,
+            lastUpdated: new Date(),
+          },
+          create: {
+            warehouseId,
+            skuId,
+            batchLot,
+            currentCartons,
+            currentPallets,
+            currentUnits,
+            lastTransactionDate: lastTransaction.transactionDate,
+          }
+        })
+
+        results.push(...createdTransactions)
+      }
+
+      // Bulk audit log
+      await auditLog({
+        entityType: 'InventoryTransaction',
+        entityId: 'BULK',
+        action: 'CREATE_BULK',
+        userId,
+        data: {
+          count: results.length,
+          transactionIds: results.map(t => t.transactionId),
+        }
+      })
+
+      return results
+    }, {
+      ...options,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      timeout: 30000, // 30 second timeout for bulk operations
+    })
+  }
+
+  /**
+   * Calculate point-in-time inventory balance
+   */
+  static async getPointInTimeBalance(
+    warehouseId: string,
+    date: Date,
+    options: { skuId?: string; batchLot?: string } = {}
+  ) {
+    const where: Prisma.InventoryTransactionWhereInput = {
+      warehouseId,
+      transactionDate: { lte: date },
+    }
+
+    if (options.skuId) where.skuId = options.skuId
+    if (options.batchLot) where.batchLot = options.batchLot
+
+    const transactions = await prisma.inventoryTransaction.findMany({
+      where,
+      include: {
+        sku: true,
+      },
+      orderBy: [
+        { transactionDate: 'asc' },
+        { createdAt: 'asc' }
+      ]
+    })
+
+    // Calculate balances from transactions
+    const balances = new Map<string, any>()
+    
+    for (const transaction of transactions) {
+      const key = `${transaction.skuId}-${transaction.batchLot}`
+      const current = balances.get(key) || {
+        skuId: transaction.skuId,
+        sku: transaction.sku,
+        batchLot: transaction.batchLot,
+        currentCartons: 0,
+        currentUnits: 0,
+        lastTransactionDate: null,
+      }
+      
+      current.currentCartons += transaction.cartonsIn - transaction.cartonsOut
+      current.currentUnits = current.currentCartons * (transaction.sku.unitsPerCarton || 1)
+      current.lastTransactionDate = transaction.transactionDate
+      
+      balances.set(key, current)
+    }
+
+    return Array.from(balances.values()).filter(b => b.currentCartons > 0)
+  }
+}

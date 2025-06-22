@@ -96,11 +96,21 @@ export async function GET(request: NextRequest) {
           batchLot: transaction.batchLot
         })
         
+        // Extract notes from attachments if present
+        let notes = null;
+        if (transaction.attachments && Array.isArray(transaction.attachments)) {
+          const notesAttachment = (transaction.attachments as any[]).find(att => att.type === 'notes');
+          if (notesAttachment) {
+            notes = notesAttachment.content;
+          }
+        }
+        
         return {
           ...transaction,
           pickupDate: transaction.pickupDate,
           isReconciled: transaction.isReconciled,
-          runningBalance: newBalance
+          runningBalance: newBalance,
+          notes
         }
       })
 
@@ -163,9 +173,25 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Live view - just return transactions
+    // Live view - just return transactions with notes extracted
+    const transactionsWithNotes = transactions.map(transaction => {
+      // Extract notes from attachments if present
+      let notes = null;
+      if (transaction.attachments && Array.isArray(transaction.attachments)) {
+        const notesAttachment = (transaction.attachments as any[]).find(att => att.type === 'notes');
+        if (notesAttachment) {
+          notes = notesAttachment.content;
+        }
+      }
+      
+      return {
+        ...transaction,
+        notes
+      };
+    });
+    
     return NextResponse.json({
-      transactions
+      transactions: transactionsWithNotes
     })
   } catch (error) {
     console.error('Ledger error:', error)

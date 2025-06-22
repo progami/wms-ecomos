@@ -117,7 +117,8 @@ export default function FinanceReconciliationPage() {
         params.append('endDate', endDate.toISOString())
       }
       
-      const response = await fetch(`/api/invoices?${params}&status=pending,reconciled,disputed`)
+      params.append('status', 'pending,reconciled,disputed')
+      const response = await fetch(`/api/invoices?${params}`)
       if (!response.ok) throw new Error('Failed to fetch invoices')
       
       const data = await response.json()

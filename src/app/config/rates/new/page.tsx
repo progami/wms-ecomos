@@ -7,6 +7,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { DollarSign, Save, X, AlertCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { fetchWithCSRF } from '@/lib/fetch-with-csrf'
 
 interface Warehouse {
   id: string
@@ -72,7 +73,7 @@ export default function NewRatePage() {
 
   const fetchWarehouses = async () => {
     try {
-      const response = await fetch('/api/warehouses')
+      const response = await fetchWithCSRF('/api/warehouses')
       if (response.ok) {
         const data = await response.json()
         setWarehouses(data)
@@ -89,9 +90,8 @@ export default function NewRatePage() {
 
     setCheckingOverlap(true)
     try {
-      const response = await fetch('/api/settings/rates/check-overlap', {
+      const response = await fetchWithCSRF('/api/settings/rates/check-overlap', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           warehouseId: formData.warehouseId,
           costCategory: formData.costCategory,
@@ -135,9 +135,8 @@ export default function NewRatePage() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/settings/rates', {
+      const response = await fetchWithCSRF('/api/settings/rates', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           costValue: parseFloat(formData.costValue),

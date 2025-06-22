@@ -95,7 +95,7 @@ export default function NewWarehouseConfigPage() {
 
       if (response.ok) {
         toast.success('Configuration created successfully')
-        router.push('/admin/settings/warehouse-configs')
+        router.push('/config/warehouse-configs')
       } else {
         const error = await response.json()
         toast.error(error.message || 'Failed to create configuration')

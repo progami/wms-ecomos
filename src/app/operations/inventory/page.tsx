@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useClientLogger } from '@/hooks/useClientLogger'
 import { Search, Filter, Download, Package2, Calendar, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3, X, Info } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
@@ -59,6 +60,7 @@ interface Transaction {
 export default function UnifiedInventoryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { logAction, logPerformance, logError } = useClientLogger()
   const [activeTab, setActiveTab] = useState<'balances' | 'transactions'>('transactions')
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // Default: latest first
   
@@ -103,7 +105,14 @@ export default function UnifiedInventoryPage() {
   }, [session, status, router])
 
   const fetchData = useCallback(async (forceRefresh = false) => {
+    const startTime = performance.now()
+    
     try {
+      logAction('inventory_data_fetch_started', {
+        activeTab,
+        forceRefresh,
+        hasInitialized
+      })
       // Generate cache keys based on current state
       const balancesCacheKey = 'live'
       const transactionsCacheKey = 'live'
@@ -142,7 +151,9 @@ export default function UnifiedInventoryPage() {
         console.log('Fetching balances from:', balancesUrl)
         const balancesResponse = await fetch(balancesUrl)
         if (balancesResponse.ok) {
-          const balancesData = await balancesResponse.json()
+          const balancesResult = await balancesResponse.json()
+          // Handle paginated response
+          const balancesData = Array.isArray(balancesResult) ? balancesResult : (balancesResult.data || [])
           setInventoryData(balancesData)
           setDataCache(prev => ({
             ...prev,
@@ -164,6 +175,21 @@ export default function UnifiedInventoryPage() {
         }
         
         setHasInitialized(true)
+      
+      const duration = performance.now() - startTime
+      logPerformance('inventory_initial_load', duration, {
+        balanceCount: inventoryData.length,
+        transactionCount: transactions.length
+      })
+      
+      // Log slow page warning if load took > 2 seconds
+      if (duration > 2000) {
+        logAction('slow_page_load_detected', {
+          page: 'inventory',
+          duration,
+          activeTab
+        })
+      }
       } else {
         // After initialization, only fetch the active tab
         if (activeTab === 'balances') {
@@ -172,7 +198,9 @@ export default function UnifiedInventoryPage() {
           console.log('Fetching balances from:', url)
           const response = await fetch(url)
           if (response.ok) {
-            const data = await response.json()
+            const result = await response.json()
+            // Handle paginated response
+            const data = Array.isArray(result) ? result : (result.data || [])
             setInventoryData(data)
             setDataCache(prev => ({
               ...prev,
@@ -194,13 +222,17 @@ export default function UnifiedInventoryPage() {
         }
       }
     } catch (error) {
+      const duration = performance.now() - startTime
+      logError('Failed to load inventory data', error)
+      logPerformance('inventory_data_fetch_error', duration)
+      
       toast.error('Failed to load data')
     } finally {
       if (!hasInitialized) {
         setLoading(false)
       }
     }
-  }, [activeTab, warehouses.length, hasInitialized])
+  }, [activeTab, warehouses.length, hasInitialized, logAction, logPerformance, logError])
 
   // Initial load
   useEffect(() => {
@@ -234,7 +266,7 @@ export default function UnifiedInventoryPage() {
   }, [activeTab, hasInitialized, fetchData])
 
   // Filter inventory data
-  const filteredInventory = inventoryData.filter(item => {
+  const filteredInventory = Array.isArray(inventoryData) ? inventoryData.filter(item => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       if (!item.sku.skuCode.toLowerCase().includes(query) &&
@@ -252,10 +284,10 @@ export default function UnifiedInventoryPage() {
     if (filters.showZeroStock && item.currentCartons !== 0) return false
 
     return true
-  })
+  }) : []
 
   // Filter and sort transactions
-  const filteredAndSortedTransactions = transactions
+  const filteredAndSortedTransactions = Array.isArray(transactions) ? transactions
     .filter(transaction => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
@@ -287,7 +319,7 @@ export default function UnifiedInventoryPage() {
       const dateA = new Date(a.transactionDate).getTime()
       const dateB = new Date(b.transactionDate).getTime()
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
-    })
+    }) : []
 
   const handleExport = (e?: React.MouseEvent, exportType: 'filtered' | 'full' = 'filtered') => {
     if (e) {

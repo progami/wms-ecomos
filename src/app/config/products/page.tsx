@@ -73,7 +73,7 @@ export default function AdminSkusPage() {
     if (!skuToDelete) return
 
     try {
-      const response = await fetch(`/api/skus-simple?id=${skuToDelete.id}`, {
+      const response = await fetch(`/api/skus?id=${skuToDelete.id}`, {
         method: 'DELETE'
       })
 
@@ -90,7 +90,7 @@ export default function AdminSkusPage() {
 
   const handleToggleActive = async (sku: SKU) => {
     try {
-      const response = await fetch(`/api/skus-simple?id=${sku.id}`, {
+      const response = await fetch(`/api/skus?id=${sku.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !sku.isActive })

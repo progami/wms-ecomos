@@ -4,6 +4,54 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
 
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const searchParams = request.nextUrl.searchParams
+    const warehouseId = searchParams.get('warehouseId')
+    const skuId = searchParams.get('skuId')
+
+    const configs = await prisma.warehouseSkuConfig.findMany({
+      where: {
+        ...(warehouseId && { warehouseId }),
+        ...(skuId && { skuId })
+      },
+      include: {
+        warehouse: true,
+        sku: true,
+        createdBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true
+          }
+        }
+      },
+      orderBy: [
+        { warehouseId: 'asc' },
+        { skuId: 'asc' },
+        { effectiveDate: 'desc' }
+      ]
+    })
+
+    return NextResponse.json(configs)
+  } catch (error) {
+    console.error('Error fetching warehouse configs:', error)
+    return NextResponse.json(
+      { message: 'Failed to fetch configurations' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -71,6 +119,7 @@ export async function POST(request: NextRequest) {
         shippingCartonsPerPallet: data.shippingCartonsPerPallet,
         maxStackingHeightCm: data.maxStackingHeightCm,
         effectiveDate: new Date(data.effectiveDate),
+        endDate: data.endDate ? new Date(data.endDate) : null,
         createdById: session.user.id
       },
       include: {
