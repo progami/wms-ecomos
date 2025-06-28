@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       message: 'Demo environment set up successfully'
     })
   } catch (error) {
-    console.error('Error setting up demo:', error)
+    // console.error('Error setting up demo:', error)
     return NextResponse.json(
       { 
         error: 'Failed to set up demo environment',

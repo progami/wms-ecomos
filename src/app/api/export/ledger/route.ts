@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Export error:', error)
+    // console.error('Export error:', error)
     return NextResponse.json({ 
       error: 'Failed to export ledger data',
       details: error instanceof Error ? error.message : 'Unknown error'

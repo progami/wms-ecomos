@@ -30,7 +30,7 @@ export async function calculateStorageLedger(
   billingPeriodEnd: Date,
   warehouseId?: string
 ) {
-  console.log('📊 Calculating storage ledger entries...')
+  // console.log('📊 Calculating storage ledger entries...')
   
   // For regular warehouses, get all Mondays in the billing period
   const mondays = getMondays(billingPeriodStart, billingPeriodEnd)
@@ -91,7 +91,7 @@ export async function calculateStorageLedger(
         )
         
         if (!storageCartonsPerPallet) {
-          console.warn(`No pallet config found for ${combo.warehouse.name} - ${combo.sku.skuCode} - Batch: ${combo.batchLot}`)
+          // console.warn(`No pallet config found for ${combo.warehouse.name} - ${combo.sku.skuCode} - Batch: ${combo.batchLot}`)
           continue
         }
         
@@ -149,7 +149,7 @@ export async function calculateStorageLedger(
       }
       
       if (!storageRate) {
-        console.warn(`No storage rate found for ${combo.warehouse.name} (${storageUnit})`)
+        // console.warn(`No storage rate found for ${combo.warehouse.name} (${storageUnit})`)
         continue
       }
       
@@ -181,12 +181,12 @@ export async function calculateStorageLedger(
         })
         created++
       } catch (error) {
-        console.error(`Error creating storage ledger entry ${slId}:`, error)
+        // console.error(`Error creating storage ledger entry ${slId}:`, error)
       }
     }
   }
   
-  console.log(`✅ Created/updated ${created} storage ledger entries`)
+  // console.log(`✅ Created/updated ${created} storage ledger entries`)
   return created
 }
 

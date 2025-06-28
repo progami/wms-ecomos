@@ -24,7 +24,7 @@ export function DemoModeBanner() {
         setIsVisible(data.isDemoMode)
       }
     } catch (error) {
-      console.error('Error checking demo mode status:', error)
+      // console.error('Error checking demo mode status:', error)
     }
   }
 
@@ -55,7 +55,7 @@ export function DemoModeBanner() {
       // Refresh the page
       router.refresh()
     } catch (error) {
-      console.error('Error clearing demo data:', error)
+      // console.error('Error clearing demo data:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to clear demo data')
     } finally {
       setIsClearing(false)

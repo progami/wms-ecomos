@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       message: `Storage calculation completed for week ending ${weekEndingDate.toLocaleDateString()}`
     })
   } catch (error: any) {
-    console.error('Weekly storage calculation error:', error)
+    // console.error('Weekly storage calculation error:', error)
     
     await auditLog({
       entityType: 'StorageCalculation',
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
       nextScheduledRun: 'Every Monday at 2:00 AM UTC',
     })
   } catch (error) {
-    console.error('Error fetching calculation status:', error)
+    // console.error('Error fetching calculation status:', error)
     return NextResponse.json(
       { error: 'Failed to fetch calculation status' },
       { status: 500 }

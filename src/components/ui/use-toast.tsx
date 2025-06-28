@@ -24,7 +24,7 @@ export function useToast() {
     // Return a mock implementation when no provider exists
     return {
       toast: (toast: Omit<Toast, "id">) => {
-        console.log("Toast:", toast)
+        // console.log("Toast:", toast)
       },
       toasts: [],
       dismiss: () => {},

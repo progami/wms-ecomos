@@ -29,7 +29,7 @@ export function IncompleteTransactionsAlert() {
         setIncompleteTransactions(data);
       }
     } catch (error) {
-      console.error('Error fetching incomplete transactions:', error);
+      // console.error('Error fetching incomplete transactions:', error);
     } finally {
       setIsLoading(false);
     }

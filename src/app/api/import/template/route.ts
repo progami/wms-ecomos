@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Template generation error:', error)
+    // console.error('Template generation error:', error)
     return NextResponse.json({ 
       error: 'Failed to generate template',
       details: error instanceof Error ? error.message : 'Unknown error'

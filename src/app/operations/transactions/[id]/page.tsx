@@ -187,7 +187,7 @@ export default function TransactionDetailPage() {
       // Fetch audit logs
       await fetchAuditLogs()
     } catch (error) {
-      console.error('Error fetching transaction:', error)
+      // console.error('Error fetching transaction:', error)
       toast.error('Failed to load transaction')
       router.push('/operations/inventory')
     } finally {
@@ -203,7 +203,7 @@ export default function TransactionDetailPage() {
         setAuditLogs(data.logs || [])
       }
     } catch (error) {
-      console.error('Error fetching audit logs:', error)
+      // console.error('Error fetching audit logs:', error)
     }
   }
 
@@ -303,7 +303,7 @@ export default function TransactionDetailPage() {
       setEditMode(false)
       await fetchTransaction() // Refresh data
     } catch (error) {
-      console.error('Error updating transaction:', error)
+      // console.error('Error updating transaction:', error)
       toast.error('Failed to update transaction')
     } finally {
       setSaving(false)

@@ -53,6 +53,8 @@ class ClientLogger {
   }
 
   private startFlushTimer() {
+    if (typeof window === 'undefined') return;
+    
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
     }
@@ -229,8 +231,59 @@ class ClientLogger {
   }
 }
 
-// Create singleton instance
-export const clientLogger = typeof window !== 'undefined' ? new ClientLogger() : null;
+// Create singleton instance with lazy initialization
+let _clientLogger: ClientLogger | null = null;
+
+export const clientLogger = {
+  info: (message: string, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.info(message, metadata);
+    }
+  },
+  warn: (message: string, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.warn(message, metadata);
+    }
+  },
+  error: (message: string, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.error(message, metadata);
+    }
+  },
+  debug: (message: string, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.debug(message, metadata);
+    }
+  },
+  action: (action: string, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.action(action, metadata);
+    }
+  },
+  navigation: (from: string, to: string, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.navigation(from, to, metadata);
+    }
+  },
+  performance: (metric: string, value: number, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.performance(metric, value, metadata);
+    }
+  },
+  api: (method: string, endpoint: string, status: number, duration: number, metadata?: any) => {
+    if (typeof window !== 'undefined') {
+      if (!_clientLogger) _clientLogger = new ClientLogger();
+      _clientLogger.api(method, endpoint, status, duration, metadata);
+    }
+  },
+};
 
 // Performance monitoring utilities
 export function measurePerformance(name: string, fn: () => void | Promise<void>) {

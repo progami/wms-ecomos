@@ -81,7 +81,7 @@ async function generateInventoryFlow(tx: any, config: any) {
   const inventoryState = new Map<string, number>()
   
   // 1. Initial receiving - establish base inventory
-  console.log('📦 Creating initial receiving transactions...')
+  // console.log('📦 Creating initial receiving transactions...')
   for (const warehouse of warehouses) {
     for (const sku of skus) {
       // Determine which customer owns this inventory
@@ -164,7 +164,7 @@ async function generateInventoryFlow(tx: any, config: any) {
   }
   
   // 2. Generate realistic shipping patterns
-  console.log('📤 Creating shipping transactions with integrity...')
+  // console.log('📤 Creating shipping transactions with integrity...')
   const shipDays = 60 // Ship over last 60 days
   
   for (let day = shipDays; day > 0; day--) {
@@ -271,7 +271,7 @@ async function generateInventoryFlow(tx: any, config: any) {
   }
   
   // 3. Add some inventory adjustments (cycle counts, damages)
-  console.log('🔧 Creating adjustment transactions...')
+  // console.log('🔧 Creating adjustment transactions...')
   for (let i = 0; i < 10; i++) {
     const warehouse = warehouses[Math.floor(Math.random() * warehouses.length)]
     const inventory = await tx.inventoryBalance.findFirst({
@@ -327,7 +327,7 @@ async function generateInventoryFlow(tx: any, config: any) {
   }
   
   // 4. Add some inter-warehouse transfers
-  console.log('🚚 Creating transfer transactions...')
+  // console.log('🚚 Creating transfer transactions...')
   for (let i = 0; i < 5; i++) {
     if (warehouses.length < 2) break
     
@@ -437,7 +437,7 @@ async function generateInventoryFlow(tx: any, config: any) {
 async function generateFinancialData(tx: any, config: any) {
   const { adminUserId, warehouses, customers, currentDate } = config
   
-  console.log('💰 Creating invoices and financial data...')
+  // console.log('💰 Creating invoices and financial data...')
   
   // Generate invoices for last 3 months
   for (let month = 2; month >= 0; month--) {

@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Upload error:', error);
+    // console.error('Upload error:', error);
     return NextResponse.json(
       { error: 'Failed to process file' },
       { status: 500 }

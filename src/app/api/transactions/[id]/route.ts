@@ -36,7 +36,7 @@ export async function GET(
 
     return NextResponse.json(transaction)
   } catch (error) {
-    console.error('Failed to fetch transaction:', error)
+    // console.error('Failed to fetch transaction:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch transaction' 
     }, { status: 500 })

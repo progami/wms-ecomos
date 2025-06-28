@@ -8,15 +8,15 @@ export async function POST() {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      console.log('Setup warehouse: No session found')
+      // console.log('Setup warehouse: No session found')
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
     if (session.user.role !== 'admin') {
-      console.log('Setup warehouse: User is not admin:', session.user.role)
+      // console.log('Setup warehouse: User is not admin:', session.user.role)
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
     
-    console.log('Setup warehouse: Starting setup for user:', session.user.email)
+    // console.log('Setup warehouse: Starting setup for user:', session.user.email)
     
     // Create or update Amazon FBA warehouse
     let amazonWarehouse = await prisma.warehouse.findFirst({
@@ -118,7 +118,7 @@ export async function POST() {
         : 'Amazon FBA warehouse already configured.'
     })
   } catch (error) {
-    console.error('Error setting up Amazon warehouse:', error)
+    // console.error('Error setting up Amazon warehouse:', error)
     return NextResponse.json(
       { 
         error: 'Failed to setup Amazon warehouse',

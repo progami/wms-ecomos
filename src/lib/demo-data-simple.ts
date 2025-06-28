@@ -12,7 +12,7 @@ export async function generateSimpleDemoData(config: DemoDataConfig) {
   const { tx, adminUserId, staffUserId, warehouses, skus } = config
   const currentDate = new Date()
   
-  console.log('📦 Generating demo data with integrity rules...')
+  // console.log('📦 Generating demo data with integrity rules...')
   
   // Track inventory state for integrity
   const inventoryMap = new Map<string, number>()
@@ -165,5 +165,5 @@ export async function generateSimpleDemoData(config: DemoDataConfig) {
     })
   }
   
-  console.log('✅ Demo data generated successfully!')
+  // console.log('✅ Demo data generated successfully!')
 }

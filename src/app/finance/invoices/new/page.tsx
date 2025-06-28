@@ -54,7 +54,7 @@ export default function NewInvoicePage() {
       const data = await response.json()
       setWarehouses(data)
     } catch (error) {
-      console.error('Error fetching warehouses:', error)
+      // console.error('Error fetching warehouses:', error)
     }
   }
 
@@ -127,7 +127,7 @@ export default function NewInvoicePage() {
       alert('Invoice created successfully!')
       router.push(`/finance/invoices/${invoice.id}`)
     } catch (error: any) {
-      console.error('Error creating invoice:', error)
+      // console.error('Error creating invoice:', error)
       alert(error.message || 'Failed to create invoice')
     } finally {
       setLoading(false)

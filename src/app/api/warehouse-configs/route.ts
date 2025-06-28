@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(configs)
   } catch (error) {
-    console.error('Error fetching warehouse configs:', error)
+    // console.error('Error fetching warehouse configs:', error)
     return NextResponse.json(
       { message: 'Failed to fetch configurations' },
       { status: 500 }
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(config)
   } catch (error) {
-    console.error('Error creating warehouse config:', error)
+    // console.error('Error creating warehouse config:', error)
     return NextResponse.json(
       { message: 'Failed to create configuration' },
       { status: 500 }

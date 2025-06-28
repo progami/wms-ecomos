@@ -46,7 +46,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(formattedRates)
   } catch (error) {
-    console.error('Error fetching rates:', error)
+    // console.error('Error fetching rates:', error)
     return NextResponse.json(
       { error: 'Failed to fetch rates' },
       { status: 500 }
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(formattedRate)
   } catch (error) {
-    console.error('Error creating rate:', error)
+    // console.error('Error creating rate:', error)
     return NextResponse.json(
       { error: 'Failed to create rate' },
       { status: 500 }

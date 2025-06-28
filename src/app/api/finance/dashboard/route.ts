@@ -242,7 +242,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error('Finance dashboard error:', error)
+    // console.error('Finance dashboard error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch financial data', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

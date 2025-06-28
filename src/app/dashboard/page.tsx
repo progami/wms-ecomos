@@ -61,8 +61,9 @@ import {
   ScatterChart,
   Scatter,
   ZAxis
-} from 'recharts'
+} from '@/components/charts/RechartsComponents'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { getEnvironment } from '@/lib/env-config'
 
 interface DashboardStats {
   totalInventory: number
@@ -373,8 +374,10 @@ export default function DashboardPage() {
   }, [hasFetched, status, fetchDashboardStats, useDemoData])
 
   useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    
     if (autoRefresh && !useDemoData) {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         fetchDashboardStats()
       }, 30000) // Refresh every 30 seconds
       setRefreshInterval(interval)
@@ -382,10 +385,13 @@ export default function DashboardPage() {
       clearInterval(refreshInterval)
       setRefreshInterval(null)
     }
+    
     return () => {
-      if (refreshInterval) clearInterval(refreshInterval)
+      if (interval) {
+        clearInterval(interval)
+      }
     }
-  }, [autoRefresh, refreshInterval, fetchDashboardStats, useDemoData])
+  }, [autoRefresh, fetchDashboardStats, useDemoData])
 
   useEffect(() => {
     if (status === 'authenticated' && hasFetched && !useDemoData) {
@@ -972,7 +978,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <InfoItem 
                   label="Environment" 
-                  value={process.env.NODE_ENV === 'production' ? 'Production' : 'Development'}
+                  value={getEnvironment() === 'production' ? 'Production' : 'Development'}
                   icon={Settings}
                 />
                 <InfoItem 

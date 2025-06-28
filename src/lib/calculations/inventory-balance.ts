@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
  * This is the equivalent of the "inventory balance" calculated sheet in Excel
  */
 export async function updateInventoryBalances(warehouseId?: string) {
-  console.log('🔄 Updating inventory balances...')
+  // console.log('🔄 Updating inventory balances...')
   
   // Get warehouse filter
   const warehouseFilter = warehouseId ? { warehouseId } : {}
@@ -131,7 +131,7 @@ export async function updateInventoryBalances(warehouseId?: string) {
     }
   })
   
-  console.log(`✅ Updated ${updated} inventory balance records`)
+  // console.log(`✅ Updated ${updated} inventory balance records`)
   return updated
 }
 

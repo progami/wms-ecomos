@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ transactions: transactionsWithNotes })
   } catch (error) {
-    console.error('Failed to fetch transactions:', error)
+    // console.error('Failed to fetch transactions:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch transactions' 
     }, { status: 500 })
@@ -466,7 +466,7 @@ export async function POST(request: NextRequest) {
         if (validateTransactionForCostCalculation(transactionData)) {
           // Trigger cost calculation without awaiting
           triggerCostCalculation(transactionData, session.user.id).catch(error => {
-            console.error(`Failed to trigger cost calculation for ${transaction.transactionId}:`, error);
+            // console.error(`Failed to trigger cost calculation for ${transaction.transactionId}:`, error);
             businessLogger.error('Cost calculation trigger failed', {
               transactionId: transaction.transactionId,
               error: error.message
@@ -482,7 +482,7 @@ export async function POST(request: NextRequest) {
       transactionIds: result.map(t => t.transactionId),
     })
   } catch (error: any) {
-    console.error('Transaction error:', error);
+    // console.error('Transaction error:', error);
     
     // Check for specific error types
     if (error.message?.includes('Insufficient inventory')) {

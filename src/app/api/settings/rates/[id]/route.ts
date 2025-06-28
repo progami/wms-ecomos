@@ -46,7 +46,7 @@ export async function GET(
 
     return NextResponse.json(formattedRate)
   } catch (error) {
-    console.error('Error fetching rate:', error)
+    // console.error('Error fetching rate:', error)
     return NextResponse.json(
       { error: 'Failed to fetch rate' },
       { status: 500 }
@@ -127,7 +127,7 @@ export async function PUT(
 
     return NextResponse.json(formattedRate)
   } catch (error) {
-    console.error('Error updating rate:', error)
+    // console.error('Error updating rate:', error)
     return NextResponse.json(
       { error: 'Failed to update rate' },
       { status: 500 }
@@ -157,7 +157,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting rate:', error)
+    // console.error('Error deleting rate:', error)
     return NextResponse.json(
       { error: 'Failed to delete rate' },
       { status: 500 }

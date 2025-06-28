@@ -51,7 +51,7 @@ export async function GET() {
     // Return default settings if none exist
     return NextResponse.json(DEFAULT_SETTINGS)
   } catch (error) {
-    console.error('Error fetching notification settings:', error)
+    // console.error('Error fetching notification settings:', error)
     return NextResponse.json(
       { error: 'Failed to fetch notification settings' },
       { status: 500 }
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       settings: updatedSettings.value
     })
   } catch (error) {
-    console.error('Error saving notification settings:', error)
+    // console.error('Error saving notification settings:', error)
     return NextResponse.json(
       { error: 'Failed to save notification settings' },
       { status: 500 }

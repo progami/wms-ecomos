@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(warehouses)
   } catch (error) {
-    console.error('Error fetching warehouses:', error)
+    // console.error('Error fetching warehouses:', error)
     return NextResponse.json(
       { error: 'Failed to fetch warehouses' },
       { status: 500 }
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error creating warehouse:', error)
+    // console.error('Error creating warehouse:', error)
     return NextResponse.json(
       { error: 'Failed to create warehouse' },
       { status: 500 }
@@ -225,7 +225,7 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error updating warehouse:', error)
+    // console.error('Error updating warehouse:', error)
     return NextResponse.json(
       { error: 'Failed to update warehouse' },
       { status: 500 }
@@ -299,7 +299,7 @@ export async function DELETE(req: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Error deleting warehouse:', error)
+    // console.error('Error deleting warehouse:', error)
     return NextResponse.json(
       { error: 'Failed to delete warehouse' },
       { status: 500 }

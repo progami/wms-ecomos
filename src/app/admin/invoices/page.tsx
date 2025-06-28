@@ -1,15 +1,27 @@
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+'use client'
+
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Search, Filter, Download, FileText, CheckCircle, AlertCircle, Clock } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
-export default async function AdminInvoicesPage() {
-  const session = await getServerSession(authOptions)
+export default function AdminInvoicesPage() {
+  const { data: session, status } = useSession()
+
+  if (status === 'loading') {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   if (!session || session.user.role !== 'admin') {
     redirect('/auth/login')
+    return null
   }
 
   return (

@@ -290,7 +290,7 @@ export async function GET(_request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Export missing attributes error:', error)
+    // console.error('Export missing attributes error:', error)
     return NextResponse.json({ 
       error: 'Failed to export missing attributes',
       details: error instanceof Error ? error.message : 'Unknown error'

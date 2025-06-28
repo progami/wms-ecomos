@@ -149,7 +149,6 @@ export default function ShipmentPlanningPage() {
         setLowStockCount(lowStock.length)
       }
     } catch (error) {
-      console.error('Error fetching stock data:', error)
       toast.error('Failed to load FBA stock data')
     } finally {
       setLoading(false)

@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         
         synced++
       } catch (itemError) {
-        console.error(`Error syncing item ${item.sku}:`, itemError)
+        // console.error(`Error syncing item ${item.sku}:`, itemError)
         errors.push({
           sku: item.sku,
           error: itemError instanceof Error ? itemError.message : 'Unknown error'
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       message: `Successfully synced ${synced} items to Amazon FBA warehouse`
     })
   } catch (error) {
-    console.error('Error syncing to database:', error)
+    // console.error('Error syncing to database:', error)
     return NextResponse.json(
       { error: 'Failed to sync inventory to database' },
       { status: 500 }

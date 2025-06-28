@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(stats)
   } catch (error) {
-    console.error('Error fetching cost calculation status:', error)
+    // console.error('Error fetching cost calculation status:', error)
     return NextResponse.json(
       { error: 'Failed to fetch cost calculation status' },
       { status: 500 }

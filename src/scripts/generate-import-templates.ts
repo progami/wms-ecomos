@@ -94,11 +94,11 @@ const sampleData: Record<string, any[]> = {
 function generateTemplate(entityName: string): void {
   const config = importConfigs[entityName]
   if (!config) {
-    console.error(`No configuration found for entity: ${entityName}`)
+    // console.error(`No configuration found for entity: ${entityName}`)
     return
   }
 
-  console.log(`\n📄 Generating template for: ${config.displayName}`)
+  // console.log(`\n📄 Generating template for: ${config.displayName}`)
 
   // Create headers using the first (primary) column name from each field
   const headers = config.fieldMappings
@@ -183,20 +183,20 @@ function generateTemplate(entityName: string): void {
   const filePath = path.join(templatesDir, fileName)
   XLSX.writeFile(wb, filePath)
   
-  console.log(`✅ Template saved to: templates/${fileName}`)
+  // console.log(`✅ Template saved to: templates/${fileName}`)
 }
 
 // Generate templates for all entities
-console.log('🚀 Generating Import Templates')
-console.log('=' .repeat(50))
+// console.log('🚀 Generating Import Templates')
+// console.log('=' .repeat(50))
 
 Object.keys(importConfigs).forEach(entityName => {
   generateTemplate(entityName)
 })
 
-console.log('\n✅ All templates generated successfully!')
-console.log('\nTemplates are saved in the "templates" directory.')
-console.log('These templates include:')
-console.log('- Properly formatted column headers')
-console.log('- Sample data (where applicable)')
-console.log('- Instructions sheet with field reference')
+// console.log('\n✅ All templates generated successfully!')
+// console.log('\nTemplates are saved in the "templates" directory.')
+// console.log('These templates include:')
+// console.log('- Properly formatted column headers')
+// console.log('- Sample data (where applicable)')
+// console.log('- Instructions sheet with field reference')

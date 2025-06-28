@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ hasOverlap: false })
   } catch (error) {
-    console.error('Error checking rate overlap:', error)
+    // console.error('Error checking rate overlap:', error)
     return NextResponse.json(
       { error: 'Failed to check overlap' },
       { status: 500 }

@@ -215,7 +215,7 @@ export async function GET() {
       overdueInvoices,
     })
   } catch (error) {
-    console.error('Dashboard stats error:', error)
+    // console.error('Dashboard stats error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch dashboard stats' },
       { status: 500 }

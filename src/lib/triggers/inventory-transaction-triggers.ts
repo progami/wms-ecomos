@@ -80,7 +80,7 @@ export async function triggerCostCalculation(
       }
     })
   } catch (error) {
-    console.error('Error triggering cost calculation:', error)
+    // console.error('Error triggering cost calculation:', error)
     // Don't throw - we don't want to fail the transaction creation
   }
 }
@@ -122,7 +122,7 @@ async function processQueue() {
           }
         })
       } catch (error) {
-        console.error(`Error calculating costs for transaction ${job.transactionId}:`, error)
+        // console.error(`Error calculating costs for transaction ${job.transactionId}:`, error)
         
         // Retry logic
         if (job.retryCount < MAX_RETRIES) {
@@ -194,7 +194,7 @@ export async function triggerStorageLedgerUpdate(
       }
     })
   } catch (error) {
-    console.error('Error triggering storage ledger update:', error)
+    // console.error('Error triggering storage ledger update:', error)
     // Don't throw - we don't want to fail the transaction creation
   }
 }
@@ -209,7 +209,7 @@ export async function triggerWeeklyStorageCalculation(
   warehouseId?: string
 ) {
   try {
-    console.log(`Starting weekly storage calculation for week ending ${weekEndingDate}`)
+    // console.log(`Starting weekly storage calculation for week ending ${weekEndingDate}`)
     
     const result = await CostCalculationService.calculateWeeklyStorageCosts(
       weekEndingDate,
@@ -232,7 +232,7 @@ export async function triggerWeeklyStorageCalculation(
     
     return result
   } catch (error) {
-    console.error('Error in weekly storage calculation:', error)
+    // console.error('Error in weekly storage calculation:', error)
     
     await auditLog({
       entityType: 'StorageCalculation',
@@ -258,7 +258,7 @@ export async function handleCostCalculationError(
   error: Error,
   userId: string
 ) {
-  console.error(`Cost calculation error for transaction ${transactionId}:`, error)
+  // console.error(`Cost calculation error for transaction ${transactionId}:`, error)
   
   await auditLog({
     entityType: 'CostCalculation',
@@ -299,7 +299,7 @@ export function validateTransactionForCostCalculation(transaction: any): boolean
     schema.parse(transaction)
     return true
   } catch (error) {
-    console.error('Transaction validation failed:', error)
+    // console.error('Transaction validation failed:', error)
     return false
   }
 }

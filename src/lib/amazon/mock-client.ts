@@ -3,7 +3,7 @@
 export function getAmazonClient() {
   return {
     callAPI: async ({ operation }: { operation: string }) => {
-      console.log(`Mock Amazon API call: ${operation}`)
+      // console.log(`Mock Amazon API call: ${operation}`)
       return getMockData(operation)
     }
   }
@@ -44,36 +44,36 @@ function getMockData(operation: string) {
 }
 
 export async function getInventory() {
-  console.log('Mock: Fetching Amazon inventory')
+  // console.log('Mock: Fetching Amazon inventory')
   return getMockData('getInventorySummaries')
 }
 
 export async function getInboundShipments() {
-  console.log('Mock: Fetching inbound shipments')
+  // console.log('Mock: Fetching inbound shipments')
   return { shipments: [] }
 }
 
 export async function getOrders(createdAfter?: Date) {
-  console.log('Mock: Fetching orders')
+  // console.log('Mock: Fetching orders')
   return { orders: [] }
 }
 
 export async function getCatalogItem(asin: string) {
-  console.log(`Mock: Fetching catalog item for ${asin}`)
+  // console.log(`Mock: Fetching catalog item for ${asin}`)
   return getMockData('getCatalogItem')
 }
 
 export async function getProductFees(asin: string, price: number) {
-  console.log(`Mock: Fetching product fees for ${asin}`)
+  // console.log(`Mock: Fetching product fees for ${asin}`)
   return { fees: [] }
 }
 
 export async function getMonthlyStorageFees(startDate?: Date, endDate?: Date) {
-  console.log('Mock: Fetching storage fees')
+  // console.log('Mock: Fetching storage fees')
   return []
 }
 
 export async function getInventoryAgedData() {
-  console.log('Mock: Fetching aged inventory data')
+  // console.log('Mock: Fetching aged inventory data')
   return getMockData('getInventorySummaries')
 }

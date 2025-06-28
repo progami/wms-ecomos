@@ -43,7 +43,7 @@ export default function LoginPage() {
     }, 100)
     
     return () => clearTimeout(timer)
-  }, [])
+  }, [formData.emailOrUsername, formData.password])
   
   // Removed auto-fill on mount to allow buttons to work properly
 

@@ -51,7 +51,7 @@ export async function GET(_request: NextRequest) {
     // Return default settings if none exist
     return NextResponse.json(DEFAULT_SETTINGS)
   } catch (error) {
-    console.error('Error fetching security settings:', error)
+    // console.error('Error fetching security settings:', error)
     return NextResponse.json(
       { error: 'Failed to fetch security settings' },
       { status: 500 }
@@ -125,7 +125,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updatedSettings.value)
   } catch (error) {
-    console.error('Error updating security settings:', error)
+    // console.error('Error updating security settings:', error)
     return NextResponse.json(
       { error: 'Failed to update security settings' },
       { status: 500 }

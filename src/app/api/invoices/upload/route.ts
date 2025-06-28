@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error uploading invoice:', error)
+    // console.error('Error uploading invoice:', error)
     return NextResponse.json(
       { error: 'Failed to upload invoice' },
       { status: 500 }
@@ -244,7 +244,7 @@ async function parseCSV(buffer: Buffer): Promise<InvoiceUploadData | null> {
       lineItems: lineItems
     }
   } catch (error) {
-    console.error('Error parsing CSV:', error)
+    // console.error('Error parsing CSV:', error)
     return null
   }
 }
@@ -365,7 +365,7 @@ async function parseExcel(buffer: Buffer): Promise<InvoiceUploadData | null> {
       lineItems: lineItems
     }
   } catch (error) {
-    console.error('Error parsing Excel:', error)
+    // console.error('Error parsing Excel:', error)
     return null
   }
 }
@@ -575,7 +575,7 @@ function normalizeDate(dateStr: string | undefined): string {
       }
     }
   } catch (error) {
-    console.error('Date parsing error:', error)
+    // console.error('Date parsing error:', error)
   }
   
   return dateStr

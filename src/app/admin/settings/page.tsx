@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import React from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -27,6 +28,12 @@ export default function AdminSettingsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (status === 'authenticated' && (!session || session.user.role !== 'admin')) {
+      router.push('/auth/login')
+    }
+  }, [status, session, router])
+
   if (status === 'loading') {
     return (
       <DashboardLayout>
@@ -38,7 +45,6 @@ export default function AdminSettingsPage() {
   }
 
   if (!session || session.user.role !== 'admin') {
-    router.push('/auth/login')
     return null
   }
 

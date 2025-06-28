@@ -110,7 +110,7 @@ export default function EditRatePage() {
       }
       return true
     } catch (error) {
-      console.error('Error checking overlap:', error)
+      // console.error('Error checking overlap:', error)
       return true // Allow submission on error
     } finally {
       setCheckingOverlap(false)

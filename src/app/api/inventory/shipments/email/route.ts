@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Email generation error:', error)
+    // console.error('Email generation error:', error)
     return NextResponse.json({ 
       error: 'Failed to generate email',
       details: error instanceof Error ? error.message : 'Unknown error'

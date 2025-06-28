@@ -85,7 +85,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       setInvoice(data.invoice)
       setSummary(data.summary)
     } catch (error) {
-      console.error('Error fetching invoice:', error)
+      // console.error('Error fetching invoice:', error)
       alert('Failed to load invoice')
       router.push('/finance/invoices')
     } finally {
@@ -108,7 +108,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       await fetchInvoice()
       alert('Invoice status updated!')
     } catch (error) {
-      console.error('Error updating invoice:', error)
+      // console.error('Error updating invoice:', error)
       alert('Failed to update invoice')
     }
   }
@@ -141,7 +141,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       await fetchInvoice()
       alert(`Invoice accepted and marked for payment! ${result.acceptedItems} items accepted.`)
     } catch (error: any) {
-      console.error('Error accepting invoice:', error)
+      // console.error('Error accepting invoice:', error)
       alert(error.message || 'Failed to accept invoice')
     }
   }
@@ -170,7 +170,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       await fetchInvoice()
       alert(`Invoice disputed successfully! ${result.disputedItems} items disputed totaling ${formatCurrency(result.totalDisputedAmount)}`)
     } catch (error: any) {
-      console.error('Error disputing invoice:', error)
+      // console.error('Error disputing invoice:', error)
       alert(error.message || 'Failed to dispute invoice')
     }
   }
@@ -191,7 +191,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       alert('Invoice deleted successfully!')
       router.push('/finance/invoices')
     } catch (error: any) {
-      console.error('Error deleting invoice:', error)
+      // console.error('Error deleting invoice:', error)
       alert(error.message || 'Failed to delete invoice')
     }
   }
@@ -211,7 +211,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Error exporting:', error)
+      // console.error('Error exporting:', error)
       alert('Failed to export invoice')
     }
   }

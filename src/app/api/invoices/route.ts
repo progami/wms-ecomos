@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching invoices:', error)
+    // console.error('Error fetching invoices:', error)
     return NextResponse.json(
       { error: 'Failed to fetch invoices' },
       { status: 500 }
@@ -356,7 +356,7 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error updating invoice:', error)
+    // console.error('Error updating invoice:', error)
     return NextResponse.json(
       { error: 'Failed to update invoice' },
       { status: 500 }
@@ -420,7 +420,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ message: 'Invoice deleted successfully' })
   } catch (error) {
-    console.error('Error deleting invoice:', error)
+    // console.error('Error deleting invoice:', error)
     return NextResponse.json(
       { error: 'Failed to delete invoice' },
       { status: 500 }

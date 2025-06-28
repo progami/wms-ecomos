@@ -26,7 +26,7 @@ function reportProgress(message: string, progress: number) {
   if (progressCallback) {
     progressCallback(message, progress)
   } else {
-    console.log(`[${Math.round(progress)}%] ${message}`)
+    // console.log(`[${Math.round(progress)}%] ${message}`)
   }
 }
 
@@ -201,7 +201,7 @@ function getSeasonalMultiplier(date: Date): number {
 
 // Main demo data generation function
 export async function generateDemoData() {
-  console.log('Starting comprehensive demo data generation...')
+  // console.log('Starting comprehensive demo data generation...')
   reportProgress('Starting demo data generation', 0)
 
   try {
@@ -384,7 +384,7 @@ export async function generateDemoData() {
     }
 
     // 5. Create Cost Rates for each warehouse
-    console.log('Creating cost rates...')
+    // console.log('Creating cost rates...')
     const costRateData = [
       { category: CostCategory.Container, name: 'Container Unload', value: 450, unit: 'per container' },
       { category: CostCategory.Container, name: 'Container Drayage', value: 350, unit: 'per container' },
@@ -1440,30 +1440,30 @@ export async function generateDemoData() {
       auditLogs: await prisma.auditLog.count()
     }
     
-    console.log('\n📊 Demo Data Generation Summary:')
-    console.log('================================')
-    console.log(`✅ Warehouses: ${finalStats.warehouses}`)
-    console.log(`✅ Users: ${finalStats.users}`)
-    console.log(`✅ SKUs: ${finalStats.skus}`)
-    console.log(`✅ Transactions: ${finalStats.transactions}`)
-    console.log(`✅ Inventory Balances: ${finalStats.inventoryBalances}`)
-    console.log(`✅ Cost Rates: ${finalStats.costRates}`)
-    console.log(`✅ Invoices: ${finalStats.invoices}`)
-    console.log(`✅ Invoice Line Items: ${finalStats.invoiceLineItems}`)
-    console.log(`✅ Disputes: ${finalStats.disputes}`)
-    console.log(`✅ Payments: ${finalStats.payments}`)
-    console.log(`✅ Notifications: ${finalStats.notifications}`)
-    console.log(`✅ File Attachments: ${finalStats.fileAttachments}`)
-    console.log(`✅ Pallet Variances: ${finalStats.palletVariances}`)
-    console.log(`✅ Storage Ledger Entries: ${finalStats.storageLedgerEntries}`)
-    console.log(`✅ Calculated Costs: ${finalStats.calculatedCosts}`)
-    console.log(`✅ Audit Logs: ${finalStats.auditLogs}`)
-    console.log('================================\n')
+    // console.log('\n📊 Demo Data Generation Summary:')
+    // console.log('================================')
+    // console.log(`✅ Warehouses: ${finalStats.warehouses}`)
+    // console.log(`✅ Users: ${finalStats.users}`)
+    // console.log(`✅ SKUs: ${finalStats.skus}`)
+    // console.log(`✅ Transactions: ${finalStats.transactions}`)
+    // console.log(`✅ Inventory Balances: ${finalStats.inventoryBalances}`)
+    // console.log(`✅ Cost Rates: ${finalStats.costRates}`)
+    // console.log(`✅ Invoices: ${finalStats.invoices}`)
+    // console.log(`✅ Invoice Line Items: ${finalStats.invoiceLineItems}`)
+    // console.log(`✅ Disputes: ${finalStats.disputes}`)
+    // console.log(`✅ Payments: ${finalStats.payments}`)
+    // console.log(`✅ Notifications: ${finalStats.notifications}`)
+    // console.log(`✅ File Attachments: ${finalStats.fileAttachments}`)
+    // console.log(`✅ Pallet Variances: ${finalStats.palletVariances}`)
+    // console.log(`✅ Storage Ledger Entries: ${finalStats.storageLedgerEntries}`)
+    // console.log(`✅ Calculated Costs: ${finalStats.calculatedCosts}`)
+    // console.log(`✅ Audit Logs: ${finalStats.auditLogs}`)
+    // console.log('================================\n')
     
     return finalStats
 
   } catch (error) {
-    console.error('Error generating demo data:', error)
+    // console.error('Error generating demo data:', error)
     throw error
   } finally {
     await prisma.$disconnect()
@@ -1472,7 +1472,7 @@ export async function generateDemoData() {
 
 // Export function to clear all demo data
 export async function clearDemoData() {
-  console.log('Clearing all demo data...')
+  // console.log('Clearing all demo data...')
   reportProgress('Clearing demo data...', 0)
   
   try {
@@ -1500,9 +1500,9 @@ export async function clearDemoData() {
       prisma.warehouse.deleteMany(),
     ])
     
-    console.log('All demo data cleared successfully!')
+    // console.log('All demo data cleared successfully!')
   } catch (error) {
-    console.error('Error clearing demo data:', error)
+    // console.error('Error clearing demo data:', error)
     throw error
   } finally {
     await prisma.$disconnect()
@@ -1516,26 +1516,26 @@ if (require.main === module) {
   if (command === 'generate') {
     generateDemoData()
       .then(summary => {
-        console.log('\nDemo data generation summary:')
-        console.log(`- Warehouses: ${summary.warehouses}`)
-        console.log(`- Users: ${summary.users}`)
-        console.log(`- SKUs: ${summary.skus}`)
-        console.log(`- Transactions: ${summary.transactions}`)
-        console.log(`- Cost Rates: ${summary.costRates}`)
-        console.log(`- Invoices: ${summary.invoicesGenerated}`)
+        // console.log('\nDemo data generation summary:')
+        // console.log(`- Warehouses: ${summary.warehouses}`)
+        // console.log(`- Users: ${summary.users}`)
+        // console.log(`- SKUs: ${summary.skus}`)
+        // console.log(`- Transactions: ${summary.transactions}`)
+        // console.log(`- Cost Rates: ${summary.costRates}`)
+        // console.log(`- Invoices: ${summary.invoicesGenerated}`)
       })
       .catch(error => {
-        console.error('Failed to generate demo data:', error)
+        // console.error('Failed to generate demo data:', error)
         process.exit(1)
       })
   } else if (command === 'clear') {
     clearDemoData()
       .catch(error => {
-        console.error('Failed to clear demo data:', error)
+        // console.error('Failed to clear demo data:', error)
         process.exit(1)
       })
   } else {
-    console.log('Usage: ts-node demo-data-generator.ts [generate|clear]')
+    // console.log('Usage: ts-node demo-data-generator.ts [generate|clear]')
     process.exit(1)
   }
 }

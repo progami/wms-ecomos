@@ -47,7 +47,7 @@ export default function WarehouseSettingsPage() {
       const data = await response.json()
       setWarehouses(data)
     } catch (error) {
-      console.error('Error fetching warehouses:', error)
+      // console.error('Error fetching warehouses:', error)
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,7 @@ export default function WarehouseSettingsPage() {
       alert(result.message)
       await fetchWarehouses()
     } catch (error) {
-      console.error('Error deleting warehouse:', error)
+      // console.error('Error deleting warehouse:', error)
       alert('Failed to delete warehouse')
     }
   }
@@ -93,7 +93,7 @@ export default function WarehouseSettingsPage() {
       
       await fetchWarehouses()
     } catch (error) {
-      console.error('Error updating warehouse:', error)
+      // console.error('Error updating warehouse:', error)
       alert('Failed to update warehouse')
     }
   }

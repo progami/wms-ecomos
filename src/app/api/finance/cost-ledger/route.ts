@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       endDate: end.toISOString()
     })
   } catch (error) {
-    console.error('Cost ledger error:', error)
+    // console.error('Cost ledger error:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch cost ledger',
       details: error instanceof Error ? error.message : 'Unknown error'

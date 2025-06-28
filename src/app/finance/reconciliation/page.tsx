@@ -89,7 +89,6 @@ export default function FinanceReconciliationPage() {
       const data = await response.json()
       setWarehouses(data)
     } catch (error) {
-      console.error('Error fetching warehouses:', error)
     }
   }
 
@@ -114,7 +113,6 @@ export default function FinanceReconciliationPage() {
         reconciliations: invoice.reconciliations || []
       }])
     } catch (error) {
-      console.error('Error fetching invoice reconciliation:', error)
     } finally {
       setLoading(false)
     }
@@ -141,7 +139,6 @@ export default function FinanceReconciliationPage() {
       const data = await response.json()
       setInvoices(data.invoices)
     } catch (error) {
-      console.error('Error fetching reconciliation data:', error)
     } finally {
       setLoading(false)
     }
@@ -165,7 +162,6 @@ export default function FinanceReconciliationPage() {
       alert('Reconciliation process completed!')
       await fetchReconciliationData()
     } catch (error) {
-      console.error('Error running reconciliation:', error)
       alert('Failed to run reconciliation')
     } finally {
       setProcessing(false)
@@ -198,7 +194,6 @@ export default function FinanceReconciliationPage() {
         await fetchReconciliationData()
       }
     } catch (error) {
-      console.error('Error adding note:', error)
       alert('Failed to add note')
     }
   }
@@ -224,7 +219,6 @@ export default function FinanceReconciliationPage() {
         await fetchReconciliationData()
       }
     } catch (error) {
-      console.error('Error creating dispute:', error)
       alert('Failed to create dispute')
     }
   }
@@ -302,7 +296,6 @@ export default function FinanceReconciliationPage() {
             )
           }
         } catch (error) {
-          console.error('Error loading reconciliation details:', error)
         } finally {
           setLoadingDetails(prev => {
             const newSet = new Set(prev)

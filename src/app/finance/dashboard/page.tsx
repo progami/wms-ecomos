@@ -55,8 +55,10 @@ export default function FinanceDashboardPage() {
     if (session && !hasFetched) {
       setHasFetched(true)
       fetchFinancialData()
+    } else if (status === 'authenticated' && !session) {
+      router.push('/auth/login')
     }
-  }, [session, hasFetched])
+  }, [session, hasFetched, status, router])
 
   const fetchFinancialData = async () => {
     try {
@@ -66,11 +68,9 @@ export default function FinanceDashboardPage() {
         setFinancialData(data)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Failed to fetch financial data' }))
-        console.error('Finance API error:', errorData)
         toast.error(errorData.details || errorData.error || 'Failed to fetch financial data')
       }
     } catch (error) {
-      console.error('Failed to fetch financial data:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to fetch financial data')
     } finally {
       setLoading(false)
@@ -88,7 +88,6 @@ export default function FinanceDashboardPage() {
   }
 
   if (!session) {
-    router.push('/auth/login')
     return null
   }
 

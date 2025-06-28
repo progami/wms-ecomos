@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(skus)
   } catch (error) {
-    console.error('Error fetching SKUs:', error)
+    // console.error('Error fetching SKUs:', error)
     return NextResponse.json({ error: 'Failed to fetch SKUs', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
   }
 }
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error creating SKU:', error)
+    // console.error('Error creating SKU:', error)
     return NextResponse.json({ error: 'Failed to create SKU' }, { status: 500 })
   }
 }
@@ -168,7 +168,7 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error updating SKU:', error)
+    // console.error('Error updating SKU:', error)
     return NextResponse.json({ error: 'Failed to update SKU' }, { status: 500 })
   }
 }
@@ -238,7 +238,7 @@ export async function DELETE(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Error deleting SKU:', error)
+    // console.error('Error deleting SKU:', error)
     return NextResponse.json({ error: 'Failed to delete SKU' }, { status: 500 })
   }
 }

@@ -71,7 +71,7 @@ export async function POST(
       message: 'Document uploaded successfully'
     })
   } catch (error) {
-    console.error('Upload attachment error:', error)
+    // console.error('Upload attachment error:', error)
     return NextResponse.json({ 
       error: 'Failed to upload attachment',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -105,7 +105,7 @@ export async function GET(
       attachments: transaction.attachments || {}
     })
   } catch (error) {
-    console.error('Get attachments error:', error)
+    // console.error('Get attachments error:', error)
     return NextResponse.json({ 
       error: 'Failed to get attachments',
       details: error instanceof Error ? error.message : 'Unknown error'

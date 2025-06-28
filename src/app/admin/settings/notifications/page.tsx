@@ -43,8 +43,10 @@ export default function NotificationSettingsPage() {
   useEffect(() => {
     if (session?.user.role === 'admin') {
       fetchSettings()
+    } else if (session && session.user.role !== 'admin') {
+      router.push('/auth/login')
     }
-  }, [session])
+  }, [session, router])
 
   const fetchSettings = async () => {
     try {
@@ -56,7 +58,7 @@ export default function NotificationSettingsPage() {
         toast.error('Failed to load notification settings')
       }
     } catch (error) {
-      console.error('Error fetching settings:', error)
+      // console.error('Error fetching settings:', error)
       toast.error('Failed to load notification settings')
     } finally {
       setLoading(false)
@@ -81,7 +83,7 @@ export default function NotificationSettingsPage() {
         toast.error(error.error || 'Failed to save settings')
       }
     } catch (error) {
-      console.error('Error saving settings:', error)
+      // console.error('Error saving settings:', error)
       toast.error('Failed to save settings')
     } finally {
       setSaving(false)
@@ -133,7 +135,6 @@ export default function NotificationSettingsPage() {
   }
 
   if (!session || session.user.role !== 'admin') {
-    router.push('/auth/login')
     return null
   }
 

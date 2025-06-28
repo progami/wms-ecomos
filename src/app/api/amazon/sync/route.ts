@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         )
     }
   } catch (error) {
-    console.error('Amazon sync error:', error)
+    // console.error('Amazon sync error:', error)
     return NextResponse.json(
       { message: 'Failed to sync Amazon data', error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -78,7 +78,7 @@ async function syncInventory() {
 
         if (!sku) {
           // Skip items that don't exist in our product catalog
-          console.log(`Skipping Amazon item ${item.sellerSku} (ASIN: ${item.asin}) - not in product catalog`)
+          // console.log(`Skipping Amazon item ${item.sellerSku} (ASIN: ${item.asin}) - not in product catalog`)
           skippedCount++
           continue
         }
@@ -97,7 +97,7 @@ async function syncInventory() {
 
         syncedCount++
       } catch (itemError) {
-        console.error(`Error syncing item ${item.asin}:`, itemError)
+        // console.error(`Error syncing item ${item.asin}:`, itemError)
         errors.push({
           asin: item.asin,
           error: itemError instanceof Error ? itemError.message : 'Unknown error'
@@ -165,7 +165,7 @@ async function syncProducts() {
           }
         }
       } catch (itemError) {
-        console.error(`Error updating product ${sku.asin}:`, itemError)
+        // console.error(`Error updating product ${sku.asin}:`, itemError)
         errors.push({
           asin: sku.asin,
           error: itemError instanceof Error ? itemError.message : 'Unknown error'

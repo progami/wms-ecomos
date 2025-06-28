@@ -62,7 +62,7 @@ export default function LandingPage() {
       router.push('/dashboard')
       router.refresh()
     } catch (error) {
-      console.error('Error setting up demo:', error)
+      // console.error('Error setting up demo:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to set up demo')
     } finally {
       setIsLoading(false)

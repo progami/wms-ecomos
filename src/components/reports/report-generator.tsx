@@ -39,7 +39,7 @@ export function ReportGenerator({ reportType, reportName, className = '' }: Repo
         alert('Failed to generate report')
       }
     } catch (error) {
-      console.error('Report generation error:', error)
+      // console.error('Report generation error:', error)
       alert('Error generating report')
     } finally {
       setLoading(false)

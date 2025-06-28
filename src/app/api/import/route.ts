@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       result: { imported, skipped, errors }
     })
   } catch (error) {
-    console.error('Import error:', error)
+    // console.error('Import error:', error)
     return NextResponse.json({ 
       error: 'Failed to import file',
       details: error instanceof Error ? error.message : 'Unknown error'

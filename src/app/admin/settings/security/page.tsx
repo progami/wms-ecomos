@@ -48,8 +48,10 @@ export default function SecuritySettingsPage() {
   useEffect(() => {
     if (session?.user.role === 'admin') {
       fetchSettings()
+    } else if (session && session.user.role !== 'admin') {
+      router.push('/auth/login')
     }
-  }, [session])
+  }, [session, router])
 
   const fetchSettings = async () => {
     try {
@@ -143,7 +145,6 @@ export default function SecuritySettingsPage() {
   }
 
   if (!session || session.user.role !== 'admin') {
-    router.push('/auth/login')
     return null
   }
 

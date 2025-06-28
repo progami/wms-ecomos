@@ -68,7 +68,6 @@ export default function FinanceInvoicesPage() {
       setInvoices(data.invoices)
       setPagination(data.pagination)
     } catch (error) {
-      console.error('Error fetching invoices:', error)
     } finally {
       setLoading(false)
     }
@@ -82,7 +81,6 @@ export default function FinanceInvoicesPage() {
       const data = await response.json()
       setWarehouses(data)
     } catch (error) {
-      console.error('Error fetching warehouses:', error)
     }
   }
 
@@ -121,7 +119,6 @@ export default function FinanceInvoicesPage() {
         alert('Invoice uploaded successfully!')
       }
     } catch (error) {
-      console.error('Error uploading invoice:', error)
       alert('Failed to upload invoice')
     } finally {
       setUploading(false)
@@ -167,7 +164,6 @@ export default function FinanceInvoicesPage() {
       await fetchInvoices()
       alert('Invoice accepted and marked for payment!')
     } catch (error: any) {
-      console.error('Error accepting invoice:', error)
       alert(error.message || 'Failed to accept invoice')
     }
   }
@@ -196,7 +192,6 @@ export default function FinanceInvoicesPage() {
       await fetchInvoices()
       alert(`Invoice disputed successfully! ${result.disputedItems} items disputed totaling ${formatCurrency(result.totalDisputedAmount)}`)
     } catch (error: any) {
-      console.error('Error disputing invoice:', error)
       alert(error.message || 'Failed to dispute invoice')
     }
   }
@@ -220,7 +215,6 @@ export default function FinanceInvoicesPage() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Error exporting:', error)
       alert('Failed to export data')
     }
   }

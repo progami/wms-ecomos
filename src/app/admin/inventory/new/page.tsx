@@ -39,7 +39,7 @@ export default function NewTransactionPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch warehouses:', error)
+      // console.error('Failed to fetch warehouses:', error)
     }
   }
 
@@ -104,11 +104,11 @@ export default function NewTransactionPage() {
       } else {
         toast.error(data.error || 'Failed to save transaction')
         if (data.details) {
-          console.error('Error details:', data.details)
+          // console.error('Error details:', data.details)
         }
       }
     } catch (error) {
-      console.error('Submit error:', error)
+      // console.error('Submit error:', error)
       toast.error('Failed to save transaction. Please try again.')
     } finally {
       setLoading(false)

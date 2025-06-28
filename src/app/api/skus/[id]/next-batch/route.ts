@@ -77,7 +77,7 @@ export async function GET(
       suggestedBatchLot: `${nextBatchNumber}`
     })
   } catch (error) {
-    console.error('Error getting next batch number:', error)
+    // console.error('Error getting next batch number:', error)
     return NextResponse.json(
       { message: 'Failed to get next batch number' },
       { status: 500 }

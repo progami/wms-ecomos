@@ -117,7 +117,6 @@ export default function CostLedgerPage() {
       setLedgerData(data.ledger || [])
       setTotals(data.totals || {})
     } catch (error) {
-      console.error('Failed to fetch cost ledger:', error)
       toast.error('Failed to load cost ledger')
     } finally {
       setLoading(false)

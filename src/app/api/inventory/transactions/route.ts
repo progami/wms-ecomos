@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       if (validateTransactionForCostCalculation(transactionData)) {
         // Trigger cost calculation without awaiting
         triggerCostCalculation(transactionData, session.user.id).catch(error => {
-          console.error('Failed to trigger cost calculation:', error);
+          // console.error('Failed to trigger cost calculation:', error);
           // Log but don't fail the request
           auditLog({
             entityType: 'CostCalculation',
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       balance: result.balance
     });
   } catch (error: any) {
-    console.error('Transaction error:', error);
+    // console.error('Transaction error:', error);
     
     // Don't expose internal errors
     if (error.message.includes('Insufficient inventory')) {
@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(createPaginatedResponse(transactions, total, paginationParams));
   } catch (error) {
-    console.error('Error fetching transactions:', error);
+    // console.error('Error fetching transactions:', error);
     return NextResponse.json(
       { error: 'Failed to fetch transactions' },
       { status: 500 }

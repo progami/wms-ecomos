@@ -5,12 +5,12 @@ export function inspectModel(modelName: string): void {
   const model = Prisma.dmmf.datamodel.models.find(m => m.name === modelName)
   
   if (!model) {
-    console.error(`Model ${modelName} not found`)
+    // console.error(`Model ${modelName} not found`)
     return
   }
   
-  console.log(`\n=== Model: ${modelName} ===\n`)
-  console.log('Fields:')
+  // console.log(`\n=== Model: ${modelName} ===\n`)
+  // console.log('Fields:')
   
   model.fields.forEach(field => {
     const attributes = []
@@ -21,16 +21,16 @@ export function inspectModel(modelName: string): void {
     
     const attrStr = attributes.length > 0 ? ` [${attributes.join(', ')}]` : ''
     
-    console.log(`  - ${field.name}: ${field.type}${attrStr}`)
+    // console.log(`  - ${field.name}: ${field.type}${attrStr}`)
     
     if (field.documentation) {
-      console.log(`    Documentation: ${field.documentation}`)
+      // console.log(`    Documentation: ${field.documentation}`)
     }
   })
   
-  console.log('\nRelations:')
+  // console.log('\nRelations:')
   model.fields.filter(f => f.kind === 'object').forEach(field => {
-    console.log(`  - ${field.name} -> ${field.type}`)
+    // console.log(`  - ${field.name} -> ${field.type}`)
   })
 }
 

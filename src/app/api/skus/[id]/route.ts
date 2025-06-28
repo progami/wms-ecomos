@@ -35,7 +35,7 @@ export async function GET(
 
     return NextResponse.json(sku)
   } catch (error) {
-    console.error('Error fetching SKU:', error)
+    // console.error('Error fetching SKU:', error)
     return NextResponse.json(
       { error: 'Failed to fetch SKU' },
       { status: 500 }
@@ -100,7 +100,7 @@ export async function PUT(
 
     return NextResponse.json(updatedSku)
   } catch (error) {
-    console.error('Error updating SKU:', error)
+    // console.error('Error updating SKU:', error)
     return NextResponse.json(
       { error: 'Failed to update SKU' },
       { status: 500 }
@@ -158,7 +158,7 @@ export async function DELETE(
       message: 'SKU deleted successfully'
     })
   } catch (error) {
-    console.error('Error deleting SKU:', error)
+    // console.error('Error deleting SKU:', error)
     return NextResponse.json(
       { error: 'Failed to delete SKU' },
       { status: 500 }

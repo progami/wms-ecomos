@@ -125,7 +125,7 @@ export async function initializeAmazonConnection(
   // 2. Getting temporary security credentials via STS
   // 3. Testing API connectivity
   
-  console.log('Amazon SP API connection initialization - Not yet implemented')
+  // console.log('Amazon SP API connection initialization - Not yet implemented')
   return { 
     success: false, 
     error: 'Amazon SP API integration not yet implemented' 
@@ -143,7 +143,7 @@ export async function fetchFBAInventory(
   // TODO: Implement SP API call to get FBA inventory
   // GET /fba/inventory/v1/summaries
   
-  console.log('Fetching FBA inventory - Not yet implemented')
+  // console.log('Fetching FBA inventory - Not yet implemented')
   return []
 }
 
@@ -160,7 +160,7 @@ export async function createInboundShipmentPlan(
   // TODO: Implement SP API call to create shipment plan
   // POST /fba/inbound/v0/plans
   
-  console.log('Creating inbound shipment plan - Not yet implemented')
+  // console.log('Creating inbound shipment plan - Not yet implemented')
   return null
 }
 
@@ -177,7 +177,7 @@ export async function updateShipmentTracking(
   // TODO: Implement SP API call to update tracking
   // PUT /fba/inbound/v0/shipments/{shipmentId}/transport
   
-  console.log('Updating shipment tracking - Not yet implemented')
+  // console.log('Updating shipment tracking - Not yet implemented')
   return false
 }
 
@@ -194,7 +194,7 @@ export async function getShipmentLabels(
   // TODO: Implement SP API call to get labels
   // GET /fba/inbound/v0/shipments/{shipmentId}/labels
   
-  console.log('Getting shipment labels - Not yet implemented')
+  // console.log('Getting shipment labels - Not yet implemented')
   return null
 }
 

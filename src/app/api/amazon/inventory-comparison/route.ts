@@ -28,12 +28,12 @@ export async function GET() {
     })
 
     if (!amazonWarehouse) {
-      console.warn('Amazon FBA UK warehouse not found')
+      // console.warn('Amazon FBA UK warehouse not found')
       // Log all warehouses to help debug
       const allWarehouses = await prisma.warehouse.findMany()
-      console.log('Available warehouses:', allWarehouses.map(w => ({ id: w.id, code: w.code, name: w.name })))
+      // console.log('Available warehouses:', allWarehouses.map(w => ({ id: w.id, code: w.code, name: w.name })))
     } else {
-      console.log('Found Amazon warehouse:', { id: amazonWarehouse.id, code: amazonWarehouse.code, name: amazonWarehouse.name })
+      // console.log('Found Amazon warehouse:', { id: amazonWarehouse.id, code: amazonWarehouse.code, name: amazonWarehouse.name })
     }
 
     // Get all SKUs from the database
@@ -58,7 +58,7 @@ export async function GET() {
       }
     })
     
-    console.log(`Found ${inventoryBalances.length} inventory balance records (excluding Amazon)`)
+    // console.log(`Found ${inventoryBalances.length} inventory balance records (excluding Amazon)`)
     
     // Get Amazon FBA inventory separately
     let amazonInventory: any[] = []
@@ -71,7 +71,7 @@ export async function GET() {
           sku: true
         }
       })
-      console.log(`Found ${amazonInventory.length} Amazon FBA inventory records`)
+      // console.log(`Found ${amazonInventory.length} Amazon FBA inventory records`)
     }
 
     // Calculate inventory for each SKU
@@ -111,11 +111,11 @@ export async function GET() {
     // Sort by SKU code for consistent display
     const sortedInventory = inventoryData.sort((a, b) => a.sku.localeCompare(b.sku))
     
-    console.log(`Total SKUs: ${skus.length}, Returning all SKUs including those with 0 stock`)
+    // console.log(`Total SKUs: ${skus.length}, Returning all SKUs including those with 0 stock`)
 
     return NextResponse.json(sortedInventory)
   } catch (error) {
-    console.error('Error in inventory comparison:', error)
+    // console.error('Error in inventory comparison:', error)
     return NextResponse.json(
       { 
         error: 'Failed to fetch inventory comparison',

@@ -85,16 +85,16 @@ export default function AmazonIntegrationPage() {
             }
           } else {
             const errorData = await syncResponse.json()
-            console.error('Sync error:', errorData)
+            // console.error('Sync error:', errorData)
             toast.error('Failed to sync Amazon inventory')
           }
         } else {
           const errorData = await response.json()
-          console.error('API Error:', errorData)
+          // console.error('API Error:', errorData)
           toast.error(errorData.details || 'Failed to fetch inventory comparison')
         }
       } catch (error) {
-        console.error('Error in fetchAndSyncInventory:', error)
+        // console.error('Error in fetchAndSyncInventory:', error)
         if (error instanceof Error) {
           toast.error(`Error: ${error.message}`)
         } else {
@@ -247,16 +247,16 @@ export default function AmazonIntegrationPage() {
                     }
                   } else {
                     const errorData = await syncResponse.json()
-                    console.error('Sync error:', errorData)
+                    // console.error('Sync error:', errorData)
                     toast.error('Failed to sync Amazon inventory')
                   }
                 } else {
                   const errorData = await response.json()
-                  console.error('API Error:', errorData)
+                  // console.error('API Error:', errorData)
                   toast.error(errorData.details || 'Failed to fetch inventory comparison')
                 }
               } catch (error) {
-                console.error('Error in refresh:', error)
+                // console.error('Error in refresh:', error)
                 if (error instanceof Error) {
                   toast.error(`Error: ${error.message}`)
                 } else {

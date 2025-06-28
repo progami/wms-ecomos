@@ -59,7 +59,7 @@ export function DemoDataManager() {
           }
         }
       } catch (error) {
-        console.error('Error checking progress:', error)
+        // console.error('Error checking progress:', error)
       }
     }, 1000)
 
@@ -74,7 +74,7 @@ export function DemoDataManager() {
         setDemoStats(stats)
       }
     } catch (error) {
-      console.error('Error checking demo status:', error)
+      // console.error('Error checking demo status:', error)
     }
   }
 
@@ -97,7 +97,7 @@ export function DemoDataManager() {
       const data = await response.json()
       setSessionId(data.sessionId)
     } catch (error) {
-      console.error('Error generating demo data:', error)
+      // console.error('Error generating demo data:', error)
       setIsGenerating(false)
       toast({
         title: 'Error',
@@ -128,7 +128,7 @@ export function DemoDataManager() {
       
       checkDemoStatus()
     } catch (error) {
-      console.error('Error clearing demo data:', error)
+      // console.error('Error clearing demo data:', error)
       toast({
         title: 'Error',
         description: 'Failed to clear demo data',

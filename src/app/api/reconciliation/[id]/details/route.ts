@@ -68,7 +68,7 @@ export async function GET(
       details: formattedDetails
     })
   } catch (error) {
-    console.error('Error fetching reconciliation details:', error)
+    // console.error('Error fetching reconciliation details:', error)
     return NextResponse.json(
       { error: 'Failed to fetch reconciliation details' },
       { status: 500 }

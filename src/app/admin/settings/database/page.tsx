@@ -56,8 +56,10 @@ export default function DatabaseSettingsPage() {
   useEffect(() => {
     if (session?.user.role === 'admin') {
       fetchDatabaseInfo()
+    } else if (session && session.user.role !== 'admin') {
+      router.push('/auth/login')
     }
-  }, [session])
+  }, [session, router])
 
   const fetchDatabaseInfo = async () => {
     try {
@@ -154,7 +156,6 @@ export default function DatabaseSettingsPage() {
   }
 
   if (!session || session.user.role !== 'admin') {
-    router.push('/auth/login')
     return null
   }
 

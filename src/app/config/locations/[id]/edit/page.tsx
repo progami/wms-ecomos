@@ -64,7 +64,7 @@ export default function EditWarehousePage({ params }: { params: { id: string } }
         router.push('/admin/settings/warehouses')
       }
     } catch (error) {
-      console.error('Error fetching warehouse:', error)
+      // console.error('Error fetching warehouse:', error)
       alert('Failed to load warehouse')
       router.push('/admin/settings/warehouses')
     } finally {
@@ -137,7 +137,7 @@ export default function EditWarehousePage({ params }: { params: { id: string } }
       alert('Warehouse updated successfully!')
       router.push('/config/locations')
     } catch (error: any) {
-      console.error('Error updating warehouse:', error)
+      // console.error('Error updating warehouse:', error)
       alert(error.message || 'Failed to update warehouse')
     } finally {
       setSaving(false)

@@ -228,7 +228,6 @@ export default function WarehouseShipPage() {
           sessionStorage.removeItem('shipmentPlan')
         }
       } catch (error) {
-        console.error('Error loading shipment plan:', error)
       }
     }
   }
@@ -248,7 +247,6 @@ export default function WarehouseShipPage() {
         }
       }
     } catch (error) {
-      console.error('Error fetching last shipment:', error)
     }
   }
 
@@ -269,7 +267,6 @@ export default function WarehouseShipPage() {
         setSkus(data.filter((sku: any) => sku.isActive !== false))
       }
     } catch (error) {
-      console.error('Error fetching SKUs:', error)
       toast.error('Failed to load SKUs')
     } finally {
       setSkuLoading(false)
@@ -287,7 +284,6 @@ export default function WarehouseShipPage() {
         setInventory(data)
       }
     } catch (error) {
-      console.error('Failed to fetch inventory:', error)
     }
   }
 
@@ -303,7 +299,6 @@ export default function WarehouseShipPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch warehouses:', error)
     }
   }
 
@@ -345,7 +340,6 @@ export default function WarehouseShipPage() {
         }
       }
     } catch (error) {
-      console.warn('Could not validate transaction date order:', error)
     }
     
     // Validate items
@@ -458,11 +452,9 @@ export default function WarehouseShipPage() {
       } else {
         toast.error(data.error || 'Failed to save shipment')
         if (data.details) {
-          console.error('Error details:', data.details)
         }
       }
     } catch (error) {
-      console.error('Submit error:', error)
       toast.error('Failed to save shipment. Please try again.')
     } finally {
       setLoading(false)

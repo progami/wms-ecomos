@@ -29,7 +29,6 @@ export function AdminReportsClient() {
         setWarehouses(data)
       }
     } catch (error) {
-      console.error('Error fetching warehouses:', error)
     }
   }
 
@@ -76,7 +75,6 @@ export function AdminReportsClient() {
 
       toast.success(`${reportName} generated successfully!`)
     } catch (error) {
-      console.error('Report generation error:', error)
       toast.error('Failed to generate report')
     } finally {
       setGeneratingReport(null)
@@ -122,7 +120,6 @@ export function AdminReportsClient() {
 
       toast.success('Custom report generated successfully!')
     } catch (error) {
-      console.error('Custom report generation error:', error)
       toast.error('Failed to generate custom report')
     } finally {
       setGeneratingCustom(false)

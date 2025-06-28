@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
       transactions: transactionsWithNotes
     })
   } catch (error) {
-    console.error('Ledger error:', error)
+    // console.error('Ledger error:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch ledger data',
       details: error instanceof Error ? error.message : 'Unknown error'

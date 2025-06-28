@@ -295,7 +295,7 @@ export class CostCalculationService {
     })
     
     if (!costRate) {
-      console.warn(`No inbound cost rate found for warehouse ${transaction.warehouseId}`)
+      // console.warn(`No inbound cost rate found for warehouse ${transaction.warehouseId}`)
       return null
     }
     
@@ -332,7 +332,7 @@ export class CostCalculationService {
     })
     
     if (!costRate) {
-      console.warn(`No outbound cost rate found for warehouse ${transaction.warehouseId}`)
+      // console.warn(`No outbound cost rate found for warehouse ${transaction.warehouseId}`)
       return null
     }
     
@@ -433,7 +433,7 @@ export class CostCalculationService {
     })
     
     if (!storageRate) {
-      console.warn(`No storage rate found for warehouse ${transaction.warehouseId}`)
+      // console.warn(`No storage rate found for warehouse ${transaction.warehouseId}`)
       return
     }
     
@@ -510,12 +510,12 @@ export class CostCalculationService {
         )
         processed++
       } catch (error) {
-        console.error(`Error calculating storage for ${balance.warehouseId}/${balance.skuId}/${balance.batchLot}:`, error)
+        // console.error(`Error calculating storage for ${balance.warehouseId}/${balance.skuId}/${balance.batchLot}:`, error)
         errors++
       }
     }
     
-    console.log(`Storage calculation complete: ${processed} processed, ${errors} errors`)
+    // console.log(`Storage calculation complete: ${processed} processed, ${errors} errors`)
     
     return { processed, errors }
   }
@@ -568,7 +568,7 @@ export class CostCalculationService {
     })
     
     if (!storageRate) {
-      console.warn(`No storage rate found for warehouse ${balance.warehouse.name}`)
+      // console.warn(`No storage rate found for warehouse ${balance.warehouse.name}`)
       return
     }
     

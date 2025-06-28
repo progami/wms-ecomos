@@ -103,7 +103,7 @@ export default function NewSkuPage() {
       alert('SKU created successfully!')
       router.push('/config/products')
     } catch (error: any) {
-      console.error('Error creating SKU:', error)
+      // console.error('Error creating SKU:', error)
       alert(error.message || 'Failed to create SKU')
     } finally {
       setLoading(false)

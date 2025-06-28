@@ -96,7 +96,7 @@ export async function GET(_request: Request) {
 
     return NextResponse.json(allIncomplete);
   } catch (error) {
-    console.error('Error fetching incomplete transactions:', error);
+    // console.error('Error fetching incomplete transactions:', error);
     return NextResponse.json(
       { error: 'Failed to fetch incomplete transactions' },
       { status: 500 }

@@ -83,7 +83,7 @@ export async function POST(
       reconciliationItem: updatedItem
     })
   } catch (error) {
-    console.error('Error resolving reconciliation item:', error)
+    // console.error('Error resolving reconciliation item:', error)
     return NextResponse.json(
       { error: 'Failed to add resolution notes' },
       { status: 500 }

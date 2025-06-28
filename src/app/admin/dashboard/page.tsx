@@ -397,6 +397,13 @@ export default function AdminDashboardPage() {
       })
   }
 
+  // Check if user has admin access
+  useEffect(() => {
+    if (status === 'authenticated' && (!session || session.user.role !== 'admin')) {
+      router.push('/dashboard')
+    }
+  }, [status, session, router])
+
   if (status === 'loading') {
     return (
       <DashboardLayout>
@@ -407,9 +414,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  // Check if user has admin access
   if (!session || session.user.role !== 'admin') {
-    router.push('/dashboard')
     return null
   }
 
@@ -1203,7 +1208,7 @@ export default function AdminDashboardPage() {
             <div className="space-y-3">
               <InfoItem 
                 label="Environment" 
-                value={process.env.NODE_ENV === 'production' ? 'Production' : 'Development'}
+                value={'Development'}
                 icon={Settings}
               />
               <InfoItem 

@@ -15,16 +15,16 @@ function getWeekNumber(date: Date): number {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Storage ledger API called')
+    // console.log('Storage ledger API called')
     
     const session = await getServerSession(authOptions)
     
     if (!session) {
-      console.log('No session found')
+      // console.log('No session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    console.log('Session found:', session.user.email)
+    // console.log('Session found:', session.user.email)
 
     const searchParams = request.nextUrl.searchParams
     const startDate = searchParams.get('startDate')
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    console.log(`Found ${ledgerEntries.length} storage ledger entries`)
+    // console.log(`Found ${ledgerEntries.length} storage ledger entries`)
 
     // Transform ledger entries to snapshot format
     const snapshotsMap = new Map<string, any>()
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
       items: snapshot.items.sort((a: any, b: any) => a.sku.skuCode.localeCompare(b.sku.skuCode))
     }))
 
-    console.log(`Transformed into ${snapshots.length} snapshots`)
+    // console.log(`Transformed into ${snapshots.length} snapshots`)
 
     return NextResponse.json({
       snapshots,
@@ -146,8 +146,8 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Storage ledger error:', error)
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    // console.error('Storage ledger error:', error)
+    // console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json({ 
       error: 'Failed to fetch storage ledger',
       details: error instanceof Error ? error.message : 'Unknown error',

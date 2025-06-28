@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Report generation error:', error)
+    // console.error('Report generation error:', error)
     return NextResponse.json({ error: 'Report generation failed' }, { status: 500 })
   }
 }
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Report generation error:', error)
+    // console.error('Report generation error:', error)
     return NextResponse.json({ error: 'Report generation failed' }, { status: 500 })
   }
 }

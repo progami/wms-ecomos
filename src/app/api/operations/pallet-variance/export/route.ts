@@ -125,7 +125,7 @@ export async function GET(_request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Export pallet variance error:', error)
+    // console.error('Export pallet variance error:', error)
     return NextResponse.json({ 
       error: 'Failed to export pallet variance',
       details: error instanceof Error ? error.message : 'Unknown error'

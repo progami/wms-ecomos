@@ -41,12 +41,12 @@ async function log(message: string, level: 'INFO' | 'ERROR' | 'WARN' | 'DEBUG' =
   const timestamp = new Date().toISOString()
   const logEntry = `[${timestamp}] [${level}] ${message}\n`
   
-  console.log(logEntry.trim())
+  // console.log(logEntry.trim())
   
   try {
     await fs.appendFile(LOG_FILE, logEntry)
   } catch (error) {
-    console.error('Failed to write to log file:', error)
+    // console.error('Failed to write to log file:', error)
   }
 }
 
@@ -799,7 +799,7 @@ async function cleanupTestData() {
 
 // Main execution
 async function main() {
-  console.log('Starting Operations Workflow Test...')
+  // console.log('Starting Operations Workflow Test...')
   
   try {
     // Run tests
@@ -808,22 +808,22 @@ async function main() {
     // Generate report
     const reportPath = await generateSummaryReport()
     
-    console.log('\n=== TEST EXECUTION COMPLETED ===')
-    console.log(`Summary report saved to: ${reportPath}`)
-    console.log(`Log file saved to: ${LOG_FILE}`)
+    // console.log('\n=== TEST EXECUTION COMPLETED ===')
+    // console.log(`Summary report saved to: ${reportPath}`)
+    // console.log(`Log file saved to: ${LOG_FILE}`)
     
     // Ask for cleanup
-    console.log('\nDo you want to clean up the test data? (y/n)')
+    // console.log('\nDo you want to clean up the test data? (y/n)')
     
     process.stdin.once('data', async (data) => {
       const answer = data.toString().trim().toLowerCase()
       
       if (answer === 'y' || answer === 'yes') {
         await cleanupTestData()
-        console.log('Cleanup completed successfully!')
+        // console.log('Cleanup completed successfully!')
       } else {
-        console.log('Test data retained. Remember to clean up manually if needed.')
-        console.log('Created record IDs have been logged for reference.')
+        // console.log('Test data retained. Remember to clean up manually if needed.')
+        // console.log('Created record IDs have been logged for reference.')
       }
       
       await prisma.$disconnect()
@@ -831,7 +831,7 @@ async function main() {
     })
     
   } catch (error) {
-    console.error('Fatal error:', error)
+    // console.error('Fatal error:', error)
     await log(`Fatal error: ${error}`, 'ERROR')
     await prisma.$disconnect()
     process.exit(1)
@@ -840,7 +840,7 @@ async function main() {
 
 // Handle script termination
 process.on('SIGINT', async () => {
-  console.log('\nScript interrupted. Disconnecting from database...')
+  // console.log('\nScript interrupted. Disconnecting from database...')
   await prisma.$disconnect()
   process.exit(0)
 })

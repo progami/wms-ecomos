@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(users)
   } catch (error) {
-    console.error('Error fetching users:', error)
+    // console.error('Error fetching users:', error)
     return NextResponse.json(
       { error: 'Failed to fetch users' },
       { status: 500 }
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error creating user:', error)
+    // console.error('Error creating user:', error)
     return NextResponse.json(
       { error: 'Failed to create user' },
       { status: 500 }
@@ -291,7 +291,7 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error updating user:', error)
+    // console.error('Error updating user:', error)
     return NextResponse.json(
       { error: 'Failed to update user' },
       { status: 500 }
@@ -359,7 +359,7 @@ export async function DELETE(req: NextRequest) {
       userId 
     })
   } catch (error) {
-    console.error('Error deleting user:', error)
+    // console.error('Error deleting user:', error)
     return NextResponse.json(
       { error: 'Failed to delete user' },
       { status: 500 }

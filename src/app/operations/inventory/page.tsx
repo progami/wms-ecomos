@@ -154,7 +154,6 @@ export default function UnifiedInventoryPage() {
         // Fetch inventory balances
         const balancesUrl = '/api/inventory/balances'
         
-        console.log('Fetching balances from:', balancesUrl)
         const balancesResponse = await fetch(balancesUrl)
         if (balancesResponse.ok) {
           const balancesResult = await balancesResponse.json()
@@ -201,7 +200,6 @@ export default function UnifiedInventoryPage() {
         if (activeTab === 'balances') {
           const url = '/api/inventory/balances'
           
-          console.log('Fetching balances from:', url)
           const response = await fetch(url)
           if (response.ok) {
             const result = await response.json()

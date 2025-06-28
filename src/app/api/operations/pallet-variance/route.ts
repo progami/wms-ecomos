@@ -55,7 +55,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(variances)
   } catch (error) {
-    console.error('Get pallet variance error:', error)
+    // console.error('Get pallet variance error:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch pallet variances',
       details: error instanceof Error ? error.message : 'Unknown error'

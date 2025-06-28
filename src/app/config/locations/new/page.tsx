@@ -76,7 +76,7 @@ export default function NewWarehousePage() {
       alert('Warehouse created successfully!')
       router.push('/config/locations')
     } catch (error: any) {
-      console.error('Error creating warehouse:', error)
+      // console.error('Error creating warehouse:', error)
       alert(error.message || 'Failed to create warehouse')
     } finally {
       setLoading(false)

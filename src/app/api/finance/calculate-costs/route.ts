@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error calculating costs:', error)
+    // console.error('Error calculating costs:', error)
     return NextResponse.json(
       { error: 'Failed to calculate costs' },
       { status: 500 }

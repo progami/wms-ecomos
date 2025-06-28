@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(rates)
   } catch (error) {
-    console.error('Error fetching rates:', error)
+    // console.error('Error fetching rates:', error)
     return NextResponse.json(
       { error: 'Failed to fetch rates' },
       { status: 500 }
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error creating rate:', error)
+    // console.error('Error creating rate:', error)
     return NextResponse.json(
       { error: 'Failed to create rate' },
       { status: 500 }
@@ -239,7 +239,7 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error updating rate:', error)
+    // console.error('Error updating rate:', error)
     return NextResponse.json(
       { error: 'Failed to update rate' },
       { status: 500 }
@@ -309,7 +309,7 @@ export async function DELETE(req: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Error deleting rate:', error)
+    // console.error('Error deleting rate:', error)
     return NextResponse.json(
       { error: 'Failed to delete rate' },
       { status: 500 }

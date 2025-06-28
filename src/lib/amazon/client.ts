@@ -7,7 +7,7 @@ export function getAmazonClient() {
   if (!spApiClient) {
     // Check if we have the required credentials
     if (!process.env.AMAZON_SP_APP_CLIENT_ID || !process.env.AMAZON_SP_APP_CLIENT_SECRET) {
-      console.warn('Amazon SP-API credentials not configured. Using mock client for testing.')
+      // console.warn('Amazon SP-API credentials not configured. Using mock client for testing.')
       // Use mock client for testing
       const mockClient = require('./mock-client')
       return mockClient.getAmazonClient()
@@ -45,7 +45,7 @@ export async function getInventory() {
     })
     return response
   } catch (error) {
-    console.error('Error fetching Amazon inventory:', error)
+    // console.error('Error fetching Amazon inventory:', error)
     throw error
   }
 }
@@ -63,7 +63,7 @@ export async function getInboundShipments() {
     })
     return response
   } catch (error) {
-    console.error('Error fetching inbound shipments:', error)
+    // console.error('Error fetching inbound shipments:', error)
     throw error
   }
 }
@@ -81,7 +81,7 @@ export async function getOrders(createdAfter?: Date) {
     })
     return response
   } catch (error) {
-    console.error('Error fetching orders:', error)
+    // console.error('Error fetching orders:', error)
     throw error
   }
 }
@@ -101,7 +101,7 @@ export async function getCatalogItem(asin: string) {
     })
     return response
   } catch (error) {
-    console.error('Error fetching catalog item:', error)
+    // console.error('Error fetching catalog item:', error)
     throw error
   }
 }
@@ -130,7 +130,7 @@ export async function getProductFees(asin: string, price: number) {
     })
     return response
   } catch (error) {
-    console.error('Error fetching product fees:', error)
+    // console.error('Error fetching product fees:', error)
     throw error
   }
 }
@@ -155,7 +155,7 @@ export async function getMonthlyStorageFees(startDate?: Date, endDate?: Date) {
     
     return storageFees
   } catch (error) {
-    console.error('Error fetching storage fees:', error)
+    // console.error('Error fetching storage fees:', error)
     throw error
   }
 }
@@ -175,7 +175,7 @@ export async function getInventoryAgedData() {
     })
     return response
   } catch (error) {
-    console.error('Error fetching inventory aged data:', error)
+    // console.error('Error fetching inventory aged data:', error)
     throw error
   }
 }

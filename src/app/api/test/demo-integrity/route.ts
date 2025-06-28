@@ -208,7 +208,7 @@ export async function GET() {
     });
     
   } catch (error) {
-    console.error('Error running integrity checks:', error);
+    // console.error('Error running integrity checks:', error);
     return NextResponse.json({ 
       error: 'Failed to run integrity checks',
       details: error instanceof Error ? error.message : 'Unknown error'

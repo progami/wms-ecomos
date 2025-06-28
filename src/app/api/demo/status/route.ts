@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       isDemoMode: !!demoWarehouse
     })
   } catch (error) {
-    console.error('Error checking demo status:', error)
+    // console.error('Error checking demo status:', error)
     return NextResponse.json(
       { error: 'Failed to check demo status' },
       { status: 500 }

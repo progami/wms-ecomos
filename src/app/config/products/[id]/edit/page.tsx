@@ -78,7 +78,7 @@ export default function EditSkuPage() {
         isActive: data.isActive !== false
       })
     } catch (error) {
-      console.error('Error fetching SKU:', error)
+      // console.error('Error fetching SKU:', error)
       alert('Failed to load SKU details')
       router.push('/config/products')
     } finally {
@@ -160,7 +160,7 @@ export default function EditSkuPage() {
       alert('SKU updated successfully!')
       router.push('/config/products')
     } catch (error: any) {
-      console.error('Error updating SKU:', error)
+      // console.error('Error updating SKU:', error)
       alert(error.message || 'Failed to update SKU')
     } finally {
       setSaving(false)

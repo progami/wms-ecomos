@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       const pointInTime = new Date(date)
       pointInTime.setHours(23, 59, 59, 999)
       
-      console.log(`Point-in-time query for date: ${date}, parsed as: ${pointInTime.toISOString()}`)
+      // console.log(`Point-in-time query for date: ${date}, parsed as: ${pointInTime.toISOString()}`)
       
       // Build where clause for transactions
       const transactionWhere: any = {
@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
         return a.batchLot.localeCompare(b.batchLot)
       })
       
-      console.log(`Point-in-time results: ${results.length} items with positive stock`)
+      // console.log(`Point-in-time results: ${results.length} items with positive stock`)
       
       return NextResponse.json(results)
     }
@@ -234,7 +234,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(createPaginatedResponse(enhancedBalances, total, paginationParams))
   } catch (error) {
-    console.error('Error fetching inventory balances:', error)
+    // console.error('Error fetching inventory balances:', error)
     return NextResponse.json(
       { error: 'Failed to fetch inventory balances' },
       { status: 500 }

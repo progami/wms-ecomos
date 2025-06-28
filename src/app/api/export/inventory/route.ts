@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Export error:', error)
+    // console.error('Export error:', error)
     return NextResponse.json({ error: 'Export failed' }, { status: 500 })
   }
 }

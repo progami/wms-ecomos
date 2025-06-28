@@ -7,15 +7,15 @@ import { format } from 'date-fns'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  console.log('Admin dashboard API called')
+  // console.log('Admin dashboard API called')
   
   try {
     // Test basic connectivity first
     try {
       const testConnection = await prisma.$queryRaw`SELECT 1 as test`
-      console.log('Database connection test:', testConnection)
+      // console.log('Database connection test:', testConnection)
     } catch (dbError) {
-      console.error('Database connection error:', dbError)
+      // console.error('Database connection error:', dbError)
       return NextResponse.json({ 
         error: 'Database connection failed', 
         details: dbError instanceof Error ? dbError.message : 'Unknown database error' 
@@ -23,10 +23,10 @@ export async function GET(request: Request) {
     }
     
     const session = await getServerSession(authOptions)
-    console.log('Session:', session)
+    // console.log('Session:', session)
     
     if (!session || session.user.role !== 'admin') {
-      console.log('Unauthorized access attempt')
+      // console.log('Unauthorized access attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
         ? ((currentInventory - previousPeriodInventory) / previousPeriodInventory) * 100 
         : 0
     } catch (invError) {
-      console.error('Error fetching inventory stats:', invError)
+      // console.error('Error fetching inventory stats:', invError)
     }
 
     // Initialize more default values
@@ -136,7 +136,7 @@ export async function GET(request: Request) {
         ? ((currentCost - previousCost) / previousCost) * 100 
         : 0
     } catch (costError) {
-      console.error('Error fetching cost stats:', costError)
+      // console.error('Error fetching cost stats:', costError)
     }
     
     try {
@@ -154,7 +154,7 @@ export async function GET(request: Request) {
       })
       activeSkusCount = activeSkus.length
     } catch (skuError) {
-      console.error('Error fetching SKU stats:', skuError)
+      // console.error('Error fetching SKU stats:', skuError)
     }
 
     try {
@@ -178,7 +178,7 @@ export async function GET(request: Request) {
         },
       })
     } catch (invoiceError) {
-      console.error('Error fetching invoice stats:', invoiceError)
+      // console.error('Error fetching invoice stats:', invoiceError)
     }
 
     try {
@@ -186,7 +186,7 @@ export async function GET(request: Request) {
       totalUsers = await prisma.user.count()
       totalTransactions = await prisma.inventoryTransaction.count()
     } catch (sysError) {
-      console.error('Error fetching system stats:', sysError)
+      // console.error('Error fetching system stats:', sysError)
     }
     
     // Get database size (approximate)
@@ -198,7 +198,7 @@ export async function GET(request: Request) {
       // Convert bigint to number
       dbSize = dbSizeResult.map(row => ({ size: Number(row.size) }))
     } catch (dbError) {
-      console.warn('Failed to get database size:', dbError)
+      // console.warn('Failed to get database size:', dbError)
       // Continue with default value
     }
 
@@ -217,7 +217,7 @@ export async function GET(request: Request) {
 
     // 1. Inventory Trend - Show daily inventory levels
     try {
-      console.log('Fetching inventory trend...')
+      // console.log('Fetching inventory trend...')
       
       // Get transactions grouped by day for the selected period
       const transactions = await prisma.inventoryTransaction.findMany({
@@ -232,7 +232,7 @@ export async function GET(request: Request) {
         }
       })
       
-      console.log(`Found ${transactions.length} transactions in period`)
+      // console.log(`Found ${transactions.length} transactions in period`)
       
       if (transactions.length > 0) {
         // Get inventory level at start of period
@@ -287,14 +287,14 @@ export async function GET(request: Request) {
         })
       }
       
-      console.log('Inventory trend data:', chartData.inventoryTrend)
+      // console.log('Inventory trend data:', chartData.inventoryTrend)
     } catch (invError) {
-      console.error('Error fetching inventory trend:', invError)
+      // console.error('Error fetching inventory trend:', invError)
     }
 
     // 2. Storage Costs - Read from storage_ledger table
     try {
-      console.log('Fetching storage costs from storage_ledger table...')
+      // console.log('Fetching storage costs from storage_ledger table...')
       
       // Get storage ledger entries from the database
       const storageLedgerEntries = await prisma.storageLedger.findMany({
@@ -310,7 +310,7 @@ export async function GET(request: Request) {
         orderBy: { weekEndingDate: 'asc' }
       })
       
-      console.log(`Found ${storageLedgerEntries.length} storage ledger entries`)
+      // console.log(`Found ${storageLedgerEntries.length} storage ledger entries`)
       
       if (storageLedgerEntries.length > 0) {
         // Group by week and sum costs
@@ -341,14 +341,14 @@ export async function GET(request: Request) {
       // Weekly cron job will keep it updated
       
     } catch (costError) {
-      console.error('Error fetching storage costs:', costError)
+      // console.error('Error fetching storage costs:', costError)
     }
 
     // 3. Warehouse Distribution
     try {
-      console.log('Fetching warehouse distribution...')
+      // console.log('Fetching warehouse distribution...')
       const warehouses = await prisma.warehouse.findMany()
-      console.log(`Found ${warehouses.length} warehouses`)
+      // console.log(`Found ${warehouses.length} warehouses`)
       
       // For each warehouse, get current inventory
       chartData.warehouseDistribution = await Promise.all(
@@ -373,14 +373,14 @@ export async function GET(request: Request) {
         percentage: total > 0 ? `${Math.round((w.value / total) * 100)}%` : '0%'
       }))
       
-      console.log('Warehouse distribution:', chartData.warehouseDistribution)
+      // console.log('Warehouse distribution:', chartData.warehouseDistribution)
     } catch (distError) {
-      console.error('Error fetching distribution:', distError)
+      // console.error('Error fetching distribution:', distError)
     }
 
     // 4. Recent Transactions
     try {
-      console.log('Fetching recent transactions...')
+      // console.log('Fetching recent transactions...')
       const transactions = await prisma.inventoryTransaction.findMany({
         take: 5,
         orderBy: { transactionDate: 'desc' },
@@ -390,7 +390,7 @@ export async function GET(request: Request) {
         }
       })
       
-      console.log(`Found ${transactions.length} transactions`)
+      // console.log(`Found ${transactions.length} transactions`)
       
       chartData.recentTransactions = transactions.map(tx => ({
         id: tx.id,
@@ -402,10 +402,10 @@ export async function GET(request: Request) {
         details: tx.sku.description
       }))
     } catch (txError) {
-      console.error('Error fetching transactions:', txError)
+      // console.error('Error fetching transactions:', txError)
     }
 
-    console.log('Final chart data:', chartData)
+    // console.log('Final chart data:', chartData)
 
     return NextResponse.json({
       stats: {
@@ -427,7 +427,7 @@ export async function GET(request: Request) {
       chartData
     })
   } catch (error) {
-    console.error('Dashboard stats error:', error)
+    // console.error('Dashboard stats error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch dashboard stats', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

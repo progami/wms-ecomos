@@ -176,7 +176,7 @@ export async function POST(
       warehouseNotified: contactWarehouse,
     });
   } catch (error) {
-    console.error('Error disputing invoice:', error);
+    // console.error('Error disputing invoice:', error);
     return NextResponse.json(
       { error: 'Failed to dispute invoice' },
       { status: 500 }
@@ -258,7 +258,7 @@ export async function GET(
       })),
     });
   } catch (error) {
-    console.error('Error fetching dispute details:', error);
+    // console.error('Error fetching dispute details:', error);
     return NextResponse.json(
       { error: 'Failed to fetch dispute details' },
       { status: 500 }

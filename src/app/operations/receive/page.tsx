@@ -73,7 +73,6 @@ export default function WarehouseReceivePage() {
         setSkus(data.filter((sku: any) => sku.isActive !== false))
       }
     } catch (error) {
-      console.error('Error fetching SKUs:', error)
       toast.error('Failed to load SKUs')
     } finally {
       setSkuLoading(false)
@@ -94,7 +93,6 @@ export default function WarehouseReceivePage() {
         ))
       }
     } catch (error) {
-      console.error('Error fetching next batch number:', error)
       setItems(prevItems => prevItems.map(item => 
         item.id === itemId ? { ...item, loadingBatch: false } : item
       ))
@@ -292,7 +290,6 @@ export default function WarehouseReceivePage() {
         }))
       }
     } catch (error) {
-      console.error('Error fetching last batch defaults:', error)
     }
   }
 
@@ -355,7 +352,6 @@ export default function WarehouseReceivePage() {
         }))
       }
     } catch (error) {
-      console.error('Error fetching warehouse config:', error)
     }
   }
 
@@ -398,7 +394,6 @@ export default function WarehouseReceivePage() {
         }
       }
     } catch (error) {
-      console.warn('Could not validate transaction date order:', error)
     }
     
     // Validate items
@@ -499,11 +494,9 @@ export default function WarehouseReceivePage() {
       } else {
         toast.error(data.error || 'Failed to save receipt')
         if (data.details) {
-          console.error('Error details:', data.details)
         }
       }
     } catch (error) {
-      console.error('Submit error:', error)
       toast.error('Failed to save receipt. Please try again.')
     } finally {
       setLoading(false)

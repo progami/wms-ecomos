@@ -57,7 +57,7 @@ export default function AdminSkusPage() {
       const data = await response.json()
       setSkus(data)
     } catch (error) {
-      console.error('Error fetching SKUs:', error)
+      // console.error('Error fetching SKUs:', error)
       alert(error instanceof Error ? error.message : 'Failed to fetch SKUs')
     } finally {
       setLoading(false)
@@ -83,7 +83,7 @@ export default function AdminSkusPage() {
       alert(result.message)
       await fetchSkus()
     } catch (error) {
-      console.error('Error deleting SKU:', error)
+      // console.error('Error deleting SKU:', error)
       alert('Failed to delete SKU')
     }
   }
@@ -100,7 +100,7 @@ export default function AdminSkusPage() {
       
       await fetchSkus()
     } catch (error) {
-      console.error('Error updating SKU:', error)
+      // console.error('Error updating SKU:', error)
       alert('Failed to update SKU')
     }
   }

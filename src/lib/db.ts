@@ -10,7 +10,7 @@ export const pool = new Pool({
 
 // Test the connection
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err)
+  // console.error('Unexpected error on idle client', err)
 })
 
 // Helper function to get a client from the pool
@@ -19,7 +19,7 @@ export async function getClient() {
     const client = await pool.connect()
     return client
   } catch (error) {
-    console.error('Error connecting to database:', error)
+    // console.error('Error connecting to database:', error)
     throw error
   }
 }
@@ -30,7 +30,7 @@ export async function query(text: string, params?: any[]) {
     const result = await pool.query(text, params)
     return result
   } catch (error) {
-    console.error('Database query error:', error)
+    // console.error('Database query error:', error)
     throw error
   }
 }

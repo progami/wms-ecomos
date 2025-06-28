@@ -32,7 +32,7 @@ export async function auditLog(entry: AuditLogEntry) {
     })
   } catch (error) {
     // Log to external system if database write fails
-    console.error('Failed to write audit log:', error, entry)
+    // console.error('Failed to write audit log:', error, entry)
     // Could send to external logging service here
   }
 }

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
           })
         })
         .catch((error) => {
-          console.error('Demo data generation failed:', error)
+          // console.error('Demo data generation failed:', error)
           progressMap.set(sessionId, {
             message: `Error: ${error.message}`,
             progress: -1,
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
   } catch (error) {
-    console.error('Error in demo API:', error)
+    // console.error('Error in demo API:', error)
     return NextResponse.json(
       { error: 'Failed to process demo data request' },
       { status: 500 }
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(stats)
   } catch (error) {
-    console.error('Error checking demo status:', error)
+    // console.error('Error checking demo status:', error)
     return NextResponse.json(
       { error: 'Failed to check demo status' },
       { status: 500 }

@@ -66,7 +66,7 @@ export function ExportButton({
         alert('Export failed')
       }
     } catch (error) {
-      console.error('Export error:', error)
+      // console.error('Export error:', error)
       alert('Error during export')
     } finally {
       setLoading(false)

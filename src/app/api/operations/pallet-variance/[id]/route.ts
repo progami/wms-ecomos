@@ -40,7 +40,7 @@ export async function PATCH(
       message: 'Variance status updated'
     })
   } catch (error) {
-    console.error('Update variance error:', error)
+    // console.error('Update variance error:', error)
     return NextResponse.json({ 
       error: 'Failed to update variance',
       details: error instanceof Error ? error.message : 'Unknown error'

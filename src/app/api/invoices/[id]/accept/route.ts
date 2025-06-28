@@ -202,7 +202,7 @@ export async function POST(
       paymentDetails: result.paymentDetails,
     });
   } catch (error) {
-    console.error('Error accepting invoice:', error);
+    // console.error('Error accepting invoice:', error);
     return NextResponse.json(
       { error: 'Failed to accept invoice' },
       { status: 500 }

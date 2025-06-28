@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error calculating costs:', error);
+    // console.error('Error calculating costs:', error);
     return NextResponse.json(
       { error: 'Failed to calculate costs' },
       { status: 500 }

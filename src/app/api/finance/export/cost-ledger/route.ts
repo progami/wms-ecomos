@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Export cost ledger error:', error)
+    // console.error('Export cost ledger error:', error)
     return NextResponse.json({ 
       error: 'Failed to export cost ledger',
       details: error instanceof Error ? error.message : 'Unknown error'

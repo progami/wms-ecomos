@@ -1,0 +1,142 @@
+// Set up logging before anything else
+require('./src/lib/setup-logging.js');
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Production optimizations
+  swcMinify: true,
+  compress: true,
+  poweredByHeader: false,
+  
+  // Image optimization
+  images: {
+    domains: ['localhost'],
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60,
+  },
+  
+  // Strict mode for development
+  reactStrictMode: true,
+  
+  // Production source maps (disable for security)
+  productionBrowserSourceMaps: false,
+  
+  // Headers for security and caching
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin'
+          }
+        ]
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate'
+          }
+        ]
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable'
+          }
+        ]
+      }
+    ]
+  },
+  
+  // Environment variables validation
+  env: {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  },
+  
+  // Webpack configuration
+  webpack: (config, { isServer }) => {
+    // Optimize bundle size
+    if (!isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          framework: {
+            name: 'framework',
+            chunks: 'all',
+            test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+            priority: 40,
+            enforce: true,
+          },
+          lib: {
+            test(module) {
+              return module.size() > 160000 &&
+                /node_modules[/\\]/.test(module.identifier())
+            },
+            name(module) {
+              const hash = require('crypto').createHash('sha256')
+              hash.update(module.identifier())
+              return hash.digest('hex').substring(0, 8)
+            },
+            priority: 30,
+            minChunks: 1,
+            reuseExistingChunk: true,
+          },
+          commons: {
+            name: 'commons',
+            chunks: 'all',
+            minChunks: 2,
+            priority: 20,
+          },
+          shared: {
+            name(module, chunks) {
+              const hash = require('crypto').createHash('sha256')
+              hash.update(chunks.reduce((acc, chunk) => acc + chunk.name, ''))
+              return hash.digest('hex').substring(0, 8)
+            },
+            priority: 10,
+            minChunks: 2,
+            reuseExistingChunk: true,
+          },
+        },
+      }
+    }
+    
+    return config
+  },
+  
+  // Experimental features for production
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', 'date-fns', 'recharts'],
+  },
+}
+
+module.exports = nextConfig

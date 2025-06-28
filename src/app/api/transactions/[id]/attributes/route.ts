@@ -244,7 +244,7 @@ export async function PATCH(
       transaction: result
     })
   } catch (error) {
-    console.error('Update attributes error:', error)
+    // console.error('Update attributes error:', error)
     return NextResponse.json({ 
       error: 'Failed to update attributes',
       details: error instanceof Error ? error.message : 'Unknown error'

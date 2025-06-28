@@ -62,22 +62,18 @@ export function StorageLedgerTab({
         ...(filters.warehouse && { warehouseId: filters.warehouse })
       })
       
-      console.log('Fetching storage ledger with params:', params.toString())
       
       const response = await fetch(`/api/finance/storage-ledger?${params}`)
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('Storage ledger API error:', response.status, errorData)
         toast.error(`Failed to load storage ledger: ${errorData.error || response.statusText}`)
         return
       }
       
       const data = await response.json()
-      console.log('Storage ledger data received:', data)
       setSnapshots(data.snapshots || [])
     } catch (error) {
-      console.error('Failed to fetch storage ledger:', error)
       toast.error(`Failed to load storage ledger: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)

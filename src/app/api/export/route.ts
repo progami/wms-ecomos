@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error exporting data:', error)
+    // console.error('Error exporting data:', error)
     return NextResponse.json(
       { error: 'Failed to export data' },
       { status: 500 }
