@@ -5,6 +5,7 @@ import { auditLog } from '@/lib/security/audit-logger'
 import { sanitizeForDisplay } from '@/lib/security/input-sanitization'
 import { Money } from '@/lib/financial/money-utils'
 import { z } from 'zod'
+import crypto from 'crypto'
 
 // Input validation schemas
 const inventoryTransactionSchema = z.object({
@@ -29,6 +30,22 @@ const inventoryTransactionSchema = z.object({
 
 type InventoryTransactionInput = z.infer<typeof inventoryTransactionSchema>
 
+/**
+ * Generate a hash key for advisory locks based on warehouse, SKU, and batch
+ * PostgreSQL advisory locks use bigint, so we need to convert string to number
+ */
+function getAdvisoryLockKey(warehouseId: string, skuId: string, batchLot: string): bigint {
+  const hash = crypto
+    .createHash('sha256')
+    .update(`${warehouseId}-${skuId}-${batchLot}`)
+    .digest()
+  
+  // Take first 8 bytes and convert to bigint
+  // Use absolute value to ensure positive number
+  const lockKey = BigInt('0x' + hash.subarray(0, 8).toString('hex'))
+  return lockKey > 0n ? lockKey : -lockKey
+}
+
 export class InventoryService {
   /**
    * Create an inventory transaction with proper locking and validation
@@ -42,7 +59,23 @@ export class InventoryService {
     const validatedInput = inventoryTransactionSchema.parse(input)
     
     return withTransaction(async (tx) => {
-      // Lock the inventory balance row for update using raw query
+      // Get advisory lock first to prevent concurrent modifications
+      const lockKey = getAdvisoryLockKey(
+        validatedInput.warehouseId, 
+        validatedInput.skuId, 
+        validatedInput.batchLot
+      )
+      
+      // Try to acquire advisory lock (wait up to 5 seconds)
+      const lockResult = await tx.$queryRaw<[{ pg_try_advisory_xact_lock: boolean }]>`
+        SELECT pg_try_advisory_xact_lock(${lockKey}::bigint)
+      `
+      
+      if (!lockResult[0]?.pg_try_advisory_xact_lock) {
+        throw new Error('Could not acquire lock for inventory operation. Please try again.')
+      }
+      
+      // Now lock the inventory balance row for update using raw query
       const balances = await tx.$queryRaw<any[]>`
         SELECT * FROM "inventory_balances" 
         WHERE "warehouse_id" = ${validatedInput.warehouseId} 
@@ -88,12 +121,13 @@ export class InventoryService {
       // Generate transaction ID
       const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 
-      // Create the transaction
+      // Create the transaction with units per carton captured
       const transaction = await tx.inventoryTransaction.create({
         data: {
           ...validatedInput,
           transactionId,
           createdById: userId,
+          unitsPerCarton: sku.unitsPerCarton, // Capture SKU value at transaction time
         },
         include: {
           warehouse: true,
@@ -101,7 +135,7 @@ export class InventoryService {
         }
       })
 
-      // Update or create the balance
+      // Update or create the balance with version increment
       const updatedBalance = await tx.inventoryBalance.upsert({
         where: {
           warehouseId_skuId_batchLot: {
@@ -118,6 +152,7 @@ export class InventoryService {
           lastUpdated: new Date(),
           shippingCartonsPerPallet: validatedInput.shippingCartonsPerPallet || balance?.shipping_cartons_per_pallet,
           storageCartonsPerPallet: validatedInput.storageCartonsPerPallet || balance?.storage_cartons_per_pallet,
+          version: { increment: 1 } // Increment version for optimistic locking
         },
         create: {
           warehouseId: validatedInput.warehouseId,
@@ -129,6 +164,7 @@ export class InventoryService {
           lastTransactionDate: validatedInput.transactionDate,
           shippingCartonsPerPallet: validatedInput.shippingCartonsPerPallet,
           storageCartonsPerPallet: validatedInput.storageCartonsPerPallet,
+          version: 1
         }
       })
 
@@ -204,6 +240,16 @@ export class InventoryService {
       for (const [key, groupTransactions] of Object.entries(grouped)) {
         const [warehouseId, skuId, batchLot] = key.split('-')
         
+        // Get advisory lock for this group
+        const lockKey = getAdvisoryLockKey(warehouseId, skuId, batchLot)
+        const lockResult = await tx.$queryRaw<[{ pg_try_advisory_xact_lock: boolean }]>`
+          SELECT pg_try_advisory_xact_lock(${lockKey}::bigint)
+        `
+        
+        if (!lockResult[0]?.pg_try_advisory_xact_lock) {
+          throw new Error(`Could not acquire lock for ${skuId}/${batchLot}. Please try again.`)
+        }
+        
         // Lock the balance for this group using raw query
         const balances = await tx.$queryRaw<any[]>`
           SELECT * FROM "inventory_balances" 
@@ -217,6 +263,12 @@ export class InventoryService {
 
         let currentCartons = balance?.current_cartons || 0
         const createdTransactions = []
+
+        // Get SKU for this group
+        const sku = await tx.sku.findUnique({ where: { id: skuId } })
+        if (!sku) {
+          throw new Error(`SKU not found: ${skuId}`)
+        }
 
         // Process transactions in order
         for (const t of groupTransactions) {
@@ -233,6 +285,7 @@ export class InventoryService {
               ...t,
               transactionId,
               createdById: userId,
+              unitsPerCarton: sku.unitsPerCarton, // Capture SKU value at transaction time
             }
           })
           
@@ -240,8 +293,7 @@ export class InventoryService {
         }
 
         // Update balance once for the group
-        const sku = await tx.sku.findUnique({ where: { id: skuId } })
-        const currentUnits = currentCartons * (sku?.unitsPerCarton || 1)
+        const currentUnits = currentCartons * (sku.unitsPerCarton || 1)
         const lastTransaction = groupTransactions[groupTransactions.length - 1]
         const cartonsPerPallet = lastTransaction.storageCartonsPerPallet || 
                                 balance?.storage_cartons_per_pallet || 
@@ -262,6 +314,7 @@ export class InventoryService {
             currentUnits,
             lastTransactionDate: lastTransaction.transactionDate,
             lastUpdated: new Date(),
+            version: { increment: 1 } // Increment version for optimistic locking
           },
           create: {
             warehouseId,
@@ -271,6 +324,7 @@ export class InventoryService {
             currentPallets,
             currentUnits,
             lastTransactionDate: lastTransaction.transactionDate,
+            version: 1
           }
         })
 
@@ -339,7 +393,9 @@ export class InventoryService {
       }
       
       current.currentCartons += transaction.cartonsIn - transaction.cartonsOut
-      current.currentUnits = current.currentCartons * (transaction.sku.unitsPerCarton || 1)
+      // Use transaction's unitsPerCarton if available, otherwise fall back to SKU master
+      const unitsPerCarton = transaction.unitsPerCarton || transaction.sku.unitsPerCarton || 1
+      current.currentUnits = current.currentCartons * unitsPerCarton
       current.lastTransactionDate = transaction.transactionDate
       
       balances.set(key, current)

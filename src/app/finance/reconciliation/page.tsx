@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Calculator, AlertCircle, CheckCircle, XCircle, FileText, Save, MessageSquare, Loader2, Upload } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Calculator, AlertCircle, CheckCircle, XCircle, FileText, Save, MessageSquare, Loader2, Upload, ChevronDown, ChevronRight } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -20,6 +20,21 @@ interface ReconciliationItem {
     email: string
   }
   resolvedAt?: string
+  reconciliationDetails?: {
+    id: string
+    calculatedCost: {
+      id: string
+      transactionReferenceId: string
+      transactionType: string
+      transactionDate: string
+      quantityCharged: number
+      calculatedCost: number
+      sku: {
+        skuCode: string
+        description: string
+      }
+    }
+  }[]
 }
 
 interface InvoiceReconciliation {
@@ -50,6 +65,8 @@ export default function FinanceReconciliationPage() {
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ReconciliationItem | null>(null)
   const [resolutionNote, setResolutionNote] = useState('')
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set())
 
   // Fetch warehouses
   useEffect(() => {
@@ -254,6 +271,51 @@ export default function FinanceReconciliationPage() {
     })
   }
 
+  const toggleItemExpansion = async (itemId: string) => {
+    const newExpanded = new Set(expandedItems)
+    
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId)
+    } else {
+      newExpanded.add(itemId)
+      
+      // Load details if not already loaded
+      const item = invoices.flatMap(i => i.reconciliations).find(r => r.id === itemId)
+      if (item && !item.reconciliationDetails) {
+        setLoadingDetails(prev => new Set(prev).add(itemId))
+        
+        try {
+          const response = await fetch(`/api/reconciliation/${itemId}/details`)
+          if (response.ok) {
+            const data = await response.json()
+            
+            // Update the item with details
+            setInvoices(prevInvoices => 
+              prevInvoices.map(invoice => ({
+                ...invoice,
+                reconciliations: invoice.reconciliations.map(rec => 
+                  rec.id === itemId 
+                    ? { ...rec, reconciliationDetails: data.details }
+                    : rec
+                )
+              }))
+            )
+          }
+        } catch (error) {
+          console.error('Error loading reconciliation details:', error)
+        } finally {
+          setLoadingDetails(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(itemId)
+            return newSet
+          })
+        }
+      }
+    }
+    
+    setExpandedItems(newExpanded)
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -434,48 +496,129 @@ export default function FinanceReconciliationPage() {
                           </thead>
                           <tbody className="divide-y">
                             {invoice.reconciliations.map((item) => (
-                              <tr key={item.id}>
-                                <td className="py-2">{item.costCategory}</td>
-                                <td className="py-2">{item.costName}</td>
-                                <td className="py-2 text-right">{formatCurrency(item.expectedAmount)}</td>
-                                <td className="py-2 text-right">{formatCurrency(item.invoicedAmount)}</td>
-                                <td className="py-2 text-right">
-                                  <span className={item.difference > 0 ? 'text-red-600' : item.difference < 0 ? 'text-green-600' : ''}>
-                                    {formatCurrency(Math.abs(item.difference))}
-                                  </span>
-                                </td>
-                                <td className="py-2 text-center">
-                                  {item.status === 'match' ? (
-                                    <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
-                                  ) : item.status === 'overbilled' ? (
-                                    <XCircle className="h-4 w-4 text-red-600 mx-auto" />
-                                  ) : (
-                                    <AlertCircle className="h-4 w-4 text-amber-600 mx-auto" />
-                                  )}
-                                </td>
-                                <td className="py-2">
-                                  {item.resolutionNotes ? (
-                                    <div className="text-sm">
-                                      <p className="text-gray-700">{item.resolutionNotes}</p>
-                                      {item.resolvedBy && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          - {item.resolvedBy.fullName}
-                                        </p>
+                              <React.Fragment key={item.id}>
+                                <tr className="hover:bg-gray-50">
+                                  <td className="py-2">
+                                    <div className="flex items-center gap-2">
+                                      {item.status !== 'match' && (
+                                        <button
+                                          onClick={() => toggleItemExpansion(item.id)}
+                                          className="text-gray-400 hover:text-gray-600"
+                                        >
+                                          {expandedItems.has(item.id) ? (
+                                            <ChevronDown className="h-4 w-4" />
+                                          ) : (
+                                            <ChevronRight className="h-4 w-4" />
+                                          )}
+                                        </button>
                                       )}
+                                      {item.costCategory}
                                     </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        setSelectedItem(item)
-                                        setNoteModalOpen(true)
-                                      }}
-                                      className="text-xs text-primary hover:underline"
-                                    >
-                                      Add note
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
+                                  </td>
+                                  <td className="py-2">{item.costName}</td>
+                                  <td className="py-2 text-right">{formatCurrency(item.expectedAmount)}</td>
+                                  <td className="py-2 text-right">{formatCurrency(item.invoicedAmount)}</td>
+                                  <td className="py-2 text-right">
+                                    <span className={item.difference > 0 ? 'text-red-600' : item.difference < 0 ? 'text-green-600' : ''}>
+                                      {formatCurrency(Math.abs(item.difference))}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 text-center">
+                                    {item.status === 'match' ? (
+                                      <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
+                                    ) : item.status === 'overbilled' ? (
+                                      <XCircle className="h-4 w-4 text-red-600 mx-auto" />
+                                    ) : (
+                                      <AlertCircle className="h-4 w-4 text-amber-600 mx-auto" />
+                                    )}
+                                  </td>
+                                  <td className="py-2">
+                                    {item.resolutionNotes ? (
+                                      <div className="text-sm">
+                                        <p className="text-gray-700">{item.resolutionNotes}</p>
+                                        {item.resolvedBy && (
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            - {item.resolvedBy.fullName}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setSelectedItem(item)
+                                          setNoteModalOpen(true)
+                                        }}
+                                        className="text-xs text-primary hover:underline"
+                                      >
+                                        Add note
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                                {expandedItems.has(item.id) && (
+                                  <tr>
+                                    <td colSpan={7} className="bg-gray-50 px-8 py-4">
+                                      {loadingDetails.has(item.id) ? (
+                                        <div className="flex items-center justify-center py-4">
+                                          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                        </div>
+                                      ) : item.reconciliationDetails && item.reconciliationDetails.length > 0 ? (
+                                        <div className="space-y-2">
+                                          <h5 className="font-medium text-sm mb-2">Transaction Details</h5>
+                                          <table className="w-full text-sm">
+                                            <thead>
+                                              <tr className="text-xs text-gray-500">
+                                                <th className="text-left pb-1">Transaction ID</th>
+                                                <th className="text-left pb-1">Type</th>
+                                                <th className="text-left pb-1">Date</th>
+                                                <th className="text-left pb-1">SKU</th>
+                                                <th className="text-right pb-1">Quantity</th>
+                                                <th className="text-right pb-1">Cost</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                              {item.reconciliationDetails.map(detail => (
+                                                <tr key={detail.id} className="hover:bg-white">
+                                                  <td className="py-1 font-mono text-xs">
+                                                    {detail.calculatedCost.transactionReferenceId}
+                                                  </td>
+                                                  <td className="py-1">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                      detail.calculatedCost.transactionType === 'RECEIVE' ? 'bg-green-100 text-green-800' :
+                                                      detail.calculatedCost.transactionType === 'SHIP' ? 'bg-red-100 text-red-800' :
+                                                      detail.calculatedCost.transactionType === 'STORAGE' ? 'bg-blue-100 text-blue-800' :
+                                                      'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                      {detail.calculatedCost.transactionType}
+                                                    </span>
+                                                  </td>
+                                                  <td className="py-1">
+                                                    {formatDate(detail.calculatedCost.transactionDate)}
+                                                  </td>
+                                                  <td className="py-1">
+                                                    <div>
+                                                      <div className="font-medium">{detail.calculatedCost.sku.skuCode}</div>
+                                                      <div className="text-xs text-gray-500">{detail.calculatedCost.sku.description}</div>
+                                                    </div>
+                                                  </td>
+                                                  <td className="py-1 text-right">
+                                                    {detail.calculatedCost.quantityCharged}
+                                                  </td>
+                                                  <td className="py-1 text-right">
+                                                    {formatCurrency(detail.calculatedCost.calculatedCost)}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-gray-500">No transaction details available</p>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             ))}
                           </tbody>
                           <tfoot className="border-t">

@@ -34,10 +34,16 @@ export async function updateInventoryBalances(warehouseId?: string) {
     let lastTransactionDate: Date | null = null
     let storageCartonsPerPallet: number | null = null
     let shippingCartonsPerPallet: number | null = null
+    let totalUnits = 0
     
     for (const transaction of transactions) {
       balance += transaction.cartonsIn - transaction.cartonsOut
       lastTransactionDate = transaction.transactionDate
+      
+      // Calculate units using transaction's captured unitsPerCarton if available
+      if (transaction.unitsPerCarton) {
+        totalUnits += (transaction.cartonsIn - transaction.cartonsOut) * transaction.unitsPerCarton
+      }
       
       // Capture batch-specific config from first RECEIVE transaction
       if (transaction.transactionType === 'RECEIVE' && 
@@ -52,10 +58,15 @@ export async function updateInventoryBalances(warehouseId?: string) {
     // Never allow negative balance
     balance = Math.max(0, balance)
     
-    // Get SKU info for unit calculation
+    // Get SKU info for unit calculation fallback
     const sku = await prisma.sku.findUnique({
       where: { id: combo.skuId }
     })
+    
+    // If we didn't calculate units from transactions (old data), use SKU master
+    if (totalUnits === 0 && balance > 0) {
+      totalUnits = balance * (sku?.unitsPerCarton || 1)
+    }
     
     // If no batch config found, fall back to warehouse config
     if (!storageCartonsPerPallet || !shippingCartonsPerPallet) {
@@ -91,7 +102,7 @@ export async function updateInventoryBalances(warehouseId?: string) {
       update: {
         currentCartons: balance,
         currentPallets,
-        currentUnits: balance * (sku?.unitsPerCarton || 1),
+        currentUnits: totalUnits,
         storageCartonsPerPallet,
         shippingCartonsPerPallet,
         lastTransactionDate,
@@ -102,7 +113,7 @@ export async function updateInventoryBalances(warehouseId?: string) {
         batchLot: combo.batchLot,
         currentCartons: balance,
         currentPallets,
-        currentUnits: balance * (sku?.unitsPerCarton || 1),
+        currentUnits: totalUnits,
         storageCartonsPerPallet,
         shippingCartonsPerPallet,
         lastTransactionDate,

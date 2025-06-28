@@ -310,23 +310,43 @@ async function importInventoryTransactions(data: any[], userId: string) {
       }
 
       // Remove warehouse and sku from mapped data and add IDs
-      const { warehouse: _, sku: __, transactionId: ___, ...transactionData } = mappedData
+      const { warehouse: _, sku: __, transactionId: importedTransactionId, ...transactionData } = mappedData
       
-      // Always generate a new transaction ID
-      const newTransactionId = `TRX-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      // Use imported transaction ID if provided, otherwise generate new one
+      const transactionId = importedTransactionId || `TRX-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       
-      await prisma.inventoryTransaction.create({
-        data: {
+      // Upsert to support both create and update operations
+      await prisma.inventoryTransaction.upsert({
+        where: { transactionId: transactionId },
+        create: {
           ...transactionData,
-          transactionId: newTransactionId,
+          transactionId: transactionId,
           warehouseId: warehouse.id,
           skuId: sku.id,
           createdById: userId
+        },
+        update: {
+          // Only update fields that should be modifiable
+          // Transaction date, type, and amounts should be immutable
+          referenceId: transactionData.referenceId,
+          shipName: transactionData.shipName,
+          trackingNumber: transactionData.trackingNumber,
+          modeOfTransportation: transactionData.modeOfTransportation,
+          isReconciled: transactionData.isReconciled,
+          // Note: We don't update critical fields like cartonsIn/Out, dates, etc.
         }
       })
       imported++
     } catch (error) {
-      errors.push(`Transaction ${row.transaction_id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const transactionRef = importedTransactionId || row.transaction_id || 'unknown'
+      
+      // Add helpful context for common errors
+      if (errorMessage.includes('Unique constraint') && errorMessage.includes('transactionId')) {
+        errors.push(`Transaction ${transactionRef}: Transaction ID already exists with different immutable fields`)
+      } else {
+        errors.push(`Transaction ${transactionRef}: ${errorMessage}`)
+      }
     }
   }
 

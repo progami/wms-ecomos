@@ -25,6 +25,122 @@ type CostCalculationInput = z.infer<typeof costCalculationInputSchema>
 
 export class CostCalculationService {
   /**
+   * Calculate and store costs for a specific billing period
+   * This is used by reconciliation to ensure all costs are calculated
+   */
+  static async calculateAndStoreCosts(
+    warehouseId: string,
+    billingPeriod: { start: Date; end: Date },
+    userId: string
+  ): Promise<void> {
+    // Get all transactions for the period
+    const transactions = await prisma.inventoryTransaction.findMany({
+      where: {
+        warehouseId,
+        transactionDate: {
+          gte: billingPeriod.start,
+          lte: billingPeriod.end,
+        },
+        transactionType: {
+          in: [TransactionType.RECEIVE, TransactionType.SHIP],
+        },
+      },
+    });
+
+    // Calculate costs for each transaction
+    for (const transaction of transactions) {
+      const input = {
+        transactionId: transaction.transactionId,
+        warehouseId: transaction.warehouseId,
+        skuId: transaction.skuId,
+        batchLot: transaction.batchLot,
+        transactionType: transaction.transactionType,
+        transactionDate: transaction.transactionDate,
+        cartonsIn: transaction.cartonsIn,
+        cartonsOut: transaction.cartonsOut,
+        storagePalletsIn: transaction.storagePalletsIn,
+        shippingPalletsOut: transaction.shippingPalletsOut,
+        storageCartonsPerPallet: transaction.storageCartonsPerPallet || undefined,
+        shippingCartonsPerPallet: transaction.shippingCartonsPerPallet || undefined,
+      };
+
+      await this.calculateTransactionCosts(input, userId);
+    }
+
+    // Calculate storage costs for the period
+    const weekStart = startOfWeek(billingPeriod.start, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(billingPeriod.end, { weekStartsOn: 1 });
+    
+    let currentWeek = weekStart;
+    while (currentWeek <= weekEnd) {
+      await this.calculateWeeklyStorageCosts(currentWeek, userId, warehouseId);
+      currentWeek = new Date(currentWeek);
+      currentWeek.setDate(currentWeek.getDate() + 7);
+    }
+  }
+
+  /**
+   * Get calculated costs summary for reconciliation
+   */
+  static async getCalculatedCostsForReconciliation(
+    warehouseId: string,
+    billingPeriod: { start: Date; end: Date }
+  ): Promise<Array<{
+    costCategory: CostCategory;
+    costName: string;
+    totalQuantity: number;
+    totalAmount: number;
+    unitRate: number;
+    calculatedCostIds: string[];
+  }>> {
+    const calculatedCosts = await prisma.calculatedCost.findMany({
+      where: {
+        warehouseId,
+        billingPeriodStart: {
+          gte: billingPeriod.start,
+        },
+        billingPeriodEnd: {
+          lte: billingPeriod.end,
+        },
+      },
+      include: {
+        costRate: true,
+      },
+    });
+
+    // Group by category and name
+    const grouped = new Map<string, {
+      costCategory: CostCategory;
+      costName: string;
+      totalQuantity: number;
+      totalAmount: number;
+      unitRate: number;
+      calculatedCostIds: string[];
+    }>();
+
+    for (const cost of calculatedCosts) {
+      const key = `${cost.costRate.costCategory}-${cost.costRate.costName}`;
+      const existing = grouped.get(key);
+
+      if (existing) {
+        existing.totalQuantity += Number(cost.quantityCharged);
+        existing.totalAmount += Number(cost.finalExpectedCost);
+        existing.calculatedCostIds.push(cost.id);
+      } else {
+        grouped.set(key, {
+          costCategory: cost.costRate.costCategory,
+          costName: cost.costRate.costName,
+          totalQuantity: Number(cost.quantityCharged),
+          totalAmount: Number(cost.finalExpectedCost),
+          unitRate: Number(cost.applicableRate),
+          calculatedCostIds: [cost.id],
+        });
+      }
+    }
+
+    return Array.from(grouped.values());
+  }
+  /**
    * Calculate costs for an inventory transaction
    * This is the main entry point for cost calculations
    */

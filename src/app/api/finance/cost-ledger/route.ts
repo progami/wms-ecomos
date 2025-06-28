@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { calculateAllCosts } from '@/lib/calculations/cost-aggregation'
 import { startOfWeek, endOfWeek, format, startOfMonth, endOfMonth } from 'date-fns'
+import { CostCalculationService } from '@/lib/services/cost-calculation-service'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -49,25 +49,44 @@ export async function GET(request: NextRequest) {
     for (const warehouse of warehouses) {
       if (!warehouse) continue
 
-      // Get costs for this warehouse
-      const costs = await calculateAllCosts(warehouse.id, { start, end })
+      // First ensure calculated costs exist for this period
+      await CostCalculationService.calculateAndStoreCosts(
+        warehouse.id,
+        { start, end },
+        session.user.id
+      )
+
+      // Get calculated costs from database
+      const calculatedCosts = await prisma.calculatedCost.findMany({
+        where: {
+          warehouseId: warehouse.id,
+          transactionDate: {
+            gte: start,
+            lte: end
+          }
+        },
+        include: {
+          costRate: true,
+          sku: true
+        }
+      })
 
       // Group costs by period
       const periodMap = new Map<string, any>()
 
-      for (const cost of costs) {
+      for (const cost of calculatedCosts) {
         // Determine period key based on groupBy
         let periodKey: string
         let periodStart: Date
         let periodEnd: Date
 
         if (groupBy === 'month') {
-          const monthStart = startOfMonth(start)
+          const monthStart = startOfMonth(cost.transactionDate)
           periodKey = format(monthStart, 'yyyy-MM')
           periodStart = monthStart
           periodEnd = endOfMonth(monthStart)
         } else { // week
-          const weekStart = startOfWeek(start, { weekStartsOn: 1 })
+          const weekStart = startOfWeek(cost.transactionDate, { weekStartsOn: 1 })
           periodKey = format(weekStart, 'yyyy-MM-dd')
           periodStart = weekStart
           periodEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
@@ -94,28 +113,29 @@ export async function GET(request: NextRequest) {
         }
 
         const period = periodMap.get(periodKey)
-        const category = cost.costCategory.toLowerCase() as keyof typeof costTotals
+        const category = cost.costRate.costCategory.toLowerCase() as keyof typeof costTotals
+        const amount = Number(cost.finalExpectedCost)
         
         if (category in period.costs && category !== 'total') {
-          period.costs[category] += cost.amount
-          period.costs.total += cost.amount
-          costTotals[category] += cost.amount
-          costTotals.total += cost.amount
+          period.costs[category] += amount
+          period.costs.total += amount
+          costTotals[category] += amount
+          costTotals.total += amount
         }
 
         // Add detail
         period.details.push({
-          transactionDate: new Date(),
-          transactionId: 'N/A',
-          transactionType: cost.details?.[0]?.transactionType || 'N/A',
+          transactionDate: cost.transactionDate,
+          transactionId: cost.transactionReferenceId,
+          transactionType: cost.transactionType,
           warehouse: warehouse.name,
-          sku: cost.details?.[0]?.skuCode || cost.costName,
-          batchLot: cost.details?.[0]?.batchLot || 'N/A',
-          category: cost.costCategory,
-          rateDescription: cost.costName,
-          quantity: cost.quantity,
-          rate: cost.unitRate,
-          cost: cost.amount
+          sku: cost.sku.skuCode,
+          batchLot: cost.batchLot || 'N/A',
+          category: cost.costRate.costCategory,
+          rateDescription: cost.costRate.costName,
+          quantity: Number(cost.quantityCharged),
+          rate: Number(cost.applicableRate),
+          cost: amount
         })
       }
 

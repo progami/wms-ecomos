@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Disable autofill styling on login form */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: inherit !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px rgb(31, 41, 55) inset !important;
+  -webkit-text-fill-color: white !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -232,4 +250,146 @@
 
 .nav-active {
   @apply bg-primary/10 text-primary border-l-4 border-primary font-medium;
+}
+
+/* Responsive Utilities */
+@layer utilities {
+  /* Touch-friendly tap targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Responsive text truncation */
+  .truncate-mobile {
+    @apply truncate sm:text-clip sm:overflow-visible;
+  }
+  
+  /* Responsive padding scales */
+  .p-responsive {
+    @apply p-2 sm:p-3 md:p-4 lg:p-6;
+  }
+  
+  .px-responsive {
+    @apply px-2 sm:px-3 md:px-4 lg:px-6;
+  }
+  
+  .py-responsive {
+    @apply py-2 sm:py-3 md:py-4 lg:py-6;
+  }
+  
+  /* Responsive font sizes */
+  .text-responsive-xs {
+    @apply text-xs sm:text-sm;
+  }
+  
+  .text-responsive-sm {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-base {
+    @apply text-base sm:text-lg;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl md:text-2xl;
+  }
+  
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl md:text-3xl;
+  }
+  
+  /* Responsive icon sizes */
+  .icon-xs {
+    @apply h-3 w-3 sm:h-4 sm:w-4;
+  }
+  
+  .icon-sm {
+    @apply h-4 w-4 sm:h-5 sm:w-5;
+  }
+  
+  .icon-md {
+    @apply h-5 w-5 sm:h-6 sm:w-6;
+  }
+  
+  .icon-lg {
+    @apply h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8;
+  }
+  
+  /* Hide on mobile, show on larger screens */
+  .hide-mobile {
+    @apply hidden sm:block;
+  }
+  
+  .hide-mobile-inline {
+    @apply hidden sm:inline;
+  }
+  
+  .hide-mobile-flex {
+    @apply hidden sm:flex;
+  }
+  
+  /* Show on mobile only */
+  .show-mobile {
+    @apply block sm:hidden;
+  }
+  
+  .show-mobile-inline {
+    @apply inline sm:hidden;
+  }
+  
+  .show-mobile-flex {
+    @apply flex sm:hidden;
+  }
+  
+  /* Responsive spacing */
+  .gap-responsive {
+    @apply gap-2 sm:gap-3 md:gap-4;
+  }
+  
+  .space-y-responsive > * + * {
+    @apply mt-2 sm:mt-3 md:mt-4;
+  }
+  
+  .space-x-responsive > * + * {
+    @apply ml-2 sm:ml-3 md:ml-4;
+  }
+  
+  /* Responsive grid columns */
+  .grid-responsive {
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  /* Responsive container widths */
+  .container-responsive {
+    @apply w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl;
+  }
+  
+  /* Responsive border radius */
+  .rounded-responsive {
+    @apply rounded sm:rounded-md md:rounded-lg;
+  }
+  
+  /* Responsive shadows */
+  .shadow-responsive {
+    @apply shadow-sm sm:shadow md:shadow-lg;
+  }
+  
+  /* Tablet-specific utilities */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .tablet\:hidden {
+      display: none;
+    }
+    
+    .tablet\:block {
+      display: block;
+    }
+    
+    .tablet\:flex {
+      display: flex;
+    }
+    
+    .tablet\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
 }

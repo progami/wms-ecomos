@@ -23,11 +23,10 @@ import {
   Calendar,
   Cloud,
   Eye,
-  Upload,
   AlertTriangle,
   FileSpreadsheet,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 interface NavSection {
@@ -53,7 +52,6 @@ const baseNavigation: NavSection[] = [
       { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
       { name: 'Receive Goods', href: '/operations/receive', icon: Package },
       { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
-      { name: 'Import Attributes', href: '/operations/import-attributes', icon: Upload },
       { name: 'Pallet Variance', href: '/operations/pallet-variance', icon: AlertTriangle },
     ]
   },
@@ -61,17 +59,16 @@ const baseNavigation: NavSection[] = [
     title: 'Finance',
     items: [
       { name: 'Dashboard', href: '/finance/dashboard', icon: DollarSign },
-      { name: 'Invoices', href: '/finance/invoices', icon: FileText },
-      { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
       { name: 'Storage Ledger', href: '/finance/storage-ledger', icon: Calendar },
       { name: 'Cost Ledger', href: '/finance/cost-ledger', icon: BarChart3 },
+      { name: 'Invoices', href: '/finance/invoices', icon: FileText },
+      { name: 'Reconciliation', href: '/finance/reconciliation', icon: Calculator },
     ]
   },
   {
     title: 'Configuration',
     items: [
       { name: 'Products (SKUs)', href: '/config/products', icon: Package },
-      { name: 'Batch Attributes', href: '/config/batch-attributes', icon: Eye },
       { name: 'Locations', href: '/config/locations', icon: Building },
       { name: 'Cost Rates', href: '/config/rates', icon: DollarSign },
       { name: 'Invoice Templates', href: '/config/invoice-templates', icon: FileText },
@@ -98,6 +95,7 @@ export function MainNav() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isTabletCollapsed, setIsTabletCollapsed] = useState(false)
 
   if (!session) return null
 
@@ -110,16 +108,38 @@ export function MainNav() {
     userNavigation.push(adminOnlySection)
   }
 
+  // Get current page name for mobile header
+  const getCurrentPageName = () => {
+    for (const section of userNavigation) {
+      for (const item of section.items) {
+        if (pathname.startsWith(item.href)) {
+          return item.name
+        }
+      }
+    }
+    return 'Dashboard'
+  }
+
   return (
     <>
-      {/* Desktop Navigation */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+      {/* Desktop Navigation - responsive for tablets */}
+      <div className={cn(
+        "hidden md:fixed md:inset-y-0 md:z-50 md:flex md:flex-col transition-all duration-300",
+        isTabletCollapsed ? "md:w-16 lg:w-72" : "md:w-72"
+      )}>
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 px-6 pb-4">
-          <div className="flex h-16 shrink-0 items-center">
+          <div className="flex h-16 shrink-0 items-center justify-between">
             <Link href="/dashboard" className="flex items-center gap-2">
               <Package2 className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold">WMS</span>
+              <span className={cn("text-xl font-bold transition-all duration-300", isTabletCollapsed && "md:hidden lg:inline")}>WMS</span>
             </Link>
+            {/* Tablet collapse button */}
+            <button
+              onClick={() => setIsTabletCollapsed(!isTabletCollapsed)}
+              className="hidden md:block lg:hidden p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
           </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -128,7 +148,10 @@ export function MainNav() {
                   {userNavigation.map((section, sectionIdx) => (
                     <li key={sectionIdx}>
                       {section.title && (
-                        <div className="px-2 pb-2 text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wider">
+                        <div className={cn(
+                          "px-2 pb-2 text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wider transition-all duration-300",
+                          isTabletCollapsed && "md:hidden lg:block"
+                        )}>
                           {section.title}
                         </div>
                       )}
@@ -153,7 +176,12 @@ export function MainNav() {
                                 )}
                                 aria-hidden="true"
                               />
-                              {item.name}
+                              <span className={cn(
+                                "transition-all duration-300",
+                                isTabletCollapsed && "md:hidden lg:inline"
+                              )}>
+                                {item.name}
+                              </span>
                             </Link>
                           </li>
                         ))}
@@ -175,7 +203,12 @@ export function MainNav() {
                   className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-primary dark:text-gray-400 dark:hover:bg-gray-800 w-full"
                 >
                   <LogOut className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-primary" />
-                  Sign out
+                  <span className={cn(
+                    "transition-all duration-300",
+                    isTabletCollapsed && "md:hidden lg:inline"
+                  )}>
+                    Sign out
+                  </span>
                 </button>
               </li>
             </ul>
@@ -184,17 +217,17 @@ export function MainNav() {
       </div>
 
       {/* Mobile Navigation */}
-      <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white dark:bg-gray-900 px-4 py-4 shadow-sm sm:px-6 lg:hidden">
+      <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white dark:bg-gray-900 px-4 py-4 shadow-sm sm:px-6 md:hidden">
         <button
           type="button"
-          className="-m-2.5 p-2.5 text-gray-700 dark:text-gray-400 lg:hidden"
+          className="-m-2.5 p-2.5 text-gray-700 dark:text-gray-400"
           onClick={() => setMobileMenuOpen(true)}
         >
           <span className="sr-only">Open sidebar</span>
           <Menu className="h-6 w-6" aria-hidden="true" />
         </button>
         <div className="flex-1 text-sm font-semibold leading-6 text-gray-900 dark:text-white">
-          Dashboard
+          {getCurrentPageName()}
         </div>
       </div>
 

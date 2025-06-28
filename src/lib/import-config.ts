@@ -439,6 +439,13 @@ export const importConfigs: Record<string, ImportEntityConfig> = {
         required: false,
         transform: transformers.parseNumber,
       },
+      {
+        dbField: 'unitsPerCarton',
+        excelColumns: ['Units per Carton', 'units_per_carton', 'Units/Carton'], // Optional - Matches export name first
+        type: 'number',
+        required: false,
+        transform: transformers.parseNumber,
+      },
       
       // ========== Shipping/Transport Fields (All Optional) ==========
       {

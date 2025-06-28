@@ -174,6 +174,7 @@ function getFieldDescription(dbField: string, entityName: string): string {
       notes: 'Additional notes',
     },
     inventoryTransactions: {
+      transactionId: 'Transaction ID (leave blank for new, provide for updates - immutable fields won\'t change)',
       transactionDate: 'Date when the transaction occurred',
       pickupDate: 'Pickup date for shipments (optional)',
       isReconciled: 'Whether transaction is reconciled (true/false)',
@@ -191,6 +192,7 @@ function getFieldDescription(dbField: string, entityName: string): string {
       modeOfTransportation: 'Transportation mode (e.g., Ocean, Air, LTL, FTL)',
       storageCartonsPerPallet: 'Override cartons per pallet for storage calculations',
       shippingCartonsPerPallet: 'Override cartons per pallet for shipping calculations',
+      unitsPerCarton: 'Override units per carton (if different from SKU default)',
     },
   }
 

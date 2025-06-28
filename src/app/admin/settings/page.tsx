@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Download,
   Info,
+  FileText,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader, HelpfulTips } from '@/components/ui/page-header'
@@ -87,41 +88,40 @@ export default function AdminSettingsPage() {
 
         {/* Settings Categories */}
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Master Data & Configuration */}
+          {/* System Configuration */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Master Data & Configuration</h2>
+            <h2 className="text-xl font-semibold">System Configuration</h2>
             <div className="space-y-3">
               <SettingCard
-                title="SKU Master"
-                description="Product definitions and specifications"
-                icon={Package}
-                href="/config/products"
+                title="General Settings"
+                description="Company info, timezone, and defaults"
+                icon={SettingsIcon}
+                href="/admin/settings/general"
               />
               <SettingCard
-                title="Warehouses"
-                description="Manage warehouse locations"
-                icon={Building2}
-                href="/config/locations"
+                title="Database"
+                description="Backup, restore, and maintenance"
+                icon={Database}
+                href="/admin/settings/database"
               />
               <SettingCard
-                title="Warehouse Configurations"
-                description="Cartons per pallet settings for each SKU"
-                icon={Building2}
-                href="/config/warehouse-configs"
-                iconColor="text-purple-600"
+                title="Email Configuration"
+                description="SMTP settings and email templates"
+                icon={Bell}
+                href="/admin/settings/email"
               />
               <SettingCard
-                title="Cost Rates"
-                description="3PL pricing and rate structures"
-                icon={DollarSign}
-                href="/config/rates"
+                title="Audit Logs"
+                description="System activity and change history"
+                icon={FileText}
+                href="/admin/settings/audit"
               />
             </div>
           </div>
 
-          {/* System Settings */}
+          {/* User & Security */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">System Settings</h2>
+            <h2 className="text-xl font-semibold">User & Security</h2>
             <div className="space-y-3">
               <SettingCard
                 title="User Management"
@@ -130,28 +130,22 @@ export default function AdminSettingsPage() {
                 href="/admin/users"
               />
               <SettingCard
-                title="General Settings"
-                description="Company info, timezone, and defaults"
-                icon={SettingsIcon}
-                href="/admin/settings/general"
-              />
-              <SettingCard
-                title="Notifications"
-                description="Email alerts and notification preferences"
-                icon={Bell}
-                href="/admin/settings/notifications"
-              />
-              <SettingCard
                 title="Security"
                 description="Password policies and access controls"
                 icon={Shield}
                 href="/admin/settings/security"
               />
               <SettingCard
-                title="Database"
-                description="Backup, restore, and maintenance"
-                icon={Database}
-                href="/admin/settings/database"
+                title="API Keys"
+                description="Manage API access and integrations"
+                icon={Shield}
+                href="/admin/settings/api-keys"
+              />
+              <SettingCard
+                title="Session Management"
+                description="Active sessions and timeout settings"
+                icon={Users}
+                href="/admin/settings/sessions"
               />
             </div>
           </div>

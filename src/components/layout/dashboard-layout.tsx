@@ -5,9 +5,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <MainNav />
-      <div className="lg:pl-72">
-        <main className="py-10">
-          <div className="px-4 sm:px-6 lg:px-8">
+      <div className="md:pl-16 lg:pl-72 transition-all duration-300">
+        <main className="py-6 sm:py-8 md:py-10">
+          <div className="px-4 sm:px-6 md:px-8">
             <Breadcrumb />
             {children}
           </div>

@@ -38,6 +38,7 @@ interface FBAStockItem {
   fbaStock: number
   unitsPerCarton: number
   dailySalesVelocity: number
+  editedVelocity?: number
   daysOfStock: number
   suggestedShipmentCartons: number
   reorderPoint: number
@@ -212,6 +213,48 @@ export default function ShipmentPlanningPage() {
     }
   }
 
+  const updateVelocity = (skuCode: string, newVelocity: number) => {
+    setStockItems(prevItems => 
+      prevItems.map(item => {
+        if (item.skuCode === skuCode) {
+          const velocity = newVelocity || item.dailySalesVelocity
+          const daysOfStock = item.fbaStock > 0 && velocity > 0 
+            ? Math.floor(item.fbaStock / velocity) 
+            : 0
+          
+          // Recalculate restock metrics with new velocity
+          const restockInput: RestockCalculationInput = {
+            currentStock: item.fbaStock,
+            dailySalesVelocity: velocity,
+            leadTimeDays: 7,
+            safetyStockDays: 7,
+            unitsPerCarton: item.unitsPerCarton || 1,
+            cartonsPerPallet: SHIPMENT_PLANNING_CONFIG.DEFAULT_CARTONS_PER_PALLET,
+            targetStockDays: SHIPMENT_PLANNING_CONFIG.TARGET_DAYS_OF_STOCK
+          }
+          
+          const restockMetrics = calculateRestockMetrics(restockInput)
+          const { optimizedCartons } = optimizeShipmentQuantity(
+            restockMetrics.suggestedCartons,
+            SHIPMENT_PLANNING_CONFIG.DEFAULT_CARTONS_PER_PALLET
+          )
+          
+          return {
+            ...item,
+            editedVelocity: newVelocity,
+            dailySalesVelocity: velocity,
+            daysOfStock,
+            suggestedShipmentCartons: restockMetrics.suggestedCartons,
+            reorderPoint: restockMetrics.restockPoint,
+            optimalShipmentCartons: optimizedCartons,
+            restockMetrics
+          }
+        }
+        return item
+      })
+    )
+  }
+
   const handleCreateShipment = () => {
     if (selectedItems.size === 0) {
       toast.error('Please select at least one item to ship')
@@ -368,40 +411,6 @@ export default function ShipmentPlanningPage() {
           </div>
         )}
 
-        {/* Suggestions Panel */}
-        {suggestions.length > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-yellow-900">
-                  Replenishment Suggestions
-                </h3>
-                <div className="mt-2 space-y-2">
-                  {suggestions.slice(0, 3).map((suggestion) => (
-                    <div key={suggestion.skuCode} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getUrgencyBadge(suggestion.urgency)}`}>
-                          {suggestion.urgency}
-                        </span>
-                        <span className="text-yellow-900">
-                          {suggestion.skuCode}: {suggestion.reason}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => setSelectedItems(new Set([...selectedItems, suggestion.skuCode]))}
-                        className="text-yellow-700 hover:text-yellow-800 font-medium"
-                      >
-                        Add to shipment
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Filters */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 max-w-lg">
@@ -510,6 +519,9 @@ export default function ShipmentPlanningPage() {
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Suggested Shipment
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Recommendation
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -544,10 +556,24 @@ export default function ShipmentPlanningPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {item.fbaStock.toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {item.dailySalesVelocity}/day
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    <input
+                      type="number"
+                      value={item.editedVelocity !== undefined ? item.editedVelocity : item.dailySalesVelocity}
+                      onChange={(e) => updateVelocity(item.skuCode, parseFloat(e.target.value) || 0)}
+                      className="w-20 px-2 py-1 text-right border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                      min="0"
+                      step="0.1"
+                    />
+                    <span className="text-xs text-gray-500 ml-1">/day</span>
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right`}>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right ${
+                    item.daysOfStock <= SHIPMENT_PLANNING_CONFIG.URGENCY_LEVELS.CRITICAL 
+                      ? 'bg-red-50' 
+                      : item.daysOfStock <= SHIPMENT_PLANNING_CONFIG.URGENCY_LEVELS.HIGH 
+                      ? 'bg-orange-50'
+                      : ''
+                  }`}>
                     <div className="flex items-center justify-end gap-2">
                       <span className={`font-medium ${getStockStatusColor(item.daysOfStock)}`}>
                         {item.daysOfStock} days
@@ -571,6 +597,23 @@ export default function ShipmentPlanningPage() {
                       </div>
                     ) : (
                       <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    {item.restockMetrics?.urgencyLevel !== 'low' && (
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-gray-900">
+                          {item.restockMetrics?.recommendation}
+                        </div>
+                        {item.daysOfStock < SHIPMENT_PLANNING_CONFIG.LOW_STOCK_THRESHOLD_DAYS && (
+                          <button
+                            onClick={() => setSelectedItems(new Set([...selectedItems, item.skuCode]))}
+                            className="text-xs text-primary hover:text-primary/80 font-medium"
+                          >
+                            Add to shipment →
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>

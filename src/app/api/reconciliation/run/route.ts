@@ -8,6 +8,7 @@ import {
   getBillingPeriod,
   type BillingPeriod 
 } from '@/lib/calculations/cost-aggregation'
+import { CostCalculationService } from '@/lib/services/cost-calculation-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,14 +70,22 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Get calculated costs for the warehouse and billing period
-      const calculatedCostsSummary = await getCalculatedCostsSummary(
+      // First ensure calculated costs exist for this period
+      await CostCalculationService.calculateAndStoreCosts(
+        invoice.warehouseId,
+        billingPeriod,
+        session.user.id
+      )
+
+      // Get calculated costs from database
+      const calculatedCostsSummary = await CostCalculationService.getCalculatedCostsForReconciliation(
         invoice.warehouseId,
         billingPeriod
       )
 
       // Create reconciliation records
       const reconciliations = []
+      const reconciliationDetails = []
       const processedCosts = new Set<string>()
 
       // Match invoice line items with calculated costs
@@ -98,7 +107,10 @@ export async function POST(req: NextRequest) {
             totalDiscrepancies++
           }
 
+          const reconciliationId = `${invoice.id}-${lineItem.costCategory}-${lineItem.costName}`.replace(/\s+/g, '-')
+
           reconciliations.push({
+            id: reconciliationId,
             invoiceId: invoice.id,
             costCategory: lineItem.costCategory,
             costName: lineItem.costName,
@@ -111,12 +123,25 @@ export async function POST(req: NextRequest) {
             unitRate: matchingCost.unitRate
           })
 
+          // Create reconciliation details linking to calculated costs
+          for (const calculatedCostId of matchingCost.calculatedCostIds) {
+            reconciliationDetails.push({
+              reconciliationId,
+              calculatedCostId,
+              quantity: matchingCost.totalQuantity / matchingCost.calculatedCostIds.length,
+              amount: matchingCost.totalAmount / matchingCost.calculatedCostIds.length
+            })
+          }
+
           // Mark as processed
           processedCosts.add(`${matchingCost.costCategory}-${matchingCost.costName}`)
         } else {
           // No matching calculated cost found - this charge shouldn't exist
           const invoicedMoney = new Money(lineItem.amount);
+          const reconciliationId = `${invoice.id}-${lineItem.costCategory}-${lineItem.costName}`.replace(/\s+/g, '-')
+          
           reconciliations.push({
+            id: reconciliationId,
             invoiceId: invoice.id,
             costCategory: lineItem.costCategory,
             costName: lineItem.costName,
@@ -138,7 +163,10 @@ export async function POST(req: NextRequest) {
         const key = `${calculatedCost.costCategory}-${calculatedCost.costName}`
         if (!processedCosts.has(key) && calculatedCost.totalAmount > 0) {
           const expectedMoney = new Money(calculatedCost.totalAmount);
+          const reconciliationId = `${invoice.id}-${calculatedCost.costCategory}-${calculatedCost.costName}`.replace(/\s+/g, '-')
+          
           reconciliations.push({
+            id: reconciliationId,
             invoiceId: invoice.id,
             costCategory: calculatedCost.costCategory,
             costName: calculatedCost.costName,
@@ -150,15 +178,42 @@ export async function POST(req: NextRequest) {
             invoicedQuantity: 0,
             unitRate: calculatedCost.unitRate
           })
+
+          // Create reconciliation details
+          for (const calculatedCostId of calculatedCost.calculatedCostIds) {
+            reconciliationDetails.push({
+              reconciliationId,
+              calculatedCostId,
+              quantity: calculatedCost.totalQuantity / calculatedCost.calculatedCostIds.length,
+              amount: calculatedCost.totalAmount / calculatedCost.calculatedCostIds.length
+            })
+          }
+          
           totalDiscrepancies++
         }
       }
 
-      // Insert reconciliation records
+      // Insert reconciliation records using a transaction
       if (reconciliations.length > 0) {
-        await prisma.invoiceReconciliation.createMany({
-          data: reconciliations
+        await prisma.$transaction(async (tx) => {
+          // Create reconciliations
+          for (const reconciliation of reconciliations) {
+            await tx.invoiceReconciliation.upsert({
+              where: { id: reconciliation.id },
+              update: reconciliation,
+              create: reconciliation
+            })
+          }
+
+          // Create reconciliation details
+          if (reconciliationDetails.length > 0) {
+            await tx.reconciliationDetail.createMany({
+              data: reconciliationDetails,
+              skipDuplicates: true
+            })
+          }
         })
+        
         createdReconciliations += reconciliations.length
       }
 

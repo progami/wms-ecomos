@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { getPaginationParams, getPaginationSkipTake, createPaginatedResponse } from '@/lib/database/pagination'
 import { sanitizeSearchQuery } from '@/lib/security/input-sanitization'
+import { calculateUnits } from '@/lib/utils/unit-calculations'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
@@ -80,7 +81,8 @@ export async function GET(req: NextRequest) {
         }
         
         current.currentCartons += transaction.cartonsIn - transaction.cartonsOut
-        current.currentUnits = current.currentCartons * (transaction.sku.unitsPerCarton || 1)
+        // Use transaction-specific unitsPerCarton if available, fallback to SKU master
+        current.currentUnits = calculateUnits(current.currentCartons, transaction, transaction.sku)
         current.lastTransactionDate = transaction.transactionDate
         
         // Store pallet configuration from transaction if available
@@ -198,8 +200,39 @@ export async function GET(req: NextRequest) {
       skip,
       take
     })
+    
+    // Enhance with batch attribute data
+    const enhancedBalances = await Promise.all(balances.map(async (balance) => {
+      // Find the initial RECEIVE transaction for this batch
+      const receiveTransaction = await prisma.inventoryTransaction.findFirst({
+        where: {
+          skuId: balance.skuId,
+          batchLot: balance.batchLot,
+          warehouseId: balance.warehouseId,
+          transactionType: 'RECEIVE'
+        },
+        include: {
+          createdBy: {
+            select: {
+              fullName: true
+            }
+          }
+        },
+        orderBy: {
+          transactionDate: 'asc'
+        }
+      })
+      
+      return {
+        ...balance,
+        receiveTransaction: receiveTransaction ? {
+          createdBy: receiveTransaction.createdBy,
+          transactionDate: receiveTransaction.transactionDate
+        } : undefined
+      }
+    }))
 
-    return NextResponse.json(createPaginatedResponse(balances, total, paginationParams))
+    return NextResponse.json(createPaginatedResponse(enhancedBalances, total, paginationParams))
   } catch (error) {
     console.error('Error fetching inventory balances:', error)
     return NextResponse.json(

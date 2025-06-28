@@ -501,14 +501,17 @@ export default function DashboardPage() {
             <div className="relative">
               <button
                 onClick={() => setShowTimeRangeDropdown(!showTimeRangeDropdown)}
-                className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="flex items-center gap-2 px-2 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors min-h-[44px]"
               >
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm">{timeRanges[selectedTimeRange].label}</span>
-                <ChevronDown className="h-4 w-4" />
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-sm">
+                  <span className="sm:hidden">{selectedTimeRange === 'yearToDate' ? 'YTD' : selectedTimeRange === 'current' ? 'Current' : selectedTimeRange === 'last30' ? '30d' : selectedTimeRange === 'last90' ? '90d' : selectedTimeRange === 'lastMonth' ? 'Last Mo' : 'Last Yr'}</span>
+                  <span className="hidden sm:inline">{timeRanges[selectedTimeRange].label}</span>
+                </span>
+                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
               </button>
               {showTimeRangeDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border rounded-lg shadow-lg z-10">
+                <div className="absolute right-0 mt-2 w-40 sm:w-44 md:w-48 bg-white dark:bg-gray-800 border rounded-lg shadow-lg z-10">
                   {Object.entries(timeRanges).map(([key, range]) => (
                     <button
                       key={key}
@@ -530,23 +533,23 @@ export default function DashboardPage() {
               <>
                 <button
                   onClick={() => setAutoRefresh(!autoRefresh)}
-                  className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-all ${
+                  className={`flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 border rounded-lg transition-all min-h-[44px] ${
                     autoRefresh 
                       ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-400' 
                       : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
                 >
-                  <RefreshCw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
-                  <span className="text-sm">{autoRefresh ? 'Auto-refreshing' : 'Auto-refresh'}</span>
+                  <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${autoRefresh ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline text-xs sm:text-sm">{autoRefresh ? 'Auto-refreshing' : 'Auto-refresh'}</span>
                 </button>
                 
                 {/* Manual Refresh */}
                 <button
                   onClick={() => fetchDashboardStats()}
                   disabled={loadingStats}
-                  className="p-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  className="p-2 sm:p-2.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px]"
                 >
-                  <RefreshCw className={`h-4 w-4 ${loadingStats ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${loadingStats ? 'animate-spin' : ''}`} />
                 </button>
               </>
             )}
@@ -557,7 +560,7 @@ export default function DashboardPage() {
         {!useDemoData && <QuickStartGuide userRole={session.user.role} />}
 
         {/* Enhanced Stats Cards with Sparklines */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <EnhancedDashboardCard
             title="Total Inventory"
             value={stats?.totalInventory.toLocaleString() || '--'}
@@ -646,7 +649,7 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold">Total Inventory Levels</h3>
                 <p className="text-sm text-muted-foreground">Daily inventory snapshots (cartons)</p>
               </div>
-              <div style={{ width: '100%', height: 300 }}>
+              <div className="h-64 sm:h-72 md:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={useDemoData ? dummyData.inventoryTrend : (chartData?.inventoryTrend || [])} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
@@ -713,7 +716,8 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={300}>
+              <div className="h-64 sm:h-72 md:h-80">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={
                   storageCostView === 'weekly' 
                     ? (useDemoData ? dummyData.costTrend : (chartData?.costTrend || []))
@@ -735,6 +739,7 @@ export default function DashboardPage() {
                     />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
             </div>
 
             {/* Warehouse Distribution */}
@@ -790,7 +795,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : (
-                <div className="h-[300px] flex items-center justify-center">
+                <div className="h-64 sm:h-72 md:h-80 flex items-center justify-center">
                   <p className="text-sm text-muted-foreground">No warehouse distribution data</p>
                 </div>
               )}
@@ -1041,9 +1046,9 @@ function EnhancedDashboardCard({
                 trendUp ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
               }`}>
                 {trendUp ? (
-                  <TrendingUp className="h-3 w-3 text-green-600 dark:text-green-400" />
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 dark:text-green-400" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />
+                  <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-600 dark:text-red-400" />
                 )}
               </div>
             )}
@@ -1073,8 +1078,8 @@ function EnhancedDashboardCard({
             </div>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses]} group-hover:scale-110 transition-transform`}>
-          <Icon className="h-6 w-6" />
+        <div className={`p-2 sm:p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses]} group-hover:scale-110 transition-transform`}>
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
         </div>
       </div>
     </div>

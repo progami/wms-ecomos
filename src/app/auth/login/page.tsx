@@ -18,6 +18,33 @@ export default function LoginPage() {
     password: '',
   })
   
+  // Prevent autofill on mount
+  useEffect(() => {
+    // Clear any autofilled values and set readonly initially
+    const timer = setTimeout(() => {
+      const emailInput = document.getElementById('emailOrUsername') as HTMLInputElement
+      const passwordInput = document.getElementById('password') as HTMLInputElement
+      
+      if (emailInput && passwordInput) {
+        // Force clear autofilled values
+        if (emailInput.value && !formData.emailOrUsername) {
+          emailInput.value = ''
+        }
+        if (passwordInput.value && !formData.password) {
+          passwordInput.value = ''
+        }
+        
+        // Remove readonly attribute after a delay
+        setTimeout(() => {
+          emailInput.removeAttribute('readonly')
+          passwordInput.removeAttribute('readonly')
+        }, 500)
+      }
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [])
+  
   // Removed auto-fill on mount to allow buttons to work properly
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,7 +168,11 @@ export default function LoginPage() {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} name="wms-login-form" autoComplete="off">
+          {/* Hidden inputs to prevent autofill */}
+          <input type="text" name="fake-username" style={{ display: 'none' }} />
+          <input type="password" name="fake-password" style={{ display: 'none' }} />
+          
           {/* Quick fill buttons */}
           <div className="space-y-2">
             <div className="text-xs text-gray-500 dark:text-gray-400 text-center">Quick fill credentials:</div>
@@ -158,14 +189,14 @@ export default function LoginPage() {
                 onClick={() => setFormData({ emailOrUsername: 'hashar', password: 'StaffAccess2024!' })}
                 className="text-xs py-1 px-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800"
               >
-                Finance Staff
+                Hashar (Finance)
               </button>
               <button
                 type="button"
                 onClick={() => setFormData({ emailOrUsername: 'umair', password: 'StaffAccess2024!' })}
                 className="text-xs py-1 px-2 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800"
               >
-                Operations Staff
+                Umair (Operations)
               </button>
             </div>
           </div>
@@ -177,9 +208,14 @@ export default function LoginPage() {
               </label>
               <input
                 id="emailOrUsername"
-                name="emailOrUsername"
+                name="wms-username"
                 type="text"
-                autoComplete="username email"
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                readOnly
+                onFocus={(e) => e.target.removeAttribute('readonly')}
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 placeholder="Email or Username"
@@ -195,9 +231,11 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
-                name="password"
+                name="wms-password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
+                readOnly
+                onFocus={(e) => e.target.removeAttribute('readonly')}
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 placeholder="Password"

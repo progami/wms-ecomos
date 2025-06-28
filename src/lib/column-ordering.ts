@@ -20,6 +20,17 @@ export interface ColumnDefinition {
 
 // Standardized column ordering for Inventory Transactions
 export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
+  // Transaction Identifier
+  {
+    fieldName: 'transactionId',
+    displayName: 'Transaction ID',
+    exportName: 'Transaction ID',
+    group: 'metadata',
+    order: 0,
+    showInUI: true,
+    showInExport: true
+  },
+  
   // Date/Time Group
   {
     fieldName: 'transactionDate',
@@ -170,6 +181,15 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     showInUI: false,
     showInExport: true
   },
+  {
+    fieldName: 'unitsPerCarton',
+    displayName: 'Units/Carton',
+    exportName: 'Units per Carton',
+    group: 'quantity',
+    order: 16,
+    showInUI: false,
+    showInExport: true
+  },
 
   // Shipping/Transport Group
   {
@@ -177,7 +197,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Tracking Number',
     exportName: 'Tracking Number',
     group: 'shipping',
-    order: 16,
+    order: 17,
     showInUI: true,
     showInExport: true
   },
@@ -186,7 +206,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Ship Name',
     exportName: 'Ship Name',
     group: 'shipping',
-    order: 17,
+    order: 18,
     showInUI: false,
     showInExport: true
   },
@@ -195,7 +215,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Mode of Transport',
     exportName: 'Mode of Transportation',
     group: 'shipping',
-    order: 18,
+    order: 19,
     showInUI: false,
     showInExport: true
   },
@@ -206,7 +226,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has Commercial Invoice',
     exportName: 'Has Commercial Invoice',
     group: 'metadata',
-    order: 19,
+    order: 20,
     showInUI: false,
     showInExport: true
   },
@@ -215,7 +235,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has Bill of Lading',
     exportName: 'Has Bill of Lading',
     group: 'metadata',
-    order: 20,
+    order: 21,
     showInUI: false,
     showInExport: true
   },
@@ -224,7 +244,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has Packing List',
     exportName: 'Has Packing List',
     group: 'metadata',
-    order: 21,
+    order: 22,
     showInUI: false,
     showInExport: true
   },
@@ -233,7 +253,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has Delivery Note',
     exportName: 'Has Delivery Note',
     group: 'metadata',
-    order: 22,
+    order: 23,
     showInUI: false,
     showInExport: true
   },
@@ -242,7 +262,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has Cube Master',
     exportName: 'Has Cube Master',
     group: 'metadata',
-    order: 23,
+    order: 24,
     showInUI: false,
     showInExport: true
   },
@@ -251,7 +271,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has TC GRS',
     exportName: 'Has Transaction Certificate (TC GRS)',
     group: 'metadata',
-    order: 24,
+    order: 25,
     showInUI: false,
     showInExport: true
   },
@@ -260,7 +280,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has CDS',
     exportName: 'Has Custom Declaration (CDS)',
     group: 'metadata',
-    order: 25,
+    order: 26,
     showInUI: false,
     showInExport: true
   },
@@ -269,7 +289,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Has Proof of Pickup',
     exportName: 'Has Proof of Pickup',
     group: 'metadata',
-    order: 26,
+    order: 27,
     showInUI: false,
     showInExport: true
   },
@@ -280,7 +300,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Created By',
     exportName: 'Created By',
     group: 'metadata',
-    order: 27,
+    order: 28,
     showInUI: true,
     showInExport: true,
     isRelation: true,
@@ -291,7 +311,7 @@ export const INVENTORY_TRANSACTION_COLUMNS: ColumnDefinition[] = [
     displayName: 'Created At',
     exportName: 'Created At',
     group: 'metadata',
-    order: 28,
+    order: 29,
     showInUI: false,
     showInExport: true
   }
@@ -408,11 +428,33 @@ export const INVENTORY_BALANCE_COLUMNS: ColumnDefinition[] = [
     showInExport: true
   },
   {
+    fieldName: 'unitsPerCarton',
+    displayName: 'Units/Carton',
+    exportName: 'Units per Carton',
+    group: 'quantity',
+    order: 10,
+    showInUI: true,
+    showInExport: true,
+    isRelation: true,
+    relationPath: 'sku.unitsPerCarton'
+  },
+  {
+    fieldName: 'receivedBy',
+    displayName: 'Received By',
+    exportName: 'Received By',
+    group: 'metadata',
+    order: 11,
+    showInUI: true,
+    showInExport: true,
+    isRelation: true,
+    relationPath: 'receiveTransaction.createdBy.fullName'
+  },
+  {
     fieldName: 'lastTransactionDate',
     displayName: 'Last Activity',
     exportName: 'Last Activity',
     group: 'datetime',
-    order: 10,
+    order: 12,
     showInUI: true,
     showInExport: true
   }

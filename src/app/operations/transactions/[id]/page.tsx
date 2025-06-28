@@ -696,7 +696,7 @@ export default function TransactionDetailPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Units/Carton <span className="text-xs text-gray-500">(From SKU)</span>
+                Units/Carton <span className="text-xs text-gray-500">{transaction?.unitsPerCarton ? '(Transaction-specific)' : '(From SKU)'}</span>
               </label>
               <input
                 type="number"

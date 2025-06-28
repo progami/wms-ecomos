@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useClientLogger } from '@/hooks/useClientLogger'
-import { Search, Filter, Download, Package2, Calendar, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3, X, Info } from 'lucide-react'
+import { Search, Filter, Download, Package2, Calendar, AlertCircle, BookOpen, Package, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, BarChart3, X, Info, ChevronDown, ChevronRight } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -13,7 +13,6 @@ import { LedgerInfoTooltip } from '@/components/ui/ledger-info-tooltip'
 import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/lib/utils'
 import { InventoryTabs } from '@/components/operations/inventory-tabs'
-import { IncompleteTransactionsAlert } from '@/components/operations/incomplete-transactions-alert'
 import { Tooltip } from '@/components/ui/tooltip'
 import { ImportButton } from '@/components/ui/import-button'
 import { getUIColumns, getBalanceUIColumns } from '@/lib/column-ordering'
@@ -21,7 +20,7 @@ import { getUIColumns, getBalanceUIColumns } from '@/lib/column-ordering'
 interface InventoryBalance {
   id: string
   warehouse: { id: string; name: string }
-  sku: { id: string; skuCode: string; description: string }
+  sku: { id: string; skuCode: string; description: string; unitsPerCarton: number }
   batchLot: string
   currentCartons: number
   currentPallets: number
@@ -29,6 +28,10 @@ interface InventoryBalance {
   storageCartonsPerPallet: number | null
   shippingCartonsPerPallet: number | null
   lastTransactionDate: string | null
+  receiveTransaction?: {
+    createdBy: { fullName: string }
+    transactionDate: string
+  }
 }
 
 interface Transaction {
@@ -55,6 +58,7 @@ interface Transaction {
   createdBy: { id: string; fullName: string }
   createdAt: string
   runningBalance?: number
+  unitsPerCarton?: number | null
 }
 
 export default function UnifiedInventoryPage() {
@@ -63,6 +67,8 @@ export default function UnifiedInventoryPage() {
   const { logAction, logPerformance, logError } = useClientLogger()
   const [activeTab, setActiveTab] = useState<'balances' | 'transactions'>('transactions')
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc') // Default: latest first
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [balanceView, setBalanceView] = useState<'sku' | 'batch'>('batch') // Toggle between SKU and Batch view
   
   
   
@@ -265,19 +271,100 @@ export default function UnifiedInventoryPage() {
     }
   }, [activeTab, hasInitialized, fetchData])
 
+  // Aggregate inventory by SKU globally
+  const inventoryBySku = useMemo(() => {
+    if (!Array.isArray(inventoryData)) return []
+    
+    const skuMap = new Map<string, any>()
+    
+    inventoryData.forEach(item => {
+      const key = item.sku.skuCode
+      const existing = skuMap.get(key)
+      
+      if (existing) {
+        existing.currentCartons += item.currentCartons
+        existing.currentPallets += item.currentPallets
+        existing.currentUnits += item.currentUnits
+        existing.batchCount += 1
+        
+        // Track warehouse breakdown
+        const warehouseKey = item.warehouse.id
+        if (existing.warehouseBreakdown[warehouseKey]) {
+          existing.warehouseBreakdown[warehouseKey].currentCartons += item.currentCartons
+          existing.warehouseBreakdown[warehouseKey].currentPallets += item.currentPallets
+          existing.warehouseBreakdown[warehouseKey].currentUnits += item.currentUnits
+          existing.warehouseBreakdown[warehouseKey].batchCount += 1
+        } else {
+          existing.warehouseBreakdown[warehouseKey] = {
+            warehouse: item.warehouse,
+            currentCartons: item.currentCartons,
+            currentPallets: item.currentPallets,
+            currentUnits: item.currentUnits,
+            batchCount: 1
+          }
+        }
+        
+        existing.warehouseCount = Object.keys(existing.warehouseBreakdown).length
+        existing.lastTransactionDate = !existing.lastTransactionDate || 
+          (item.lastTransactionDate && new Date(item.lastTransactionDate) > new Date(existing.lastTransactionDate))
+          ? item.lastTransactionDate
+          : existing.lastTransactionDate
+      } else {
+        skuMap.set(key, {
+          id: key,
+          sku: item.sku,
+          currentCartons: item.currentCartons,
+          currentPallets: item.currentPallets,
+          currentUnits: item.currentUnits,
+          batchCount: 1,
+          warehouseCount: 1,
+          warehouseBreakdown: {
+            [item.warehouse.id]: {
+              warehouse: item.warehouse,
+              currentCartons: item.currentCartons,
+              currentPallets: item.currentPallets,
+              currentUnits: item.currentUnits,
+              batchCount: 1
+            }
+          },
+          lastTransactionDate: item.lastTransactionDate
+        })
+      }
+    })
+    
+    return Array.from(skuMap.values())
+  }, [inventoryData])
+  
   // Filter inventory data
-  const filteredInventory = Array.isArray(inventoryData) ? inventoryData.filter(item => {
+  const baseInventory = balanceView === 'sku' ? inventoryBySku : inventoryData
+  const filteredInventory = Array.isArray(baseInventory) ? baseInventory.filter(item => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      if (!item.sku.skuCode.toLowerCase().includes(query) &&
-          !item.sku.description.toLowerCase().includes(query) &&
-          !item.batchLot.toLowerCase().includes(query) &&
-          !item.warehouse.name.toLowerCase().includes(query)) {
-        return false
+      if (balanceView === 'sku') {
+        // For SKU view, don't search by batch or warehouse name
+        if (!item.sku.skuCode.toLowerCase().includes(query) &&
+            !item.sku.description.toLowerCase().includes(query)) {
+          return false
+        }
+      } else {
+        // For batch view, search all fields
+        if (!item.sku.skuCode.toLowerCase().includes(query) &&
+            !item.sku.description.toLowerCase().includes(query) &&
+            !item.batchLot.toLowerCase().includes(query) &&
+            !item.warehouse.name.toLowerCase().includes(query)) {
+          return false
+        }
       }
     }
 
-    if (filters.warehouse && item.warehouse.id !== filters.warehouse) return false
+    // In SKU view, warehouse filter shows SKUs that have inventory in that warehouse
+    if (filters.warehouse) {
+      if (balanceView === 'sku') {
+        if (!item.warehouseBreakdown || !item.warehouseBreakdown[filters.warehouse]) return false
+      } else {
+        if (item.warehouse.id !== filters.warehouse) return false
+      }
+    }
     if (filters.minCartons && item.currentCartons < Number.parseInt(filters.minCartons)) return false
     if (filters.maxCartons && item.currentCartons > Number.parseInt(filters.maxCartons)) return false
     if (filters.showLowStock && (item.currentCartons >= 10 || item.currentCartons === 0)) return false
@@ -369,29 +456,42 @@ export default function UnifiedInventoryPage() {
   // Check if transaction has missing required attributes
   const getMissingAttributes = (transaction: Transaction) => {
     const missing: string[] = []
+    const attachments = transaction.attachments || {}
     
-    if (transaction.transactionType === 'SHIP') {
-      // Check if mode of transport is missing
-      if (!transaction.modeOfTransportation) {
-        missing.push('Mode of Transport')
-      }
-      
-      // If no tracking number but it might be an Amazon shipment
-      if (!transaction.trackingNumber && transaction.referenceId?.includes('FBA')) {
-        missing.push('FBA Tracking Number')
-      }
-    }
-    
+    // Check for missing documents based on transaction type
     if (transaction.transactionType === 'RECEIVE') {
-      // Check for ship name in reference but not in field
+      // Check documents
+      if (!attachments.packingList && !attachments.packing_list) missing.push('Packing List')
+      if (!attachments.commercialInvoice && !attachments.commercial_invoice) missing.push('Commercial Invoice')
+      if (!attachments.billOfLading && !attachments.bill_of_lading) missing.push('Bill of Lading')
+      if (!attachments.deliveryNote && !attachments.delivery_note) missing.push('Delivery Note')
+      
+      // Check fields
       if (!transaction.shipName && (transaction.referenceId?.includes('OOCL') || transaction.referenceId?.includes('MSC'))) {
         missing.push('Ship Name')
       }
-      
-      // Container number is often missing
       if (!transaction.trackingNumber) {
         missing.push('Tracking #')
       }
+    }
+    
+    if (transaction.transactionType === 'SHIP') {
+      // Check documents
+      if (!attachments.packingList && !attachments.packing_list) missing.push('Packing List')
+      if (!attachments.deliveryNote && !attachments.delivery_note) missing.push('Delivery Note')
+      
+      // Check fields
+      if (!transaction.modeOfTransportation) {
+        missing.push('Mode of Transport')
+      }
+      if (!transaction.trackingNumber && transaction.referenceId?.includes('FBA')) {
+        missing.push('FBA Tracking #')
+      }
+    }
+    
+    if (transaction.transactionType === 'ADJUST_IN' || transaction.transactionType === 'ADJUST_OUT') {
+      // Check for proof of adjustment
+      if (!attachments.proofOfPickup && !attachments.proof_of_pickup) missing.push('Proof Document')
     }
     
     return missing
@@ -539,9 +639,6 @@ export default function UnifiedInventoryPage() {
           }
         />
 
-        {/* Incomplete Transactions Alert */}
-        <IncompleteTransactionsAlert />
-
         {/* Tab Navigation */}
         <InventoryTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
@@ -563,22 +660,48 @@ export default function UnifiedInventoryPage() {
                 />
               </div>
             </div>
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setShowFilters(!showFilters)
-              }}
-              className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
-                showFilters 
-                  ? 'border-primary bg-primary text-white' 
-                  : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-              }`}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters {Object.values(filters).some(v => v) && '•'}
-            </button>
+            <div className="flex items-center gap-2">
+              {activeTab === 'balances' && (
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setBalanceView('sku')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                      balanceView === 'sku'
+                        ? 'bg-green-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    By SKU
+                  </button>
+                  <button
+                    onClick={() => setBalanceView('batch')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                      balanceView === 'batch'
+                        ? 'bg-green-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    By Batch
+                  </button>
+                </div>
+              )}
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowFilters(!showFilters)
+                }}
+                className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
+                  showFilters 
+                    ? 'border-primary bg-primary text-white' 
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                }`}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters {Object.values(filters).some(v => v) && '•'}
+              </button>
+            </div>
           </div>
 
           {/* Advanced Filters Panel */}
@@ -748,7 +871,7 @@ export default function UnifiedInventoryPage() {
                 title="Total Pallets"
                 value={totalPallets.toString()}
                 icon={Package2}
-                subtitle="Active storage"
+                subtitle={`${filteredInventory.filter(b => b.storageCartonsPerPallet).length} with batch config`}
               />
               <SummaryCard
                 title="Low Stock Items"
@@ -762,29 +885,72 @@ export default function UnifiedInventoryPage() {
             {/* Inventory Balance Table */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-6 py-3 border-b">
-                <h3 className="text-lg font-semibold">Inventory Balance Details</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Current stock levels by Warehouse, SKU, and Batch/Lot
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Inventory Balance Details</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {balanceView === 'sku' 
+                        ? 'Global stock levels by SKU with expandable warehouse breakdown'
+                        : 'Current stock levels with batch-specific packaging configurations'
+                      }
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Package2 className="h-4 w-4" />
+                    <span>
+                      {balanceView === 'sku' 
+                        ? `${filteredInventory.length} SKUs`
+                        : 'Batch attributes integrated'
+                      }
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    {getBalanceUIColumns().map((column) => (
-                      <th 
-                        key={column.fieldName}
-                        className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                          column.fieldName === 'currentCartons' || column.fieldName === 'currentPallets' || column.fieldName === 'currentUnits'
-                            ? 'text-right'
-                            : column.fieldName === 'storageCartonsPerPallet' || column.fieldName === 'shippingCartonsPerPallet'
-                            ? 'text-center'
-                            : 'text-left'
-                        }`}
-                      >
-                        {column.displayName}
-                      </th>
-                    ))}
+                    {getBalanceUIColumns()
+                      .filter(column => {
+                        // Filter out batch-specific columns in SKU view
+                        if (balanceView === 'sku') {
+                          return !['batchLot', 'receivedBy', 'warehouse'].includes(column.fieldName)
+                        }
+                        return true
+                      })
+                      .map((column) => {
+                      // Add tooltip for pallet config columns
+                      const isPalletConfig = column.fieldName === 'storageCartonsPerPallet' || column.fieldName === 'shippingCartonsPerPallet'
+                      
+                      return (
+                        <th 
+                          key={column.fieldName}
+                          className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                            column.fieldName === 'currentCartons' || column.fieldName === 'currentPallets' || column.fieldName === 'currentUnits'
+                              ? 'text-right'
+                              : column.fieldName === 'storageCartonsPerPallet' || column.fieldName === 'shippingCartonsPerPallet'
+                              ? 'text-center'
+                              : 'text-left'
+                          }`}
+                        >
+                          <div className={`flex items-center gap-1 ${
+                            column.fieldName === 'currentCartons' || column.fieldName === 'currentPallets' || column.fieldName === 'currentUnits'
+                              ? 'justify-end'
+                              : column.fieldName === 'storageCartonsPerPallet' || column.fieldName === 'shippingCartonsPerPallet'
+                              ? 'justify-center'
+                              : ''
+                          }`}>
+                            {column.displayName}
+                            {isPalletConfig && (
+                              <Tooltip 
+                                content="Batch-specific pallet configuration. These values determine how cartons are palletized for this specific batch."
+                                iconSize="sm"
+                              />
+                            )}
+                          </div>
+                        </th>
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -792,38 +958,93 @@ export default function UnifiedInventoryPage() {
                     const isLowStock = balance.currentCartons < 10 && balance.currentCartons > 0
                     const isZeroStock = balance.currentCartons === 0
                     
+                    const isExpanded = expandedRows.has(balance.id)
+                    const isSKUView = balanceView === 'sku'
+                    
                     return (
-                      <tr key={balance.id} className={`hover:bg-gray-50 transition-colors ${
-                        isZeroStock ? 'bg-red-50' : isLowStock ? 'bg-orange-50' : ''
-                      }`}>
-                        {getBalanceUIColumns().map((column) => {
+                      <React.Fragment key={balance.id}>
+                      <tr 
+                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                          isZeroStock ? 'bg-red-50' : isLowStock ? 'bg-orange-50' : ''
+                        }`}
+                        onClick={() => {
+                          const newExpanded = new Set(expandedRows)
+                          if (isExpanded) {
+                            newExpanded.delete(balance.id)
+                          } else {
+                            newExpanded.add(balance.id)
+                          }
+                          setExpandedRows(newExpanded)
+                        }}
+                      >
+                        {getBalanceUIColumns()
+                          .filter(column => {
+                            if (balanceView === 'sku') {
+                              return !['batchLot', 'receivedBy', 'warehouse'].includes(column.fieldName)
+                            }
+                            return true
+                          })
+                          .map((column) => {
                           const renderCell = () => {
                             switch (column.fieldName) {
                               case 'warehouse':
                                 return (
                                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {balance.warehouse.name}
+                                    <div className="flex items-center gap-2">
+                                      {!isSKUView && (
+                                        isExpanded ? (
+                                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                                        )
+                                      )}
+                                      {balance.warehouse.name}
+                                    </div>
                                   </td>
                                 )
                               
                               case 'sku':
                                 return (
                                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {balance.sku.skuCode}
+                                    <div className="flex items-center gap-2">
+                                      {isSKUView && (
+                                        isExpanded ? (
+                                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                                        )
+                                      )}
+                                      {balance.sku.skuCode}
+                                    </div>
                                   </td>
                                 )
                               
                               case 'skuDescription':
                                 return (
                                   <td className="px-6 py-4 text-sm text-gray-500">
-                                    {balance.sku.description}
+                                    <div>
+                                      {balance.sku.description}
+                                      {isSKUView && (
+                                        <div className="text-xs text-gray-400 mt-1">
+                                          {balance.batchCount} {balance.batchCount === 1 ? 'batch' : 'batches'} • 
+                                          {balance.warehouseCount} {balance.warehouseCount === 1 ? 'warehouse' : 'warehouses'}
+                                        </div>
+                                      )}
+                                    </div>
                                   </td>
                                 )
                               
                               case 'batchLot':
                                 return (
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {balance.batchLot}
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-gray-900 font-medium">{balance.batchLot}</span>
+                                      {(balance.storageCartonsPerPallet || balance.shippingCartonsPerPallet) && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800" title="Has batch-specific pallet configuration">
+                                          <Package2 className="h-3 w-3" />
+                                        </span>
+                                      )}
+                                    </div>
                                   </td>
                                 )
                               
@@ -853,30 +1074,32 @@ export default function UnifiedInventoryPage() {
                               case 'storageCartonsPerPallet':
                                 return (
                                   <td className="px-6 py-4 text-center">
-                                    <div className="text-xs text-gray-600">
-                                      {balance.storageCartonsPerPallet ? (
-                                        <div title="Storage cartons per pallet">
-                                          S: {balance.storageCartonsPerPallet}
-                                        </div>
-                                      ) : (
-                                        <span className="text-gray-400">-</span>
-                                      )}
-                                    </div>
+                                    {balance.storageCartonsPerPallet ? (
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-sm font-medium text-gray-900">
+                                          {balance.storageCartonsPerPallet}
+                                        </span>
+                                        <span className="text-xs text-gray-500">storage</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
                                   </td>
                                 )
                               
                               case 'shippingCartonsPerPallet':
                                 return (
                                   <td className="px-6 py-4 text-center">
-                                    <div className="text-xs text-gray-600">
-                                      {balance.shippingCartonsPerPallet ? (
-                                        <div title="Shipping cartons per pallet">
-                                          P: {balance.shippingCartonsPerPallet}
-                                        </div>
-                                      ) : (
-                                        <span className="text-gray-400">-</span>
-                                      )}
-                                    </div>
+                                    {balance.shippingCartonsPerPallet ? (
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-sm font-medium text-gray-900">
+                                          {balance.shippingCartonsPerPallet}
+                                        </span>
+                                        <span className="text-xs text-gray-500">shipping</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
                                   </td>
                                 )
                               
@@ -891,6 +1114,22 @@ export default function UnifiedInventoryPage() {
                                 return (
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                                     {balance.currentUnits.toLocaleString()}
+                                  </td>
+                                )
+                              
+                              case 'unitsPerCarton':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      {balance.sku.unitsPerCarton}
+                                    </span>
+                                  </td>
+                                )
+                              
+                              case 'receivedBy':
+                                return (
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {balance.receiveTransaction?.createdBy?.fullName || '-'}
                                   </td>
                                 )
                               
@@ -916,11 +1155,93 @@ export default function UnifiedInventoryPage() {
                           return <React.Fragment key={column.fieldName}>{renderCell()}</React.Fragment>
                         })}
                       </tr>
+                      {isExpanded && (
+                        <tr className="bg-gray-50">
+                          <td colSpan={getBalanceUIColumns().filter(col => 
+                            balanceView === 'sku' ? !['batchLot', 'receivedBy', 'warehouse'].includes(col.fieldName) : true
+                          ).length} className="px-6 py-4">
+                            {isSKUView ? (
+                              // SKU View: Show warehouse breakdown
+                              <div className="space-y-3">
+                                <div className="text-sm font-medium text-gray-700 mb-2">Warehouse Breakdown</div>
+                                <div className="grid gap-2">
+                                  {Object.values(balance.warehouseBreakdown || {}).map((wh: any) => (
+                                    <div key={wh.warehouse.id} className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                                      <div className="flex items-center gap-4">
+                                        <div>
+                                          <div className="font-medium text-gray-900">{wh.warehouse.name}</div>
+                                          <div className="text-xs text-gray-500">
+                                            {wh.batchCount} {wh.batchCount === 1 ? 'batch' : 'batches'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-6 text-sm">
+                                        <div className="text-right">
+                                          <div className="font-medium">{wh.currentCartons.toLocaleString()}</div>
+                                          <div className="text-xs text-gray-500">cartons</div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-medium">{wh.currentPallets}</div>
+                                          <div className="text-xs text-gray-500">pallets</div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-medium">{wh.currentUnits.toLocaleString()}</div>
+                                          <div className="text-xs text-gray-500">units</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              // Batch View: Show batch details
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <p className="text-gray-500">Batch Created</p>
+                                  <p className="font-medium">
+                                    {balance.receiveTransaction?.transactionDate
+                                      ? new Date(balance.receiveTransaction.transactionDate).toLocaleDateString('en-US', {
+                                          timeZone: 'America/Chicago',
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric'
+                                        })
+                                      : 'Unknown'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Received By</p>
+                                  <p className="font-medium">{balance.receiveTransaction?.createdBy?.fullName || 'Unknown'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Pallet Configuration</p>
+                                  <p className="font-medium">
+                                    Storage: {balance.storageCartonsPerPallet || 'Default'} cartons/pallet
+                                    <br />
+                                    Shipping: {balance.shippingCartonsPerPallet || 'Default'} cartons/pallet
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Total Value</p>
+                                  <p className="font-medium">
+                                    {balance.currentUnits.toLocaleString()} units total
+                                    <br />
+                                    ({balance.sku.unitsPerCarton} units/carton)
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     )
                   })}
                   {filteredInventory.length === 0 && (
                     <tr>
-                      <td colSpan={getBalanceUIColumns().length} className="px-6 py-12">
+                      <td colSpan={getBalanceUIColumns().filter(col => 
+                        balanceView === 'sku' ? !['batchLot', 'receivedBy', 'warehouse'].includes(col.fieldName) : true
+                      ).length} className="px-6 py-12">
                         <EmptyState
                           icon={Package2}
                           title={searchQuery || Object.values(filters).some(v => v) 
@@ -966,13 +1287,13 @@ export default function UnifiedInventoryPage() {
                   {filteredAndSortedTransactions.filter(t => t.transactionType.startsWith('ADJUST')).length.toLocaleString()}
                 </p>
               </div>
-              <div className="border rounded-lg p-4 bg-yellow-50">
-                <p className="text-sm text-yellow-800">Incomplete</p>
+              <div className="border rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Unreconciled</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {filteredAndSortedTransactions.filter(t => getMissingAttributes(t).length > 0).length.toLocaleString()}
+                  {filteredAndSortedTransactions.filter(t => !t.isReconciled).length.toLocaleString()}
                 </p>
-                <p className="text-xs text-yellow-700 mt-1">
-                  {Math.round((filteredAndSortedTransactions.filter(t => getMissingAttributes(t).length > 0).length / filteredAndSortedTransactions.length) * 100)}% need attention
+                <p className="text-xs text-gray-600 mt-1">
+                  Highlighted in yellow
                 </p>
               </div>
             </div>
@@ -1030,6 +1351,15 @@ export default function UnifiedInventoryPage() {
                           )}
                         </th>
                       ))}
+                      <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          Missing
+                          <Tooltip 
+                            content="Number of missing documents or required fields" 
+                            iconSize="sm"
+                          />
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -1040,7 +1370,7 @@ export default function UnifiedInventoryPage() {
                       return (
                       <tr 
                         key={transaction.id} 
-                        className={`hover:bg-gray-50 cursor-pointer ${isIncomplete ? 'border-l-4 border-l-yellow-400' : ''}`}
+                        className={`hover:bg-gray-50 cursor-pointer ${!transaction.isReconciled ? 'bg-yellow-50' : ''}`}
                         onClick={() => router.push(`/operations/transactions/${transaction.id}`)}>
                         {getUIColumns().map((column) => {
                           // Helper function to render cell content based on field
@@ -1144,16 +1474,9 @@ export default function UnifiedInventoryPage() {
                               case 'trackingNumber':
                                 return (
                                   <td className="px-4 py-3 text-sm text-gray-500">
-                                    <div className="flex items-center gap-1">
-                                      {isIncomplete && (
-                                        <Tooltip content={`Missing: ${missingAttributes.join(', ')}`}>
-                                          <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                                        </Tooltip>
-                                      )}
-                                      <span className="truncate max-w-[120px]" title={transaction.trackingNumber || ''}>
-                                        {transaction.trackingNumber || '-'}
-                                      </span>
-                                    </div>
+                                    <span className="truncate max-w-[120px]" title={transaction.trackingNumber || ''}>
+                                      {transaction.trackingNumber || '-'}
+                                    </span>
                                   </td>
                                 )
                               
@@ -1171,12 +1494,34 @@ export default function UnifiedInventoryPage() {
                           
                           return <React.Fragment key={column.fieldName}>{renderCell()}</React.Fragment>
                         })}
+                        <td className="px-4 py-3 text-sm text-center">
+                          {missingAttributes.length > 0 ? (
+                            <div className="flex items-center justify-center">
+                              <Tooltip 
+                                content={
+                                  <div className="space-y-1">
+                                    <div className="font-semibold">Missing items:</div>
+                                    {missingAttributes.map((item, idx) => (
+                                      <div key={idx} className="text-xs">• {item}</div>
+                                    ))}
+                                  </div>
+                                }
+                              >
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  {missingAttributes.length}
+                                </span>
+                              </Tooltip>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
                       </tr>
                       )
                     })}
                     {filteredAndSortedTransactions.length === 0 && (
                       <tr>
-                        <td colSpan={getUIColumns().length} className="px-6 py-12">
+                        <td colSpan={getUIColumns().length + 1} className="px-6 py-12">
                           <EmptyState
                             icon={Calendar}
                             title="No transactions found"

@@ -628,7 +628,7 @@ export default function WarehouseReceivePage() {
                   <div className="flex items-center gap-1">
                     Tracking Number
                     <Tooltip 
-                      content="Container number for ocean/ground shipments" 
+                      content="Container number (e.g., MSKU1234567)" 
                       iconSize="sm"
                     />
                   </div>
@@ -638,7 +638,7 @@ export default function WarehouseReceivePage() {
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="e.g., MSKU1234567 or FBA15FK7K9TS"
+                  placeholder="e.g., MSKU1234567"
                 />
               </div>
             </div>

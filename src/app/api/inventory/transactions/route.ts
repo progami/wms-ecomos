@@ -30,6 +30,7 @@ const transactionSchema = z.object({
   trackingNumber: z.string().optional(),
   modeOfTransportation: z.string().optional(),
   attachments: z.any().optional(),
+  unitsPerCarton: z.number().int().positive().optional(),
 });
 
 export async function POST(request: NextRequest) {

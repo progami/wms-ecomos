@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { calculateUnits } from '@/lib/utils/unit-calculations'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -78,24 +79,31 @@ export async function GET() {
       // Get warehouse balances (non-Amazon)
       const skuBalances = inventoryBalances.filter(balance => balance.skuId === sku.id)
       
-      // Calculate total warehouse quantity (excluding Amazon)
+      // Calculate total warehouse units (excluding Amazon)
+      // Note: We sum units directly from balances to account for batch-specific unitsPerCarton
+      const warehouseUnits = skuBalances.reduce((sum, balance) => sum + balance.currentUnits, 0)
       const warehouseCartons = skuBalances.reduce((sum, balance) => sum + balance.currentCartons, 0)
       
       // Get Amazon FBA quantity from SKU field
       const amazonUnits = sku.fbaStock || 0
 
-      // Convert cartons to units
-      const unitsPerCarton = sku.unitsPerCarton || 1
-      const warehouseUnits = Math.max(0, warehouseCartons * unitsPerCarton)
+      // Calculate average units per carton across all batches (for display purposes)
+      const averageUnitsPerCarton = warehouseCartons > 0 
+        ? Math.round(warehouseUnits / warehouseCartons) 
+        : sku.unitsPerCarton || 1
       
       return {
         sku: sku.skuCode,
         description: sku.description || '',
-        warehouseQty: warehouseUnits, // Total from all non-Amazon warehouses
+        warehouseQty: warehouseUnits, // Total units from all non-Amazon warehouses
         amazonQty: amazonUnits, // Amazon FBA units from SKU field
         total: warehouseUnits + amazonUnits, // Combined total
-        unitsPerCarton: unitsPerCarton,
-        lastUpdated: sku.fbaStockLastUpdated
+        unitsPerCarton: averageUnitsPerCarton, // Average across batches or SKU default
+        lastUpdated: sku.fbaStockLastUpdated,
+        // Include note if batches have different units per carton
+        ...(skuBalances.length > 1 && {
+          note: 'Units calculated from batch-specific values'
+        })
       }
     })
 

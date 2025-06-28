@@ -399,6 +399,7 @@ export async function POST(request: NextRequest) {
               transactionDate: new Date(txDate),
               pickupDate: pickupDate ? new Date(pickupDate) : new Date(txDate), // Use provided pickup date or default to transaction date
               createdById: session.user.id,
+              unitsPerCarton: item.unitsPerCarton || sku.unitsPerCarton, // Capture units per carton - prefer provided value, fallback to SKU master
             }
           })
 

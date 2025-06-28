@@ -204,7 +204,7 @@ async function generateMonthlyInventoryReport(period: string, warehouseId?: stri
     'Batch/Lot': b.batchLot,
     'Current Cartons': b.currentCartons,
     'Current Pallets': b.currentPallets,
-    'Units per Carton': b.sku.unitsPerCarton,
+    'Units per Carton (Current)': b.sku.unitsPerCarton,
     'Total Units': b.currentUnits,
     'Report Date': new Date().toLocaleDateString(),
   }))
@@ -253,6 +253,9 @@ async function generateInventoryLedger(period: string, warehouseId?: string) {
     'Reference': t.referenceId || '',
     'Cartons In': t.cartonsIn,
     'Cartons Out': t.cartonsOut,
+    'Units per Carton': t.unitsPerCarton || t.sku.unitsPerCarton,
+    'Units In': t.cartonsIn * (t.unitsPerCarton || t.sku.unitsPerCarton || 1),
+    'Units Out': t.cartonsOut * (t.unitsPerCarton || t.sku.unitsPerCarton || 1),
     'Created By': t.createdBy.fullName,
   }))
 }
