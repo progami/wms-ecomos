@@ -6,8 +6,16 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Creating/updating users...')
   
-  const adminPassword = await bcrypt.hash('admin123', 10)
-  const staffPassword = await bcrypt.hash('staff123', 10)
+  // Get passwords from environment variables or use defaults for development
+  const adminPass = process.env.ADMIN_PASSWORD || 'admin123'
+  const staffPass = process.env.STAFF_PASSWORD || 'staff123'
+  
+  if (!process.env.ADMIN_PASSWORD || !process.env.STAFF_PASSWORD) {
+    console.warn('⚠️  Using default passwords. Set ADMIN_PASSWORD and STAFF_PASSWORD environment variables for production.')
+  }
+  
+  const adminPassword = await bcrypt.hash(adminPass, 10)
+  const staffPassword = await bcrypt.hash(staffPass, 10)
   
   try {
     // Update admin user
