@@ -185,3 +185,4 @@ data/
 # Environment examples
 .env.example
 .env.production.example
+requirements/
