@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   X, 
   CheckCircle, 
@@ -25,12 +25,19 @@ interface QuickStartGuideProps {
 }
 
 export function QuickStartGuide({ userRole }: QuickStartGuideProps) {
-  const [isOpen, setIsOpen] = useState(true)
-  const [dismissedPermanently, setDismissedPermanently] = useState(
-    typeof window !== 'undefined' && localStorage.getItem('quickStartDismissed') === 'true'
-  )
+  const [isOpen, setIsOpen] = useState(false)
+  const [dismissedPermanently, setDismissedPermanently] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  if (dismissedPermanently) return null
+  useEffect(() => {
+    // Check localStorage after component mounts to avoid hydration mismatch
+    const dismissed = localStorage.getItem('quickStartDismissed') === 'true'
+    setDismissedPermanently(dismissed)
+    setIsOpen(!dismissed)
+    setIsLoading(false)
+  }, [])
+
+  if (isLoading || dismissedPermanently) return null
 
   const guideSteps: Record<string, GuideStep[]> = {
     admin: [
