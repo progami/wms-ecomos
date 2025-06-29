@@ -172,3 +172,16 @@ client_secret.json
 
 # Import/Export templates
 templates/
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Test results
+test-results/
+
+# Data exports
+data/
+
+# Environment examples
+.env.example
+.env.production.example
