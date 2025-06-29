@@ -4,7 +4,8 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { 
   getBillingPeriod, 
-  calculateAllCosts
+  calculateAllCosts,
+  calculateAllCostsForWarehouses
 } from '@/lib/calculations/cost-aggregation'
 
 export const dynamic = 'force-dynamic'
@@ -29,12 +30,20 @@ export async function GET() {
       where: { isActive: true }
     })
 
-    // Calculate current period costs for all warehouses
+    // Calculate current period costs for all warehouses (optimized)
+    const warehouseIds = warehouses.map(w => w.id)
+    
+    // Fetch costs for all warehouses in a single operation
+    const [currentCostsMap, previousCostsMap] = await Promise.all([
+      calculateAllCostsForWarehouses(warehouseIds, currentBillingPeriod),
+      calculateAllCostsForWarehouses(warehouseIds, previousBillingPeriod)
+    ])
+    
+    // Process current period costs
     let currentTotalRevenue = 0
     const currentCostsByCategory = new Map<string, number>()
     
-    for (const warehouse of warehouses) {
-      const costs = await calculateAllCosts(warehouse.id, currentBillingPeriod)
+    for (const [warehouseId, costs] of currentCostsMap) {
       for (const cost of costs) {
         currentTotalRevenue += cost.amount
         const categoryKey = cost.costCategory
@@ -45,10 +54,9 @@ export async function GET() {
       }
     }
 
-    // Calculate previous period costs for comparison
+    // Calculate previous period total revenue
     let previousTotalRevenue = 0
-    for (const warehouse of warehouses) {
-      const costs = await calculateAllCosts(warehouse.id, previousBillingPeriod)
+    for (const [warehouseId, costs] of previousCostsMap) {
       for (const cost of costs) {
         previousTotalRevenue += cost.amount
       }

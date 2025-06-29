@@ -88,16 +88,37 @@ const nextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   },
   
-  // Simplified webpack configuration
-  webpack: (config) => {
+  // Webpack configuration
+  webpack: (config, { isServer }) => {
+    // Enable webpack stats for bundle analysis
+    if (process.env.ANALYZE === 'true') {
+      config.stats = 'verbose'
+      // Log a message about how to analyze the bundle
+      if (!isServer) {
+        console.log('\n📊 Bundle analysis enabled!')
+        console.log('After build completes, check .next/build-manifest.json')
+        console.log('You can also install @next/bundle-analyzer for detailed analysis\n')
+      }
+    }
     return config
   },
   
-  // Temporarily disable experimental features
+  // Enable experimental features for production optimization
   experimental: {
-    // optimizeCss: true,
-    // optimizePackageImports: ['lucide-react', 'date-fns', 'recharts'],
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', 'date-fns', 'recharts', '@radix-ui/react-icons', '@radix-ui/react-dialog', '@radix-ui/react-select'],
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
+  
+  // Additional production optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+  
+  // Enable output standalone for smaller Docker images
+  output: 'standalone',
 }
 
 module.exports = nextConfig

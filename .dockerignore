@@ -5,12 +5,17 @@ yarn-debug.log*
 yarn-error.log*
 
 # Testing
-.next
 coverage
 .nyc_output
 test-results
 playwright-report
 playwright/.cache
+e2e-results
+__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 
 # Development
 .env.local
@@ -60,4 +65,30 @@ docker-compose*
 .prettierrc
 jest.config.js
 playwright.config.ts
+tsconfig.tsbuildinfo
+*.log
+tmp
+temp
+.cache
+*.pid
+*.seed
+*.pid.lock
+.pnpm-store
+pnpm-debug.log*
+
+# Build outputs
+.next
+build
+
+# Claude/AI tools
+.claude
+.serena
+example_com_test*.png
+
+# Storybook
+.storybook
+storybook-static
+
+# TypeScript
+*.tsbuildinfo
 tsconfig.tsbuildinfo
