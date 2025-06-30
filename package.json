@@ -6,7 +6,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "node scripts/dev-with-port.js",
+    "dev": "node scripts/dev/dev-with-port.js",
     "dev:logged": "node server.js",
     "build": "next build",
     "build:prod": "NODE_ENV=production npm run clean && npm run build && npm run post-build",
@@ -35,20 +35,15 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "logs:setup": "tsx scripts/setup-logging.ts",
-    "logs:test": "node scripts/test-logging.js",
+    "logs:setup": "tsx scripts/production/setup-logging.ts",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "demo:generate": "tsx scripts/generate-demo-data.ts generate",
-    "demo:clear": "tsx scripts/generate-demo-data.ts clear",
     "logs:tail": "tail -f logs/dev.log",
     "logs:clear": "rm -rf logs/*",
     "type-check": "tsc --noEmit --skipLibCheck",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "calculate:storage:weekly": "tsx scripts/weekly-storage-calculation.ts",
-    "test:cost-calculations": "tsx scripts/test-cost-calculations.ts",
-    "test:operations": "tsx src/scripts/test-operations-workflow.ts"
+    "calculate:storage:weekly": "tsx scripts/production/weekly-storage-calculation.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

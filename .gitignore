@@ -176,8 +176,13 @@ templates/
 # Build artifacts
 tsconfig.tsbuildinfo
 
-# Test results
+# Test results and artifacts
 test-results/
+tests/playwright-report/
+tests/playwright-results.xml
+tests/screenshots/*.png
+tests/screenshots/*.jpg
+tests/build/
 
 # Data exports
 data/
@@ -186,3 +191,14 @@ data/
 .env.example
 .env.production.example
 requirements/
+
+# Development artifacts
+DASHBOARD_REFACTOR_SUMMARY.md
+*_test-*.png
+prisma/migrations_backup/
+
+# Serena cache
+.serena/cache/
+
+# Logs
+logs/*.log
