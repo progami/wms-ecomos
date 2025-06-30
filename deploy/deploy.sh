@@ -276,6 +276,8 @@ build_application() {
     # Run database migrations
     if [[ "$DEPLOYMENT_TYPE" == "production" ]]; then
         info "Running database migrations..."
+        # Load environment variables from production file
+        export $(grep -v '^#' .env.production | xargs)
         npm run db:generate
         npm run db:push
     fi
