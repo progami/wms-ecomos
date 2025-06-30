@@ -18,12 +18,9 @@ export function DemoWelcome() {
   }, [])
 
   const checkDemoMode = () => {
-    // Check if demo mode is active
-    fetch('/api/demo/status')
-      .then(res => res.json())
-      .then(data => data.isDemoMode)
-      .catch(() => false)
-    return true // Show initially
+    // For demo welcome, we assume if the component is rendered, we're in demo mode
+    // This avoids authentication issues with the status endpoint
+    return true
   }
 
   if (!isVisible) return null

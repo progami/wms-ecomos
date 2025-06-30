@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 
 // Lazy load heavy chart components to improve initial page load
 const createLazyChart = (chartName: string) =>
-  dynamic(() => import('recharts').then((mod) => mod[chartName] as any), {
+  dynamic<any>(() => import('recharts').then((mod) => mod[chartName] as any), {
     ssr: false,
     loading: () => <div className="w-full h-full animate-pulse bg-gray-100 rounded" />
   })

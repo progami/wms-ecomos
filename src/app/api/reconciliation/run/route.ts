@@ -84,8 +84,8 @@ export async function POST(req: NextRequest) {
       )
 
       // Create reconciliation records
-      const reconciliations = []
-      const reconciliationDetails = []
+      const reconciliations: any[] = []
+      const reconciliationDetails: any[] = []
       const processedCosts = new Set<string>()
 
       // Match invoice line items with calculated costs

@@ -145,9 +145,10 @@ export async function GET(req: NextRequest) {
 // POST /api/invoices - Create new invoice
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  let session: any = null;
   
   try {
-    const session = await getServerSession(authOptions)
+    session = await getServerSession(authOptions)
     if (!session) {
       apiLogger.warn('Unauthorized invoice creation attempt', {
         path: '/api/invoices',

@@ -14,6 +14,8 @@ const weeklyCalculationSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  let session: any = null
+  
   try {
     // Rate limiting
     const rateLimitResponse = await checkRateLimit(request, rateLimitConfigs.api)
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid CSRF token' }, { status: 403 })
     }
 
-    const session = await getServerSession(authOptions)
+    session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

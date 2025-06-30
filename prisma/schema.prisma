@@ -140,6 +140,7 @@ model CostRate {
   unitOfMeasure   String           @map("unit_of_measure")
   effectiveDate   DateTime         @map("effective_date") @db.Date
   endDate         DateTime?        @map("end_date") @db.Date
+  isActive        Boolean          @default(true) @map("is_active")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   createdById     String           @map("created_by")
@@ -167,6 +168,7 @@ model InventoryTransaction {
   transactionDate          DateTime        @map("transaction_date")
   pickupDate               DateTime?       @map("pickup_date")
   isReconciled             Boolean         @default(false) @map("is_reconciled")
+  isDemo                   Boolean         @default(false) @map("is_demo")
   createdAt                DateTime        @default(now()) @map("created_at")
   createdById              String          @map("created_by")
   shippingCartonsPerPallet Int?            @map("shipping_cartons_per_pallet")

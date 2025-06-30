@@ -1,8 +1,14 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client'
-import { logger } from '@/lib/logger'
 
 const prisma = new PrismaClient()
+
+// Simple console logger for scripts
+const logger = {
+  info: (message: string) => console.log(`ℹ️  ${message}`),
+  error: (message: string, error?: any) => console.error(`❌ ${message}`, error || ''),
+  success: (message: string) => console.log(`✅ ${message}`)
+}
 
 async function addMinimalDemoData() {
   console.log('🌱 Adding minimal demo data for testing...\n')
@@ -92,7 +98,7 @@ async function addMinimalDemoData() {
         data: [
           {
             warehouseId: warehouse.id,
-            costCategory: 'STORAGE',
+            costCategory: 'Storage',
             costName: 'Weekly Storage Rate',
             costValue: 0.75,
             unitOfMeasure: 'pallet/week',
@@ -101,7 +107,7 @@ async function addMinimalDemoData() {
           },
           {
             warehouseId: warehouse.id,
-            costCategory: 'CONTAINER',
+            costCategory: 'Container',
             costName: 'Container Unloading',
             costValue: 450,
             unitOfMeasure: 'container',
@@ -110,7 +116,7 @@ async function addMinimalDemoData() {
           },
           {
             warehouseId: warehouse.id,
-            costCategory: 'CARTON',
+            costCategory: 'Carton',
             costName: 'Inbound Processing',
             costValue: 0.50,
             unitOfMeasure: 'carton',
@@ -119,7 +125,7 @@ async function addMinimalDemoData() {
           },
           {
             warehouseId: warehouse.id,
-            costCategory: 'CARTON',
+            costCategory: 'Carton',
             costName: 'Outbound Processing',
             costValue: 0.75,
             unitOfMeasure: 'carton',
@@ -226,10 +232,10 @@ async function addMinimalDemoData() {
         data: {
           warehouseId: fmcWarehouse.id,
           skuId: sku.id,
-          storageMethod: 'PALLET',
-          specialHandling: sku.skuCode === 'LAPTOP-001' ? 'FRAGILE' : 'STANDARD',
-          temperatureControl: 'AMBIENT',
-          hazmat: false,
+          storageCartonsPerPallet: 5,
+          shippingCartonsPerPallet: 5,
+          maxStackingHeightCm: 200,
+          effectiveDate: new Date('2024-01-01'),
           createdById: admin!.id,
         }
       })
@@ -253,7 +259,7 @@ async function addMinimalDemoData() {
 
   } catch (error) {
     console.error('❌ Error adding demo data:', error)
-    logger.error('Failed to add demo data', { error })
+    logger.error('Failed to add demo data', error)
   } finally {
     await prisma.$disconnect()
   }

@@ -223,10 +223,10 @@ export async function GET(_request: NextRequest) {
         row.referenceId,
         
         // Quantities
-        row.cartonsIn || 0,
-        row.cartonsOut || 0,
-        row.storagePalletsIn || 0,
-        row.shippingPalletsOut || 0,
+        String(row.cartonsIn || 0),
+        String(row.cartonsOut || 0),
+        String(row.storagePalletsIn || 0),
+        String(row.shippingPalletsOut || 0),
         
         // Shipping Information
         row.shipName,
@@ -252,7 +252,7 @@ export async function GET(_request: NextRequest) {
         // Summary
         row.missingDocuments,
         row.missingFields,
-        row.totalMissingCount,
+        String(row.totalMissingCount),
         
         // Metadata
         row.createdBy,

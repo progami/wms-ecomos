@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
         const inventoryUpdates = [];
         
         // Pre-fetch all SKUs to reduce queries
-        const skuCodes = itemsArray.map(item => item.skuCode);
+        const skuCodes = itemsArray.map((item: any) => item.skuCode);
         const skus = await tx.sku.findMany({
           where: { skuCode: { in: skuCodes } }
         });
@@ -432,7 +432,7 @@ export async function POST(request: NextRequest) {
       warehouseId,
       transactionCount: result.length,
       transactionIds: result.map(t => t.transactionId),
-      totalCartons: itemsArray.reduce((sum, item) => sum + item.cartons, 0),
+      totalCartons: itemsArray.reduce((sum: number, item: any) => sum + item.cartons, 0),
       duration,
       userId: session.user.id
     });

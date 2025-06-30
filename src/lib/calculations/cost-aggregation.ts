@@ -509,7 +509,7 @@ export async function calculateAllCostsForWarehouses(
       const aggregatedTransactionCosts: AggregatedCost[] = [];
       
       // Group transactions by type and calculate costs
-      const inboundTransactions = transactions.filter(t => t.transactionType === 'RECEIPT');
+      const inboundTransactions = transactions.filter(t => t.transactionType === 'RECEIVE');
       const outboundTransactions = transactions.filter(t => t.transactionType === 'SHIP');
 
       // Calculate inbound pallet costs
@@ -517,7 +517,7 @@ export async function calculateAllCostsForWarehouses(
         r.costCategory === CostCategory.Pallet && r.costName.toLowerCase().includes('inbound')
       );
       if (inboundPalletRate && inboundTransactions.length > 0) {
-        const totalPallets = inboundTransactions.reduce((sum, t) => sum + t.receivingPalletsIn, 0);
+        const totalPallets = inboundTransactions.reduce((sum, t) => sum + t.storagePalletsIn, 0);
         if (totalPallets > 0) {
           aggregatedTransactionCosts.push({
             warehouseId,
@@ -529,14 +529,14 @@ export async function calculateAllCostsForWarehouses(
             unit: inboundPalletRate.unitOfMeasure,
             amount: totalPallets * Number(inboundPalletRate.costValue),
             details: inboundTransactions
-              .filter(t => t.receivingPalletsIn > 0)
+              .filter(t => t.storagePalletsIn > 0)
               .map(t => ({
                 skuId: t.skuId,
                 skuCode: t.sku.skuCode,
                 description: t.sku.description,
                 batchLot: t.batchLot,
-                transactionType: 'RECEIPT',
-                count: t.receivingPalletsIn,
+                transactionType: 'RECEIVE',
+                count: t.storagePalletsIn,
               })),
           });
         }

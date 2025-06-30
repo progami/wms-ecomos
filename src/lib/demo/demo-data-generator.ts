@@ -208,11 +208,12 @@ export async function generateDemoData() {
     // Clear existing data (optional - be careful in production!)
     reportProgress('Clearing existing demo data...', 5)
     await prisma.$transaction([
-      prisma.fileAttachment.deleteMany(),
-      prisma.palletVariance.deleteMany(),
-      prisma.disputeResolution.deleteMany(),
+      // Models that don't exist in schema commented out
+      // prisma.fileAttachment.deleteMany(),
+      // prisma.palletVariance.deleteMany(),
+      // prisma.disputeResolution.deleteMany(),
       prisma.invoiceDispute.deleteMany(),
-      prisma.invoiceAuditLog.deleteMany(),
+      // prisma.invoiceAuditLog.deleteMany(),
       prisma.warehouseNotification.deleteMany(),
       prisma.payment.deleteMany(),
       prisma.invoiceReconciliation.deleteMany(),
@@ -1477,11 +1478,12 @@ export async function clearDemoData() {
   
   try {
     await prisma.$transaction([
-      prisma.fileAttachment.deleteMany(),
-      prisma.palletVariance.deleteMany(),
-      prisma.disputeResolution.deleteMany(),
+      // Models that don't exist in schema commented out
+      // prisma.fileAttachment.deleteMany(),
+      // prisma.palletVariance.deleteMany(),
+      // prisma.disputeResolution.deleteMany(),
       prisma.invoiceDispute.deleteMany(),
-      prisma.invoiceAuditLog.deleteMany(),
+      // prisma.invoiceAuditLog.deleteMany(),
       prisma.warehouseNotification.deleteMany(),
       prisma.payment.deleteMany(),
       prisma.invoiceReconciliation.deleteMany(),

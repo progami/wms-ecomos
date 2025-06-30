@@ -339,7 +339,7 @@ async function importInventoryTransactions(data: any[], userId: string) {
       imported++
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      const transactionRef = importedTransactionId || row.transaction_id || 'unknown'
+      const transactionRef = row.transaction_id || 'unknown'
       
       // Add helpful context for common errors
       if (errorMessage.includes('Unique constraint') && errorMessage.includes('transactionId')) {

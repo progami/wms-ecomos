@@ -1,0 +1,458 @@
+import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { PrismaClient } from '@prisma/client';
+import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+
+const prisma = new PrismaClient();
+
+// Mock session manager
+class SessionManager {
+  private sessionTimeout: number;
+  private refreshThreshold: number;
+
+  constructor(sessionTimeout = 30 * 60 * 1000, refreshThreshold = 5 * 60 * 1000) {
+    this.sessionTimeout = sessionTimeout;
+    this.refreshThreshold = refreshThreshold;
+  }
+
+  async createSession(userId: string, metadata: any = {}) {
+    const token = jwt.sign(
+      { userId, ...metadata },
+      process.env.JWT_SECRET || 'test-secret',
+      { expiresIn: '30m' }
+    );
+
+    const session = await prisma.session.create({
+      data: {
+        userId,
+        token,
+        expiresAt: new Date(Date.now() + this.sessionTimeout),
+        userAgent: metadata.userAgent || 'test-agent',
+        ipAddress: metadata.ipAddress || '127.0.0.1',
+        lastActivityAt: new Date()
+      }
+    });
+
+    return { session, token };
+  }
+
+  async validateSession(token: string) {
+    const session = await prisma.session.findUnique({
+      where: { token }
+    });
+
+    if (!session) {
+      return { valid: false, reason: 'Session not found' };
+    }
+
+    if (session.expiresAt < new Date()) {
+      await prisma.session.delete({ where: { id: session.id } });
+      return { valid: false, reason: 'Session expired' };
+    }
+
+    // Check if session needs refresh
+    const timeUntilExpiry = session.expiresAt.getTime() - Date.now();
+    const shouldRefresh = timeUntilExpiry < this.refreshThreshold;
+
+    return { 
+      valid: true, 
+      session, 
+      shouldRefresh,
+      timeUntilExpiry 
+    };
+  }
+
+  async refreshSession(sessionId: string) {
+    const newExpiresAt = new Date(Date.now() + this.sessionTimeout);
+    
+    const updated = await prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        expiresAt: newExpiresAt,
+        lastActivityAt: new Date()
+      }
+    });
+
+    return updated;
+  }
+
+  async invalidateSession(token: string) {
+    await prisma.session.deleteMany({
+      where: { token }
+    });
+  }
+
+  async cleanupExpiredSessions() {
+    const deleted = await prisma.session.deleteMany({
+      where: {
+        expiresAt: { lt: new Date() }
+      }
+    });
+
+    return deleted.count;
+  }
+}
+
+describe('Session Expiration Scenarios', () => {
+  let sessionManager: SessionManager;
+  let testUserId: string;
+
+  beforeEach(async () => {
+    sessionManager = new SessionManager();
+
+    // Create test user
+    const user = await prisma.user.create({
+      data: {
+        email: 'session@test.com',
+        name: 'Session Test User',
+        password: 'hashed',
+        role: 'staff'
+      }
+    });
+    testUserId = user.id;
+  });
+
+  afterEach(async () => {
+    // Cleanup
+    await prisma.session.deleteMany({});
+    await prisma.user.delete({ where: { id: testUserId } });
+  });
+
+  test('Session expiration during active use', async () => {
+    // Create session with 5 second timeout for testing
+    const shortSessionManager = new SessionManager(5000, 2000);
+    const { session, token } = await shortSessionManager.createSession(testUserId);
+
+    // Initial validation should pass
+    let validation = await shortSessionManager.validateSession(token);
+    expect(validation.valid).toBe(true);
+    expect(validation.shouldRefresh).toBe(false);
+
+    // Wait 3 seconds - should need refresh
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    validation = await shortSessionManager.validateSession(token);
+    expect(validation.valid).toBe(true);
+    expect(validation.shouldRefresh).toBe(true);
+
+    // Refresh session
+    await shortSessionManager.refreshSession(session.id);
+
+    // Wait 6 seconds total - original would have expired
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    validation = await shortSessionManager.validateSession(token);
+    expect(validation.valid).toBe(true); // Still valid due to refresh
+
+    // Wait another 6 seconds - should expire
+    await new Promise(resolve => setTimeout(resolve, 6000));
+    validation = await shortSessionManager.validateSession(token);
+    expect(validation.valid).toBe(false);
+    expect(validation.reason).toBe('Session expired');
+  });
+
+  test('Concurrent session management', async () => {
+    // Create multiple sessions for same user
+    const sessions = await Promise.all([
+      sessionManager.createSession(testUserId, { device: 'desktop' }),
+      sessionManager.createSession(testUserId, { device: 'mobile' }),
+      sessionManager.createSession(testUserId, { device: 'tablet' })
+    ]);
+
+    // All sessions should be valid
+    for (const { token } of sessions) {
+      const validation = await sessionManager.validateSession(token);
+      expect(validation.valid).toBe(true);
+    }
+
+    // Invalidate one session
+    await sessionManager.invalidateSession(sessions[0].token);
+
+    // Check session states
+    const validations = await Promise.all(
+      sessions.map(({ token }) => sessionManager.validateSession(token))
+    );
+
+    expect(validations[0].valid).toBe(false);
+    expect(validations[1].valid).toBe(true);
+    expect(validations[2].valid).toBe(true);
+  });
+
+  test('Session timeout during critical operations', async () => {
+    const { session, token } = await sessionManager.createSession(testUserId);
+
+    // Simulate a critical operation with session checks
+    const performCriticalOperation = async (sessionToken: string) => {
+      // Check session at start
+      let validation = await sessionManager.validateSession(sessionToken);
+      if (!validation.valid) {
+        throw new Error('Session expired before operation');
+      }
+
+      // Simulate long-running operation
+      const operationSteps = [
+        'Validating input',
+        'Processing transaction',
+        'Updating inventory',
+        'Generating invoice',
+        'Sending notifications'
+      ];
+
+      const results = [];
+      
+      for (const step of operationSteps) {
+        // Check session before each step
+        validation = await sessionManager.validateSession(sessionToken);
+        if (!validation.valid) {
+          // Rollback previous steps
+          throw new Error(`Session expired during: ${step}`);
+        }
+
+        // Refresh if needed
+        if (validation.shouldRefresh && validation.session) {
+          await sessionManager.refreshSession(validation.session.id);
+        }
+
+        // Simulate step execution
+        await new Promise(resolve => setTimeout(resolve, 100));
+        results.push({ step, completed: true });
+      }
+
+      return results;
+    };
+
+    const results = await performCriticalOperation(token);
+    expect(results).toHaveLength(5);
+    expect(results.every(r => r.completed)).toBe(true);
+  });
+
+  test('Remember me functionality with extended sessions', async () => {
+    // Create regular session
+    const regularSession = await sessionManager.createSession(testUserId, {
+      rememberMe: false
+    });
+
+    // Create extended session (30 days)
+    const extendedSessionManager = new SessionManager(30 * 24 * 60 * 60 * 1000);
+    const extendedSession = await extendedSessionManager.createSession(testUserId, {
+      rememberMe: true
+    });
+
+    // Check expiration times
+    const regularExpiry = regularSession.session.expiresAt.getTime();
+    const extendedExpiry = extendedSession.session.expiresAt.getTime();
+
+    expect(extendedExpiry - regularExpiry).toBeGreaterThan(29 * 24 * 60 * 60 * 1000);
+  });
+
+  test('Session invalidation across devices', async () => {
+    // Create sessions on multiple devices
+    const devices = ['desktop', 'mobile', 'tablet', 'smartwatch'];
+    const sessions = await Promise.all(
+      devices.map(device => 
+        sessionManager.createSession(testUserId, { 
+          device,
+          userAgent: `${device}-browser`
+        })
+      )
+    );
+
+    // User changes password - invalidate all sessions
+    const invalidateAllUserSessions = async (userId: string, exceptToken?: string) => {
+      const where = exceptToken 
+        ? { userId, token: { not: exceptToken } }
+        : { userId };
+      
+      const deleted = await prisma.session.deleteMany({ where });
+      return deleted.count;
+    };
+
+    // Keep current session, invalidate others
+    const currentToken = sessions[0].token;
+    const invalidated = await invalidateAllUserSessions(testUserId, currentToken);
+    
+    expect(invalidated).toBe(3);
+
+    // Verify only current session is valid
+    const validations = await Promise.all(
+      sessions.map(({ token }) => sessionManager.validateSession(token))
+    );
+
+    expect(validations[0].valid).toBe(true);
+    expect(validations.slice(1).every(v => !v.valid)).toBe(true);
+  });
+
+  test('Session persistence across server restarts', async () => {
+    const { session, token } = await sessionManager.createSession(testUserId);
+
+    // Simulate server restart by creating new session manager
+    const newSessionManager = new SessionManager();
+
+    // Session should still be valid
+    const validation = await newSessionManager.validateSession(token);
+    expect(validation.valid).toBe(true);
+    expect(validation.session?.id).toBe(session.id);
+  });
+
+  test('Sliding session expiration', async () => {
+    class SlidingSessionManager extends SessionManager {
+      async validateSession(token: string) {
+        const result = await super.validateSession(token);
+        
+        if (result.valid && result.session) {
+          // Update last activity on every validation
+          await prisma.session.update({
+            where: { id: result.session.id },
+            data: { lastActivityAt: new Date() }
+          });
+
+          // Check inactivity timeout (5 minutes for testing)
+          const inactivityTimeout = 5 * 60 * 1000;
+          const lastActivity = result.session.lastActivityAt.getTime();
+          const inactiveDuration = Date.now() - lastActivity;
+
+          if (inactiveDuration > inactivityTimeout) {
+            await this.invalidateSession(token);
+            return { valid: false, reason: 'Session inactive timeout' };
+          }
+        }
+
+        return result;
+      }
+    }
+
+    const slidingManager = new SlidingSessionManager();
+    const { token } = await slidingManager.createSession(testUserId);
+
+    // Continuous activity should keep session alive
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const validation = await slidingManager.validateSession(token);
+      expect(validation.valid).toBe(true);
+    }
+  });
+
+  test('Session cleanup job', async () => {
+    // Create mix of valid and expired sessions
+    const now = Date.now();
+    const sessions = [
+      { expiresAt: new Date(now - 60000) }, // Expired 1 min ago
+      { expiresAt: new Date(now - 3600000) }, // Expired 1 hour ago
+      { expiresAt: new Date(now + 60000) }, // Valid for 1 min
+      { expiresAt: new Date(now + 3600000) } // Valid for 1 hour
+    ];
+
+    for (const sessionData of sessions) {
+      await prisma.session.create({
+        data: {
+          userId: testUserId,
+          token: `token-${Math.random()}`,
+          expiresAt: sessionData.expiresAt,
+          userAgent: 'test',
+          ipAddress: '127.0.0.1'
+        }
+      });
+    }
+
+    // Run cleanup
+    const cleaned = await sessionManager.cleanupExpiredSessions();
+    expect(cleaned).toBe(2);
+
+    // Verify only valid sessions remain
+    const remainingSessions = await prisma.session.findMany({
+      where: { userId: testUserId }
+    });
+    expect(remainingSessions).toHaveLength(2);
+    expect(remainingSessions.every(s => s.expiresAt > new Date())).toBe(true);
+  });
+
+  test('Session security with token rotation', async () => {
+    class SecureSessionManager extends SessionManager {
+      async rotateToken(oldToken: string): Promise<{ session: any; token: string } | null> {
+        const validation = await this.validateSession(oldToken);
+        if (!validation.valid || !validation.session) {
+          return null;
+        }
+
+        // Generate new token
+        const newToken = jwt.sign(
+          { userId: validation.session.userId },
+          process.env.JWT_SECRET || 'test-secret',
+          { expiresIn: '30m' }
+        );
+
+        // Update session with new token
+        const updated = await prisma.session.update({
+          where: { id: validation.session.id },
+          data: { 
+            token: newToken,
+            lastActivityAt: new Date()
+          }
+        });
+
+        return { session: updated, token: newToken };
+      }
+    }
+
+    const secureManager = new SecureSessionManager();
+    const { token: initialToken } = await secureManager.createSession(testUserId);
+
+    // Rotate token
+    const rotated = await secureManager.rotateToken(initialToken);
+    expect(rotated).not.toBeNull();
+    expect(rotated!.token).not.toBe(initialToken);
+
+    // Old token should be invalid
+    const oldValidation = await secureManager.validateSession(initialToken);
+    expect(oldValidation.valid).toBe(false);
+
+    // New token should be valid
+    const newValidation = await secureManager.validateSession(rotated!.token);
+    expect(newValidation.valid).toBe(true);
+  });
+
+  test('Grace period for recently expired sessions', async () => {
+    class GracePeriodSessionManager extends SessionManager {
+      private gracePeriod = 5 * 60 * 1000; // 5 minutes
+
+      async validateSession(token: string) {
+        const session = await prisma.session.findUnique({
+          where: { token }
+        });
+
+        if (!session) {
+          return { valid: false, reason: 'Session not found' };
+        }
+
+        const now = new Date();
+        const expired = session.expiresAt < now;
+        const inGracePeriod = expired && 
+          (now.getTime() - session.expiresAt.getTime()) < this.gracePeriod;
+
+        if (inGracePeriod) {
+          // Allow one-time renewal during grace period
+          const renewed = await this.refreshSession(session.id);
+          return {
+            valid: true,
+            session: renewed,
+            wasInGracePeriod: true,
+            shouldRefresh: false,
+            timeUntilExpiry: renewed.expiresAt.getTime() - now.getTime()
+          };
+        }
+
+        return super.validateSession(token);
+      }
+    }
+
+    // Create session that will expire soon
+    const gracePeriodManager = new GracePeriodSessionManager(2000); // 2 second timeout
+    const { token } = await gracePeriodManager.createSession(testUserId);
+
+    // Wait for expiration
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    // Should still be valid due to grace period
+    const validation = await gracePeriodManager.validateSession(token);
+    expect(validation.valid).toBe(true);
+    expect(validation.wasInGracePeriod).toBe(true);
+  });
+});

@@ -46,9 +46,17 @@ const baseNavigation: NavSection[] = [
     ]
   },
   {
-    title: 'Operations',
+    title: 'Market',
     items: [
       { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
+      { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
+      { name: 'Order Management', href: '/operations/orders', icon: FileText },
+      { name: 'Reorder Alerts', href: '/operations/reorder', icon: AlertTriangle },
+    ]
+  },
+  {
+    title: 'Operations',
+    items: [
       { name: 'Inventory Ledger', href: '/operations/inventory', icon: BookOpen },
       { name: 'Receive Goods', href: '/operations/receive', icon: Package },
       { name: 'Ship Goods', href: '/operations/ship', icon: Package2 },
@@ -78,7 +86,6 @@ const baseNavigation: NavSection[] = [
     title: 'Analytics',
     items: [
       { name: 'Reports', href: '/reports', icon: BarChart3 },
-      { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
     ]
   },
 ]

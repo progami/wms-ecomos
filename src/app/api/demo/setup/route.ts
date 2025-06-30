@@ -6,9 +6,17 @@ import { generateSimpleDemoData } from '@/lib/demo-data-simple'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if demo mode is already active by checking for warehouses
-    const existingData = await prisma.warehouse.count()
-    if (existingData > 0) {
+    // Check if demo mode is already active by checking for demo-specific warehouses
+    const demoWarehouse = await prisma.warehouse.findFirst({
+      where: {
+        OR: [
+          { code: 'LON-01' },
+          { code: 'MAN-01' }
+        ]
+      }
+    })
+    
+    if (demoWarehouse) {
       return NextResponse.json({
         success: false,
         message: 'Demo data already exists'

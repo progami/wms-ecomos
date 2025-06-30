@@ -25,22 +25,19 @@ export default function LandingPage() {
     setIsLoading(true)
     
     try {
-      // First, check if demo data already exists
-      const statusResponse = await fetch('/api/demo/status')
-      const statusData = await statusResponse.json()
-      
-      if (!statusData.isDemoMode) {
-        // Set up demo environment only if not already set up
-        const setupResponse = await fetch('/api/demo/setup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
+      // Always try to set up demo environment first (it will check internally if data already exists)
+      const setupResponse = await fetch('/api/demo/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
 
-        if (!setupResponse.ok) {
-          const errorData = await setupResponse.json()
-          throw new Error(errorData.error || 'Failed to set up demo environment')
-        }
+      if (!setupResponse.ok) {
+        const errorData = await setupResponse.json()
+        throw new Error(errorData.error || 'Failed to set up demo environment')
       }
+
+      // Wait a moment for the database transaction to complete
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
       // Then sign in as demo admin
       const result = await signIn('credentials', {

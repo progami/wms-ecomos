@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -203,6 +203,141 @@ export async function GET() {
       },
     })
 
+    // Chart Data: Inventory Trend (last 30 days)
+    const thirtyDaysAgoForTrend = new Date()
+    thirtyDaysAgoForTrend.setDate(thirtyDaysAgoForTrend.getDate() - 30)
+    
+    // Get daily inventory snapshots
+    const inventoryTrendData = await prisma.inventoryTransaction.groupBy({
+      by: ['transactionDate'],
+      where: {
+        transactionDate: {
+          gte: thirtyDaysAgoForTrend,
+          lte: now,
+        },
+        ...warehouseFilter,
+      },
+      _sum: {
+        cartonsIn: true,
+        cartonsOut: true,
+      },
+      orderBy: {
+        transactionDate: 'asc',
+      },
+    })
+
+    // Calculate running balance for each day
+    const inventoryTrend: Array<{ date: string; inventory: number }> = []
+    let runningBalance = 0
+    
+    // Get initial balance 30 days ago
+    const initialBalanceData = await prisma.inventoryTransaction.aggregate({
+      where: {
+        transactionDate: {
+          lt: thirtyDaysAgoForTrend,
+        },
+        ...warehouseFilter,
+      },
+      _sum: {
+        cartonsIn: true,
+        cartonsOut: true,
+      },
+    })
+    
+    runningBalance = (initialBalanceData._sum.cartonsIn || 0) - (initialBalanceData._sum.cartonsOut || 0)
+    
+    // Create a map of dates with transactions
+    const transactionMap = new Map<string, { in: number; out: number }>()
+    inventoryTrendData.forEach(item => {
+      const dateKey = item.transactionDate.toISOString().split('T')[0]
+      transactionMap.set(dateKey, {
+        in: item._sum.cartonsIn || 0,
+        out: item._sum.cartonsOut || 0,
+      })
+    })
+    
+    // Fill in all days including those without transactions
+    for (let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
+      const dateKey = d.toISOString().split('T')[0]
+      const dayTransactions = transactionMap.get(dateKey)
+      
+      if (dayTransactions) {
+        runningBalance += dayTransactions.in - dayTransactions.out
+      }
+      
+      inventoryTrend.push({
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        inventory: Math.max(0, runningBalance),
+      })
+    }
+
+    // Chart Data: Cost Trend (last 12 weeks)
+    const twelveWeeksAgo = new Date()
+    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84) // 12 weeks
+    
+    const costTrendData = await prisma.calculatedCost.groupBy({
+      by: ['billingWeekEnding'],
+      where: {
+        billingWeekEnding: {
+          gte: twelveWeeksAgo,
+          lte: now,
+        },
+        transactionType: 'STORAGE',
+        ...warehouseFilter,
+      },
+      _sum: {
+        finalExpectedCost: true,
+      },
+      orderBy: {
+        billingWeekEnding: 'asc',
+      },
+    })
+    
+    const costTrend: Array<{ date: string; cost: number }> = costTrendData.map((item) => ({
+      date: item.billingWeekEnding.toISOString().split('T')[0],
+      cost: Number(item._sum?.finalExpectedCost || 0),
+    }))
+    
+    // If no cost data, create empty array with proper structure
+    if (costTrend.length === 0) {
+      for (let i = 1; i <= 12; i++) {
+        costTrend.push({ date: `Week ${i}`, cost: 0 })
+      }
+    }
+
+    // Chart Data: Warehouse Distribution
+    const warehouseInventory = await prisma.inventoryBalance.groupBy({
+      by: ['warehouseId'],
+      where: warehouseFilter,
+      _sum: {
+        currentCartons: true,
+      },
+    })
+    
+    // Get warehouse details
+    const warehouseIds = warehouseInventory.map(w => w.warehouseId)
+    const warehouses = await prisma.warehouse.findMany({
+      where: {
+        id: { in: warehouseIds },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    })
+    
+    const warehouseMap = new Map(warehouses.map(w => [w.id, w.name]))
+    const totalCartons = warehouseInventory.reduce((sum, w) => sum + (w._sum.currentCartons || 0), 0)
+    
+    const warehouseDistribution: Array<{ name: string; value: number; percentage: number }> = warehouseInventory
+      .map(w => ({
+        name: warehouseMap.get(w.warehouseId) || 'Unknown',
+        value: w._sum.currentCartons || 0,
+        percentage: totalCartons > 0 ? ((w._sum.currentCartons || 0) / totalCartons) * 100 : 0,
+      }))
+      .filter(w => w.value > 0)
+      .sort((a, b) => b.value - a.value)
+
     return NextResponse.json({
       totalInventory: currentInventory,
       inventoryChange: inventoryChange.toFixed(1),
@@ -213,6 +348,11 @@ export async function GET() {
       activeSkus: activeSkusCount,
       pendingInvoices,
       overdueInvoices,
+      chartData: {
+        inventoryTrend,
+        costTrend,
+        warehouseDistribution,
+      },
     })
   } catch (error) {
     // console.error('Dashboard stats error:', error)

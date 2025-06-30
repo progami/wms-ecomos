@@ -25,14 +25,15 @@ test.describe('Demo Functionality Tests', () => {
       await demoSetupPage.goto();
       
       // Check for landing page elements
-      await expect(page.locator('text="Warehouse Management System"')).toBeVisible();
+      await expect(page.locator('text="Modern Warehouse"')).toBeVisible();
+      await expect(page.locator('text="Management System"')).toBeVisible();
       await expect(demoSetupPage.tryDemoButton).toBeVisible();
       
       // Click Try Demo
       await demoSetupPage.clickTryDemo();
       
-      // Should navigate to demo setup or login
-      await expect(page).toHaveURL(/\/(auth|demo)/);
+      // Should navigate to dashboard after demo setup
+      await page.waitForURL('**/dashboard', { timeout: 30000 });
     });
 
     test('should create admin demo user with isDemo=true flag', async ({ page }) => {

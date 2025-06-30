@@ -1,9 +1,9 @@
 import { Page, expect } from '@playwright/test';
 
-export async function login(page: Page, email = 'test@example.com', password = 'password123') {
-  await page.goto('/auth/signin');
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
+export async function login(page: Page, email = 'admin@warehouse.com', password = 'SecureWarehouse2024!') {
+  await page.goto('/auth/login');
+  await page.fill('#emailOrUsername', email);
+  await page.fill('#password', password);
   await page.click('button[type="submit"]');
   await page.waitForURL('**/dashboard');
 }
@@ -40,4 +40,48 @@ export async function takeScreenshotOnFailure(page: Page, testName: string) {
   const screenshotPath = `screenshots/${testName}-${Date.now()}.png`;
   await page.screenshot({ path: screenshotPath, fullPage: true });
   return screenshotPath;
+}
+
+export async function loginAsDemo(page: Page) {
+  // Go to landing page where the demo button is located
+  await page.goto('/');
+  
+  // Look for the Try Demo button on the landing page
+  const demoButton = page.locator('button:has-text("Try Demo")').first();
+  
+  if (await demoButton.isVisible()) {
+    // Click the demo button and wait for it to process
+    await demoButton.click();
+    
+    // Wait for either the dashboard URL or handle any intermediate steps
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
+    
+    // Handle welcome modal if it appears
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"');
+    if (await welcomeModal.isVisible({ timeout: 5000 })) {
+      const startExploringButton = page.locator('button:has-text("Start Exploring")');
+      if (await startExploringButton.isVisible()) {
+        await startExploringButton.click();
+        // Wait for modal to close
+        await welcomeModal.waitFor({ state: 'hidden', timeout: 5000 });
+      }
+    }
+  } else {
+    // Fallback: go to login page and use demo-admin credentials directly
+    await page.goto('/auth/login');
+    await page.fill('#emailOrUsername', 'demo-admin');
+    await page.fill('#password', 'SecureWarehouse2024!');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    
+    // Handle welcome modal in fallback scenario too
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"');
+    if (await welcomeModal.isVisible({ timeout: 5000 })) {
+      const startExploringButton = page.locator('button:has-text("Start Exploring")');
+      if (await startExploringButton.isVisible()) {
+        await startExploringButton.click();
+        await welcomeModal.waitFor({ state: 'hidden', timeout: 5000 });
+      }
+    }
+  }
 }
