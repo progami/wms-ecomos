@@ -78,7 +78,7 @@ install_dependencies() {
     
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         sudo apt update
-        sudo apt install -y curl git build-essential nginx postgresql-client
+        sudo apt install -y curl git build-essential nginx postgresql postgresql-contrib
         
         # Install Node.js 18.x
         if ! command -v node &> /dev/null || [[ $(node -v | cut -d'v' -f2 | cut -d'.' -f1) -lt 18 ]]; then
@@ -154,11 +154,28 @@ setup_environment() {
     
     # Get configuration values
     if [[ "$DEPLOYMENT_TYPE" == "production" ]]; then
-        prompt "Enter your RDS database endpoint" "" DB_HOST
-        prompt "Enter your database password" "" DB_PASSWORD
+        info "Setting up local PostgreSQL database..."
+        
+        # Install PostgreSQL if not already installed
+        if ! command -v psql &> /dev/null; then
+            sudo apt install -y postgresql postgresql-contrib
+            sudo systemctl start postgresql
+            sudo systemctl enable postgresql
+        fi
+        
+        # Generate secure database password
+        DB_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-16)
+        
+        # Create database and user
+        sudo -u postgres psql << EOF
+CREATE USER wms_admin WITH PASSWORD '${DB_PASSWORD}';
+CREATE DATABASE wms_production OWNER wms_admin;
+GRANT ALL PRIVILEGES ON DATABASE wms_production TO wms_admin;
+EOF
+        
         prompt "Enter your domain name (e.g., targongglobal.com)" "" DOMAIN_NAME
         
-        DATABASE_URL="postgresql://wms_admin:${DB_PASSWORD}@${DB_HOST}:5432/wms_production"
+        DATABASE_URL="postgresql://wms_admin:${DB_PASSWORD}@localhost:5432/wms_production"
         APP_URL="https://${DOMAIN_NAME}/wms"
     else
         DATABASE_URL="postgresql://postgres:postgres@localhost:5432/wms_dev"
