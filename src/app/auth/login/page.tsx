@@ -1,5 +1,16 @@
 'use client'
 
+/*
+ * Security Notes:
+ * - Quick fill buttons are only visible in development (NODE_ENV === 'development')
+ * - Passwords should be set via environment variables, not hardcoded
+ * - In production, set these environment variables:
+ *   - DEMO_ADMIN_PASSWORD (for demo setup API)
+ *   - DEMO_STAFF_PASSWORD (for demo setup API)
+ *   - NEXT_PUBLIC_DEMO_PASSWORD (for demo login - only if demo is enabled)
+ * - Never set NEXT_PUBLIC_ADMIN_PASSWORD or NEXT_PUBLIC_STAFF_PASSWORD in production
+ */
+
 import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -112,9 +123,10 @@ export default function LoginPage() {
       }
 
       // Auto-fill the form with demo credentials
+      const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || 'SecureWarehouse2024!'
       setFormData({
         emailOrUsername: 'demo-admin',
-        password: 'SecureWarehouse2024!',
+        password: demoPassword,
       })
       
       // Short delay to show the credentials being filled
@@ -123,7 +135,7 @@ export default function LoginPage() {
       // Automatically submit the form
       const result = await signIn('credentials', {
         emailOrUsername: 'demo-admin',
-        password: 'SecureWarehouse2024!',
+        password: demoPassword,
         redirect: false,
       })
 
@@ -173,33 +185,35 @@ export default function LoginPage() {
           <input type="text" name="fake-username" style={{ display: 'none' }} />
           <input type="password" name="fake-password" style={{ display: 'none' }} />
           
-          {/* Quick fill buttons */}
-          <div className="space-y-2">
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">Quick fill credentials:</div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ emailOrUsername: 'admin', password: 'SecureWarehouse2024!' })}
-                className="text-xs py-1 px-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ emailOrUsername: 'hashar', password: 'StaffAccess2024!' })}
-                className="text-xs py-1 px-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800"
-              >
-                Hashar (Finance)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ emailOrUsername: 'umair', password: 'StaffAccess2024!' })}
-                className="text-xs py-1 px-2 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800"
-              >
-                Umair (Operations)
-              </button>
+          {/* Quick fill buttons - Only in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="space-y-2">
+              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">Quick fill credentials (Dev only):</div>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ emailOrUsername: 'admin', password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'SecureWarehouse2024!' })}
+                  className="text-xs py-1 px-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                >
+                  Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ emailOrUsername: 'hashar', password: process.env.NEXT_PUBLIC_STAFF_PASSWORD || 'StaffAccess2024!' })}
+                  className="text-xs py-1 px-2 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800"
+                >
+                  Hashar (Finance)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ emailOrUsername: 'umair', password: process.env.NEXT_PUBLIC_STAFF_PASSWORD || 'StaffAccess2024!' })}
+                  className="text-xs py-1 px-2 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800"
+                >
+                  Umair (Operations)
+                </button>
+              </div>
             </div>
-          </div>
+          )}
           
           <div className="rounded-md shadow-sm -space-y-px">
             <div>

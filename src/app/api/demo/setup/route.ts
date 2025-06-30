@@ -1,3 +1,11 @@
+/*
+ * Demo Setup Security Notes:
+ * - Demo passwords should be set via environment variables in production
+ * - Use DEMO_ADMIN_PASSWORD and DEMO_STAFF_PASSWORD environment variables
+ * - If not set, fallback passwords are used (only acceptable in development)
+ * - In production, always set these environment variables with strong passwords
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { signIn } from 'next-auth/react'
@@ -26,7 +34,8 @@ export async function POST(request: NextRequest) {
     // Start transaction to ensure atomic operation
     await prisma.$transaction(async (tx) => {
       // Always create a demo admin user
-      const hashedPassword = await bcrypt.hash('SecureWarehouse2024!', 10)
+      const demoAdminPassword = process.env.DEMO_ADMIN_PASSWORD || 'SecureWarehouse2024!'
+      const hashedPassword = await bcrypt.hash(demoAdminPassword, 10)
       
       // Check if demo admin already exists
       let demoAdmin = await tx.user.findFirst({
@@ -81,7 +90,8 @@ export async function POST(request: NextRequest) {
 
 async function generateBasicDemoData(tx: any, adminUserId: string) {
   // Create demo staff user
-  const hashedPassword = await bcrypt.hash('DemoStaff2024!', 10)
+  const demoStaffPassword = process.env.DEMO_STAFF_PASSWORD || 'DemoStaff2024!'
+  const hashedPassword = await bcrypt.hash(demoStaffPassword, 10)
   const staffUser = await tx.user.create({
     data: {
       username: 'staff',
