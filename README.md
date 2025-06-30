@@ -1,92 +1,70 @@
 # WMS - Warehouse Management System
 
-Modern warehouse management system for 3PL operations with inventory tracking, billing, and multi-warehouse support.
+Modern 3PL warehouse management system with inventory tracking, billing automation, and multi-warehouse support.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, Radix UI
-- **Backend**: Next.js API Routes, Prisma ORM, PostgreSQL
-- **Auth**: NextAuth.js
-- **Integrations**: Amazon SP API, Excel/CSV processing
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Recharts
+- **Backend**: Next.js API Routes, Prisma ORM, PostgreSQL  
+- **Auth**: NextAuth.js with environment-based security
+- **Deployment**: AWS EC2/RDS, PM2, Nginx
 
 ## Quick Start
 
-1. **Clone & Install**
 ```bash
-git clone git@github.com:progami/wms_ecom.git
-cd wms_ecom
+# Clone and install
+git clone [your-repo-url]
+cd WMS
 npm install
-```
 
-2. **Configure Environment**
-```bash
-cp .env.local.example .env.local
-# Update DATABASE_URL and generate NEXTAUTH_SECRET
-```
+# Setup environment
+cp .env.example .env.local
+# Edit .env.local with your database credentials
 
-3. **Setup Database**
-```bash
-npm run db:migrate
-npm run db:seed
-```
+# Initialize database
+npm run db:push
+npm run db:seed  # Optional demo data
 
-4. **Run Development Server**
-```bash
+# Start development
 npm run dev
-# Opens at http://localhost:3002
 ```
 
-## Default Credentials
+## Features
 
-- **Admin**: `admin` / `SecureWarehouse2024!`
-- **Staff**: `hashar` or `umair` / `StaffAccess2024!`
+- **Multi-warehouse** inventory management with real-time tracking
+- **Automated billing** with storage calculation and invoicing
+- **Dashboard analytics** with market, operations, and finance insights
+- **Role-based access** control (Admin, Manager, Staff)
+- **Excel/CSV** import/export for bulk operations
+- **Audit trail** for all inventory movements
+- **Production-ready** with security hardening and deployment scripts
 
-## Key Features
+## Deployment
 
-- Multi-warehouse inventory management
-- Real-time stock tracking with batch/pallet support
-- Automated billing and invoicing
-- Amazon FBA integration
-- Role-based access control
-- Immutable audit trail
-- Excel import/export
+```bash
+# AWS deployment (EC2 + RDS)
+cd deploy
+./deploy.sh  # Single script for complete deployment
+```
+
+See [AWS Deployment Guide](./docs/AWS_FREE_TIER_DEPLOYMENT.md) for detailed instructions.
 
 ## Project Structure
 
 ```
-warehouse_management/
-├── src/                    # Source code
-│   ├── app/               # Next.js app router pages and API routes
-│   ├── components/        # Reusable React components
-│   ├── lib/              # Utilities and shared logic
-│   ├── modules/          # Feature modules (DDD approach)
-│   └── types/            # TypeScript type definitions
-├── prisma/                # Database schema and migrations
-├── tests/                 # Test files (unit, integration, e2e)
-├── scripts/               # Utility scripts for maintenance
-├── docs/                  # Project documentation
-├── data/                  # Sample data and Excel templates
-└── public/                # Static assets
+WMS/
+├── src/              # Application source code
+├── prisma/           # Database schema
+├── deploy/           # Deployment scripts
+├── docs/             # Documentation
+└── scripts/          # Utility scripts
 ```
 
-## Documentation
+## Default Users
 
-Each directory contains its own README.md explaining:
-- Purpose and contents
-- File descriptions
-- Usage guidelines
-- Best practices
-
-See the [docs directory](./docs/README.md) for comprehensive documentation.
-
-## Scripts
-
-```bash
-npm run dev        # Development server
-npm run build      # Production build
-npm run test       # Run tests
-npm run db:studio  # Prisma Studio
-```
+Development mode includes quick-fill authentication. Production requires environment variables:
+- `DEMO_ADMIN_PASSWORD` 
+- `DEMO_STAFF_PASSWORD`
 
 ## License
 
