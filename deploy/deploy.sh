@@ -78,7 +78,7 @@ install_dependencies() {
     
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         sudo apt update
-        sudo apt install -y curl git build-essential nginx postgresql postgresql-contrib
+        sudo apt install -y curl git build-essential nginx postgresql postgresql-contrib jq
         
         # Install Node.js 18.x
         if ! command -v node &> /dev/null || [[ $(node -v | cut -d'v' -f2 | cut -d'.' -f1) -lt 18 ]]; then
@@ -104,9 +104,17 @@ setup_app_directory() {
         sudo mkdir -p /var/www/wms
         sudo chown -R $USER:$USER /var/www/wms
         APP_DIR="/var/www/wms"
+        
+        # Create logs directory
+        mkdir -p "$APP_DIR/logs"
+        chmod 755 "$APP_DIR/logs"
     else
         APP_DIR="$PROJECT_ROOT"
         info "Using current directory for deployment: $APP_DIR"
+        
+        # Create logs directory
+        mkdir -p "$APP_DIR/logs"
+        chmod 755 "$APP_DIR/logs"
     fi
 }
 
@@ -167,11 +175,16 @@ setup_environment() {
         DB_PASSWORD=$(openssl rand -base64 16 | tr -d "=+/" | cut -c1-16)
         
         # Create database and user
-        sudo -u postgres psql << EOF
+        sudo -u postgres psql << EOF 2>/dev/null || true
 CREATE USER wms_admin WITH PASSWORD '${DB_PASSWORD}';
 CREATE DATABASE wms_production OWNER wms_admin;
 GRANT ALL PRIVILEGES ON DATABASE wms_production TO wms_admin;
 EOF
+        
+        # Check if database was created successfully
+        if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw wms_production; then
+            error_exit "Failed to create PostgreSQL database"
+        fi
         
         prompt "Enter your domain name (e.g., targongglobal.com)" "" DOMAIN_NAME
         

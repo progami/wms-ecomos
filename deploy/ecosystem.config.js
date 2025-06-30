@@ -1,13 +1,13 @@
 module.exports = {
   apps: [{
     // Application configuration
-    name: 'wms-app',
+    name: 'wms-production',
     script: 'npm',
     args: 'start',
     cwd: '/var/www/wms',
     
     // Process management
-    instances: 1,  // Single instance for t3.small
+    instances: 1,  // Single instance for t2.micro
     exec_mode: 'fork',
     autorestart: true,
     watch: false,  // Don't watch in production
@@ -17,12 +17,13 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: 3000,
+      LOG_DIR: '/var/www/wms/logs'
     },
     
     // Logging configuration
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    error_file: '/var/log/pm2/wms-error.log',
-    out_file: '/var/log/pm2/wms-out.log',
+    error_file: '/var/www/wms/logs/pm2-error.log',
+    out_file: '/var/www/wms/logs/pm2-out.log',
     merge_logs: true,
     
     // Advanced features
@@ -39,19 +40,5 @@ module.exports = {
     
     // Node.js arguments
     node_args: '--max-old-space-size=1024',
-  }],
-
-  // PM2 deployment configuration (optional)
-  deploy: {
-    production: {
-      user: 'ubuntu',
-      host: 'WMS_EC2_IP',
-      ref: 'origin/main',
-      repo: 'git@github.com:your-org/wms.git',
-      path: '/var/www/wms',
-      'pre-deploy-local': '',
-      'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production',
-      'pre-setup': ''
-    }
-  }
+  }]
 };
