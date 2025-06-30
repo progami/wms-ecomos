@@ -293,40 +293,38 @@ setup_pm2() {
     if [[ "$DEPLOYMENT_TYPE" == "production" ]] && command -v pm2 &> /dev/null; then
         info "Setting up PM2 process manager..."
         
-        # Create ecosystem file if it doesn't exist
-        if [ ! -f "ecosystem.config.js" ]; then
-            cat > ecosystem.config.js << 'EOF'
-module.exports = {
-  apps: [{
-    name: 'wms-production',
-    script: 'npm',
-    args: 'start',
-    cwd: '/var/www/wms',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000
-    },
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G',
-    error_file: '/var/www/wms/logs/pm2-error.log',
-    out_file: '/var/www/wms/logs/pm2-out.log',
-    log_file: '/var/www/wms/logs/pm2-combined.log',
-    time: true
-  }]
-}
-EOF
+        # Copy ecosystem config from deploy folder
+        if [ -f "$APP_DIR/deploy/ecosystem.config.js" ]; then
+            cp "$APP_DIR/deploy/ecosystem.config.js" "$APP_DIR/ecosystem.config.js"
+            success "Copied ecosystem config"
         fi
         
+        # Kill any existing PM2 processes
+        pm2 kill || true
+        
+        # Start fresh PM2 daemon
+        pm2 status || true
+        
         # Start application
-        pm2 start ecosystem.config.js
+        cd "$APP_DIR"
+        pm2 start ecosystem.config.js --name wms-production
+        
+        # Save configuration
         pm2 save
         
         # Setup startup script
         sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u $USER --hp /home/$USER
         
+        # Execute the startup command if provided
+        STARTUP_CMD=$(pm2 startup systemd -u $USER --hp /home/$USER | grep sudo | tail -n 1)
+        if [ -n "$STARTUP_CMD" ]; then
+            eval "$STARTUP_CMD"
+        fi
+        
         success "PM2 configured and application started"
+        
+        # Show status
+        pm2 status
     else
         warning "Skipping PM2 setup (not in production or PM2 not installed)"
     fi
