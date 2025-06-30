@@ -2,9 +2,6 @@
   "name": "warehouse-management-system",
   "version": "0.1.0",
   "private": true,
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "scripts": {
     "dev": "node scripts/dev/dev-with-port.js",
     "dev:logged": "node server.js",
@@ -37,7 +34,6 @@
     "db:studio": "prisma studio",
     "logs:setup": "tsx scripts/production/setup-logging.ts",
     "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
     "logs:tail": "tail -f logs/dev.log",
     "logs:clear": "rm -rf logs/*",
     "type-check": "tsc --noEmit --skipLibCheck",
