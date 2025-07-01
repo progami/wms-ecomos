@@ -42,11 +42,12 @@ npm run dev
 ## Deployment
 
 ```bash
-# AWS deployment (EC2 + RDS)
-cd deploy
-./deploy.sh  # Single script for complete deployment
+# Infrastructure provisioning and deployment
+cd infrastructure
+make deploy-prod  # Deploy to production
 ```
 
+The project uses Terraform for infrastructure provisioning and Ansible for application deployment.
 See [AWS Deployment Guide](./docs/AWS_FREE_TIER_DEPLOYMENT.md) for detailed instructions.
 
 ## Project Structure
@@ -55,7 +56,7 @@ See [AWS Deployment Guide](./docs/AWS_FREE_TIER_DEPLOYMENT.md) for detailed inst
 WMS/
 ├── src/              # Application source code
 ├── prisma/           # Database schema
-├── deploy/           # Deployment scripts
+├── infrastructure/   # Terraform and Ansible deployment
 ├── docs/             # Documentation
 └── scripts/          # Utility scripts
 ```

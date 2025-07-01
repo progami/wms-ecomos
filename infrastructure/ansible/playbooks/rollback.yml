@@ -1,0 +1,46 @@
+---
+- name: Rollback WMS Application
+  hosts: wms_servers
+  become: yes
+  vars:
+    rollback_to: "{{ git_commit | default('HEAD~1') }}"
+  
+  tasks:
+    - name: Stop application
+      command: pm2 stop {{ app_name }}
+      become_user: "{{ ansible_user }}"
+      ignore_errors: yes
+
+    - name: Checkout previous version
+      git:
+        repo: "{{ git_repo | default('https://github.com/your-org/wms.git') }}"
+        dest: "{{ app_directory }}"
+        version: "{{ rollback_to }}"
+        force: yes
+      become_user: "{{ ansible_user }}"
+
+    - name: Install dependencies
+      npm:
+        path: "{{ app_directory }}"
+        production: yes
+      become_user: "{{ ansible_user }}"
+      environment:
+        NODE_ENV: production
+
+    - name: Rebuild application
+      command: npm run build:prod
+      args:
+        chdir: "{{ app_directory }}"
+      become_user: "{{ ansible_user }}"
+      environment:
+        NODE_ENV: production
+
+    - name: Restart application
+      command: pm2 restart {{ app_name }}
+      args:
+        chdir: "{{ app_directory }}"
+      become_user: "{{ ansible_user }}"
+
+    - name: Save PM2 process list
+      command: pm2 save
+      become_user: "{{ ansible_user }}"

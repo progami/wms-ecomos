@@ -170,12 +170,12 @@ sudo apt install nginx -y
 
 ### 6.2 Configure for Subdirectory
 ```bash
-# Copy nginx configuration
-sudo cp deploy/nginx-wms.conf /etc/nginx/sites-available/wms
-sudo ln -s /etc/nginx/sites-available/wms /etc/nginx/sites-enabled/
+# Note: Nginx configuration is now managed by Ansible
+# The deployment process will automatically configure Nginx
+# Manual configuration is no longer needed
 
-# If main domain is on same server
-sudo cp deploy/nginx-main-domain.conf /etc/nginx/sites-available/default
+# If you need to manually configure, the nginx templates are in:
+# infrastructure/ansible/playbooks/templates/nginx.conf.j2
 
 # Test configuration
 sudo nginx -t
