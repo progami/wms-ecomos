@@ -106,22 +106,74 @@ resource "aws_instance" "wms" {
   # User data to install basic requirements
   user_data = <<-EOF
     #!/bin/bash
+    set -e
+    
+    # Update system
     apt-get update
-    apt-get install -y curl git nginx
+    apt-get install -y curl git nginx software-properties-common
     
     # Install Node.js 18
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
     apt-get install -y nodejs
     
-    # Install PM2
+    # Install PM2 globally
     npm install -g pm2
     
     # Install PostgreSQL
     apt-get install -y postgresql postgresql-contrib
+    systemctl start postgresql
+    systemctl enable postgresql
+    
+    # Setup PostgreSQL for WMS
+    sudo -u postgres psql << EOSQL
+CREATE USER wms WITH PASSWORD 'wms_password_2024';
+CREATE DATABASE wms OWNER wms;
+GRANT ALL PRIVILEGES ON DATABASE wms TO wms;
+EOSQL
     
     # Create app directory
     mkdir -p /var/www/wms
-    chown ubuntu:ubuntu /var/www/wms
+    chown -R ubuntu:ubuntu /var/www/wms
+    
+    # Setup PM2 startup
+    sudo -u ubuntu bash -c 'pm2 startup systemd -u ubuntu --hp /home/ubuntu'
+    
+    # Configure Nginx
+    tee /etc/nginx/sites-available/wms > /dev/null << 'NGINX'
+server {
+    listen 80;
+    server_name _;
+    client_max_body_size 10M;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+    
+    location /_next/static {
+        alias /var/www/wms/.next/static;
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINX
+    
+    ln -sf /etc/nginx/sites-available/wms /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+    systemctl restart nginx
+    
+    # Create deployment readiness file
+    touch /var/www/wms/.ready-for-deployment
+    echo "Instance prepared for GitHub Actions deployment" > /var/www/wms/.ready-for-deployment
   EOF
 
   tags = {
@@ -213,18 +265,23 @@ output "instance_ip" {
   description = "Public IP of the WMS instance"
 }
 
+output "instance_dns" {
+  value = aws_instance.wms.public_dns
+  description = "Public DNS name of the WMS instance"
+}
+
 output "instance_id" {
   value = aws_instance.wms.id
   description = "Instance ID"
 }
 
 output "ssh_command" {
-  value = "ssh -i ~/.ssh/wms-prod ubuntu@${aws_eip.wms.public_ip}"
+  value = "ssh -i ~/.ssh/wms-prod ubuntu@${aws_instance.wms.public_dns}"
   description = "SSH command to connect"
 }
 
 output "app_url" {
-  value = "http://${aws_eip.wms.public_ip}"
+  value = "http://${aws_instance.wms.public_dns}"
   description = "Application URL"
 }
 

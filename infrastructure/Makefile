@@ -7,9 +7,8 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  deploy        - Deploy WMS to AWS (creates infrastructure + deploys app)"
-	@echo "  check-status  - Check deployment status"
-	@echo "  retry-deploy  - Retry deployment if SSH connection failed"
+	@echo "  provision     - Create AWS infrastructure (EC2, networking, etc.)"
+	@echo "  status        - Check infrastructure and app status"
 	@echo "  plan          - Preview infrastructure changes"
 	@echo "  apply         - Apply infrastructure changes only"
 	@echo "  destroy       - Destroy all AWS resources"
@@ -18,19 +17,35 @@ help:
 	@echo "  logs          - View application logs"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make deploy"
-	@echo "  make check-status"
-	@echo "  make destroy"
+	@echo "  make provision    # Create AWS infrastructure"
+	@echo "  make status       # Check if app is running"
+	@echo "  make destroy      # Remove all AWS resources"
 
-# Deployment targets
-deploy:
-	@cd deploy && ./deploy.sh
+# Infrastructure targets
+provision:
+	@echo "Provisioning AWS infrastructure..."
+	@cd terraform/environments/prod && terraform init && terraform apply -auto-approve
+	@echo ""
+	@echo "Infrastructure created! To deploy the app:"
+	@echo "1. Add these GitHub secrets:"
+	@echo "   - EC2_HOST: $$(cd terraform/environments/prod && terraform output -raw instance_ip)"
+	@echo "   - EC2_SSH_KEY: contents of ~/.ssh/wms-prod"
+	@echo "2. Push to main branch or run GitHub Actions manually"
 
-check-status:
-	@cd deploy && ./check-status.sh
-
-retry-deploy:
-	@cd deploy && ./retry-deploy.sh
+status:
+	@echo "Checking infrastructure and application status..."
+	@cd terraform/environments/prod && \
+		IP=$$(terraform output -raw instance_ip 2>/dev/null) && \
+		if [ -n "$$IP" ]; then \
+			echo "Instance IP: $$IP"; \
+			echo "Instance URL: http://$$IP"; \
+			echo ""; \
+			echo "Checking services:"; \
+			curl -s -o /dev/null -w "- Nginx: %{http_code}\n" http://$$IP || echo "- Nginx: Not responding"; \
+			curl -s http://$$IP | grep -q "WMS" && echo "- App: Running ✓" || echo "- App: Not deployed"; \
+		else \
+			echo "No infrastructure found. Run 'make provision' first."; \
+		fi
 
 # Terraform targets
 plan:
