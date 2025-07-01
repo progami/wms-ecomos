@@ -103,47 +103,29 @@ resource "aws_instance" "wms" {
     encrypted   = true
   }
 
-  # User data to install basic requirements
+  # Simple user data - minimal setup to ensure SSH works
   user_data = <<-EOF
     #!/bin/bash
-    set -e
-    
-    # Update system
+    # Basic setup without breaking SSH
     apt-get update
-    apt-get install -y curl git nginx software-properties-common
+    apt-get install -y nginx git curl
     
     # Install Node.js 18
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
     apt-get install -y nodejs
     
-    # Install PM2 globally
+    # Install PM2
     npm install -g pm2
-    
-    # Install PostgreSQL
-    apt-get install -y postgresql postgresql-contrib
-    systemctl start postgresql
-    systemctl enable postgresql
-    
-    # Setup PostgreSQL for WMS
-    sudo -u postgres psql << EOSQL
-CREATE USER wms WITH PASSWORD 'wms_password_2024';
-CREATE DATABASE wms OWNER wms;
-GRANT ALL PRIVILEGES ON DATABASE wms TO wms;
-EOSQL
     
     # Create app directory
     mkdir -p /var/www/wms
     chown -R ubuntu:ubuntu /var/www/wms
     
-    # Setup PM2 startup
-    sudo -u ubuntu bash -c 'pm2 startup systemd -u ubuntu --hp /home/ubuntu'
-    
-    # Configure Nginx
-    tee /etc/nginx/sites-available/wms > /dev/null << 'NGINX'
+    # Basic nginx config
+    cat > /etc/nginx/sites-available/default << 'NGINX'
 server {
-    listen 80;
+    listen 80 default_server;
     server_name _;
-    client_max_body_size 10M;
     
     location / {
         proxy_pass http://localhost:3000;
@@ -151,29 +133,12 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_cache_bypass \$http_upgrade;
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 75s;
-    }
-    
-    location /_next/static {
-        alias /var/www/wms/.next/static;
-        expires 365d;
-        add_header Cache-Control "public, immutable";
     }
 }
 NGINX
     
-    ln -sf /etc/nginx/sites-available/wms /etc/nginx/sites-enabled/
-    rm -f /etc/nginx/sites-enabled/default
     systemctl restart nginx
-    
-    # Create deployment readiness file
-    touch /var/www/wms/.ready-for-deployment
-    echo "Instance prepared for GitHub Actions deployment" > /var/www/wms/.ready-for-deployment
   EOF
 
   tags = {
