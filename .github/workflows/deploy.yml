@@ -42,7 +42,7 @@ jobs:
 
     - name: Deploy to EC2 via SSM
       run: |
-        INSTANCE_ID="i-0fb1f56a90fe95bac"
+        INSTANCE_ID="i-0d23b6d8d1d958e46"
         
         # Create deployment package
         echo "📦 Creating deployment package..."
@@ -116,7 +116,7 @@ jobs:
         
         if [ "$STATUS" = "Success" ]; then
           echo "✅ Deployment successful!"
-          echo "🌐 Application URL: http://54.243.188.216:3000/WMS/auth/login"
+          echo "🌐 Application URL: http://44.201.103.199:3000/WMS/auth/login"
         else
           echo "❌ Deployment failed with status: $STATUS"
           exit 1
