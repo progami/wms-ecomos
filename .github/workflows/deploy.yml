@@ -69,7 +69,7 @@ jobs:
         DEPLOY_CMD=$(aws ssm send-command \
           --instance-ids $INSTANCE_ID \
           --document-name "AWS-RunShellScript" \
-          --timeout-seconds 600 \
+          --timeout-seconds 900 \
           --parameters "commands=[
             'cd /var/www/wms',
             'echo Downloading deployment package...',
@@ -86,10 +86,22 @@ jobs:
         
         echo "Deployment command ID: $DEPLOY_CMD"
         
-        # Wait for deployment to complete
-        aws ssm wait command-executed \
-          --command-id $DEPLOY_CMD \
-          --instance-id $INSTANCE_ID || true
+        # Wait for deployment to complete (with extended timeout)
+        echo "Waiting for deployment to complete..."
+        for i in {1..30}; do
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id $DEPLOY_CMD \
+            --instance-id $INSTANCE_ID \
+            --query 'Status' \
+            --output text 2>/dev/null || echo "waiting")
+          
+          if [ "$STATUS" = "Success" ] || [ "$STATUS" = "Failed" ]; then
+            break
+          fi
+          
+          echo "Status: $STATUS (attempt $i/30)"
+          sleep 10
+        done
         
         # Get deployment status
         STATUS=$(aws ssm get-command-invocation \
