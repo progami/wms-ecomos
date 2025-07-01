@@ -1,0 +1,29 @@
+name: Test SSH Connection
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Test SSH to EC2
+      run: |
+        # Save the SSH key
+        echo "${{ secrets.EC2_SSH_KEY }}" > private_key
+        chmod 600 private_key
+        
+        # Test connection to new instance
+        echo "Testing SSH to i-0fb1f56a90fe95bac..."
+        ssh -i private_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+          ubuntu@ec2-54-221-58-217.compute-1.amazonaws.com \
+          "echo 'SSH from GitHub Actions works!'" || echo "SSH failed with exit code: $?"
+        
+        # Test with verbose output
+        echo "Testing with verbose output..."
+        ssh -vvv -i private_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+          ubuntu@ec2-54-221-58-217.compute-1.amazonaws.com \
+          "echo 'test'" 2>&1 | tail -20
