@@ -30,17 +30,16 @@ jobs:
       env:
         NEXT_TELEMETRY_DISABLED: 1
         
-    - name: Deploy to EC2
-      env:
-        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-        HOST: ${{ secrets.EC2_DNS }}
-        USER: ubuntu
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy to EC2 via SSM
       run: |
-        # Setup SSH key
-        echo "$PRIVATE_KEY" > private_key
-        chmod 600 private_key
-        
-        # Create deployment package with built files
+        # Create deployment package
         tar -czf deploy.tar.gz \
           .next \
           public \
@@ -48,54 +47,74 @@ jobs:
           package*.json \
           next.config.js \
           server.js \
-          tsconfig.json
+          tsconfig.json \
+          src \
+          app
         
-        # Copy package to EC2
-        scp -i private_key -o StrictHostKeyChecking=no deploy.tar.gz ${USER}@${HOST}:/tmp/
+        # Base64 encode for transfer
+        base64 deploy.tar.gz > deploy.tar.gz.b64
         
-        # Deploy on EC2
-        ssh -i private_key -o StrictHostKeyChecking=no ${USER}@${HOST} << 'EOF'
-          set -e
-          
-          # Backup current deployment
-          if [ -d /var/www/wms/.next ]; then
-            tar -czf /tmp/wms-backup-$(date +%s).tar.gz -C /var/www/wms .next
-          fi
-          
-          # Extract new code
-          cd /var/www/wms
-          tar -xzf /tmp/deploy.tar.gz
-          
-          # Install only production dependencies
-          npm ci --production
-          
-          # Setup environment if not exists
-          if [ ! -f .env.production ]; then
-            cat > .env.production << EOENV
-NODE_ENV=production
-PORT=3000
-DATABASE_URL=postgresql://wms:wms_password_2024@localhost:5432/wms
-NEXTAUTH_URL=http://$(curl -s ifconfig.me)
-NEXTAUTH_SECRET=$(openssl rand -base64 32)
-DEMO_ADMIN_PASSWORD=Admin@2024
-DEMO_STAFF_PASSWORD=Staff@2024
-LOG_LEVEL=info
-LOG_DIR=/var/www/wms/logs
-EOENV
-          fi
-          
-          # Run database migrations
-          NODE_ENV=production npx prisma migrate deploy || echo "No pending migrations"
-          
-          # Restart application
-          pm2 restart wms || pm2 start npm --name wms -- start
-          pm2 save
-          
-          # Verify deployment
-          sleep 5
-          curl -f http://localhost:3000 || exit 1
-          
-          # Cleanup
-          rm /tmp/deploy.tar.gz
-          echo "✅ Deployment successful!"
-        EOF
+        # Split into chunks if needed
+        split -b 200k deploy.tar.gz.b64 deploy-chunk-
+        
+        # Transfer and deploy via SSM
+        INSTANCE_ID="i-065d0aa80cdcd55b1"
+        
+        # Create deployment directory
+        aws ssm send-command \
+          --instance-ids $INSTANCE_ID \
+          --document-name "AWS-RunShellScript" \
+          --parameters 'commands=["mkdir -p /home/ubuntu/deploy"]' \
+          --output text --query 'Command.CommandId'
+        
+        # Transfer chunks
+        for chunk in deploy-chunk-*; do
+          CONTENT=$(cat $chunk)
+          aws ssm send-command \
+            --instance-ids $INSTANCE_ID \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[\"echo '$CONTENT' >> /home/ubuntu/deploy/deploy.tar.gz.b64\"]" \
+            --output text --query 'Command.CommandId'
+        done
+        
+        # Deploy application
+        DEPLOY_CMD=$(aws ssm send-command \
+          --instance-ids $INSTANCE_ID \
+          --document-name "AWS-RunShellScript" \
+          --timeout-seconds 600 \
+          --parameters 'commands=[
+            "cd /home/ubuntu/deploy",
+            "base64 -d deploy.tar.gz.b64 > deploy.tar.gz",
+            "sudo mkdir -p /var/www/wms",
+            "sudo tar -xzf deploy.tar.gz -C /var/www/wms",
+            "cd /var/www/wms",
+            "sudo chown -R ubuntu:ubuntu /var/www/wms",
+            "npm ci --production",
+            "cat > .env.production << EOF",
+            "NODE_ENV=production",
+            "PORT=3000",
+            "DATABASE_URL=postgresql://wms_user:wms_pass_2024@localhost:5432/wms_db",
+            "NEXTAUTH_URL=http://3.87.244.116",
+            "NEXTAUTH_SECRET=$(openssl rand -base64 32)",
+            "DEMO_ADMIN_PASSWORD=Admin@2024",
+            "DEMO_STAFF_PASSWORD=Staff@2024",
+            "EOF",
+            "npx prisma migrate deploy || echo No pending migrations",
+            "pm2 stop wms || true",
+            "pm2 start npm --name wms -- start",
+            "pm2 save",
+            "echo Deployment complete!"
+          ]' \
+          --output text --query 'Command.CommandId')
+        
+        # Wait for deployment to complete
+        aws ssm wait command-executed \
+          --command-id $DEPLOY_CMD \
+          --instance-id $INSTANCE_ID
+        
+        # Check deployment status
+        aws ssm get-command-invocation \
+          --command-id $DEPLOY_CMD \
+          --instance-id $INSTANCE_ID \
+          --query 'Status' \
+          --output text
