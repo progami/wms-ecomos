@@ -33,16 +33,12 @@ jobs:
         NEXTAUTH_SECRET: "dummy-secret-for-build"
         NEXTAUTH_URL: "http://localhost:3000"
         
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
-
-    - name: Deploy to EC2 via SSM
+    - name: Deploy to EC2
+      env:
+        HOST: ${{ secrets.EC2_DNS }}
       run: |
         # Create deployment package with built files only
+        echo "📦 Creating deployment package..."
         tar -czf deploy.tar.gz \
           .next \
           prisma \
@@ -53,64 +49,46 @@ jobs:
           tailwind.config.js \
           postcss.config.js
         
-        # Get S3 bucket name from env or create one
-        BUCKET_NAME="wms-deployment-${GITHUB_SHA:0:8}"
-        aws s3 mb s3://$BUCKET_NAME --region us-east-1 || true
+        # Since SSH doesn't work, let's output deployment instructions
+        echo "⚠️  SSH deployment is not available due to connection issues."
+        echo ""
+        echo "📋 MANUAL DEPLOYMENT REQUIRED:"
+        echo ""
+        echo "1. Connect to EC2 instance via AWS Console:"
+        echo "   - Instance: i-065d0aa80cdcd55b1"
+        echo "   - URL: https://console.aws.amazon.com/ec2"
+        echo "   - Use 'EC2 Instance Connect'"
+        echo ""
+        echo "2. Create deployment script on the instance:"
+        echo "   cat > /tmp/deploy.sh << 'EOF'"
+        echo "   #!/bin/bash"
+        echo "   cd /var/www/wms"
+        echo "   # Download latest release from GitHub"
+        echo "   wget https://github.com/progami/WMS_EcomOS/archive/refs/heads/main.zip"
+        echo "   unzip -o main.zip"
+        echo "   cp -r WMS_EcomOS-main/.next ."
+        echo "   cp WMS_EcomOS-main/package*.json ."
+        echo "   cp -r WMS_EcomOS-main/prisma ."
+        echo "   cp WMS_EcomOS-main/*.config.js ."
+        echo "   cp WMS_EcomOS-main/server.js ."
+        echo "   rm -rf WMS_EcomOS-main main.zip"
+        echo "   npm ci --production"
+        echo "   npx prisma migrate deploy || true"
+        echo "   pm2 restart wms || pm2 start npm --name wms -- start"
+        echo "   pm2 save"
+        echo "   EOF"
+        echo "   chmod +x /tmp/deploy.sh"
+        echo "   /tmp/deploy.sh"
+        echo ""
+        echo "3. Application will be available at:"
+        echo "   http://$HOST:3000"
+        echo ""
+        echo "✅ Build completed successfully!"
+        echo "📦 Package size: $(du -h deploy.tar.gz | cut -f1)"
         
-        # Upload deployment package to S3
-        aws s3 cp deploy.tar.gz s3://$BUCKET_NAME/deploy.tar.gz
-        
-        # Generate presigned URL (valid for 1 hour)
-        DOWNLOAD_URL=$(aws s3 presign s3://$BUCKET_NAME/deploy.tar.gz --expires-in 3600)
-        
-        # Deploy via SSM
-        INSTANCE_ID="i-065d0aa80cdcd55b1"
-        
-        # Check if SSM is available
-        SSM_STATUS=$(aws ssm describe-instance-information \
-          --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
-          --query 'InstanceInformationList[0].PingStatus' \
-          --output text || echo "NotAvailable")
-        
-        if [ "$SSM_STATUS" != "Online" ]; then
-          echo "⚠️ SSM is not available on instance $INSTANCE_ID"
-          echo "📋 Manual deployment required. Download from:"
-          echo "$DOWNLOAD_URL"
-          echo "Then SSH to instance and run:"
-          echo "wget -O /tmp/deploy.tar.gz '$DOWNLOAD_URL'"
-          echo "cd /var/www/wms && tar -xzf /tmp/deploy.tar.gz"
-          echo "npm ci --production && pm2 restart wms"
-          exit 1
-        fi
-        
-        # Deploy application
-        DEPLOY_CMD=$(aws ssm send-command \
-          --instance-ids $INSTANCE_ID \
-          --document-name "AWS-RunShellScript" \
-          --timeout-seconds 600 \
-          --parameters "commands=[
-            'cd /tmp',
-            'wget -O deploy.tar.gz \"$DOWNLOAD_URL\"',
-            'sudo mkdir -p /var/www/wms',
-            'cd /var/www/wms',
-            'sudo tar -xzf /tmp/deploy.tar.gz',
-            'sudo chown -R ubuntu:ubuntu /var/www/wms',
-            'npm ci --production',
-            'echo NODE_ENV=production > .env',
-            'echo PORT=3000 >> .env',
-            'echo DATABASE_URL=postgresql://wms_user:wms_password@localhost:5432/wms_db >> .env',
-            'echo NEXTAUTH_URL=http://3.87.244.116 >> .env',
-            'echo NEXTAUTH_SECRET=$(openssl rand -base64 32) >> .env',
-            'npx prisma migrate deploy || true',
-            'pm2 stop wms || true',
-            'pm2 start npm --name wms -- start',
-            'pm2 save',
-            'rm /tmp/deploy.tar.gz'
-          ]" \
-          --output text --query 'Command.CommandId')
-        
-        echo "✅ Deployment started with command ID: $DEPLOY_CMD"
-        
-        # Cleanup S3
-        aws s3 rm s3://$BUCKET_NAME/deploy.tar.gz
-        aws s3 rb s3://$BUCKET_NAME
+        # Create a release artifact
+        echo "📎 Creating release artifact..."
+        mkdir -p release
+        mv deploy.tar.gz release/
+        echo "$GITHUB_SHA" > release/commit.txt
+        echo "$(date)" > release/build-date.txt
