@@ -90,6 +90,7 @@ export default function DashboardPage() {
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null)
   const [selectedTimeRange, setSelectedTimeRange] = useState('yearToDate')
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false)
+  const [hasError, setHasError] = useState(false)
   
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -169,6 +170,7 @@ export default function DashboardPage() {
           hasData: !!data
         })
       } else {
+        setHasError(true)
         const errorText = await response.text()
         try {
           const errorData = JSON.parse(errorText)
@@ -181,8 +183,14 @@ export default function DashboardPage() {
       const duration = performance.now() - startTime
       logError('Failed to fetch dashboard stats', error)
       logPerformance('dashboard_stats_fetch_error', duration)
+      setHasError(true)
       
-      toast.error(error instanceof Error ? error.message : 'Failed to load dashboard stats')
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes('401')) {
+        router.push('/WMS/auth/login?callbackUrl=/WMS/dashboard')
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to load dashboard stats')
+      }
     } finally {
       setLoadingStats(false)
     }
@@ -330,7 +338,8 @@ export default function DashboardPage() {
     }
   }, [selectedTimeRange, status, hasFetched, fetchDashboardStats, useDemoData])
 
-  if (status === 'loading' || loadingStats) {
+  // Show loading only while checking authentication
+  if (status === 'loading') {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
@@ -340,8 +349,51 @@ export default function DashboardPage() {
     )
   }
 
+  // If unauthenticated, the useEffect redirect will handle it
   if (status === 'unauthenticated' || !session) {
-    return null
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <p className="text-gray-500">Redirecting to login...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Show loading while fetching stats (only for authenticated users)
+  if (loadingStats) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // Show error state if data fetch failed
+  if (hasError && !stats && !useDemoData) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center space-y-4">
+            <p className="text-red-500 text-lg">Failed to load dashboard data</p>
+            <p className="text-gray-500">Please check your connection and try again</p>
+            <button
+              onClick={() => {
+                setHasError(false)
+                fetchDashboardStats()
+              }}
+              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
   }
 
 

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { getDatabaseStatus } from '@/lib/db-health'
 
 export async function GET() {
   const checks = {
@@ -13,30 +11,33 @@ export async function GET() {
   }
   
   // Check database connectivity
-  try {
-    await prisma.$queryRaw`SELECT 1`
-    checks.database = 'ok'
-  } catch (error) {
-    checks.database = 'error'
-  } finally {
-    await prisma.$disconnect()
+  const dbHealth = await getDatabaseStatus()
+  checks.database = dbHealth.isHealthy ? 'ok' : 'error'
+  
+  // Add database error details if unhealthy
+  const responseData: any = {
+    status: '',
+    checks,
+    uptime: process.uptime(),
+    memory: {
+      used: process.memoryUsage().heapUsed / 1024 / 1024,
+      total: process.memoryUsage().heapTotal / 1024 / 1024,
+      unit: 'MB'
+    }
+  }
+  
+  if (!dbHealth.isHealthy) {
+    responseData.databaseError = dbHealth.error
   }
   
   const allHealthy = Object.values(checks).every(
     value => typeof value === 'string' && (value === 'ok' || !['pending', 'error'].includes(value))
   )
   
+  responseData.status = allHealthy ? 'healthy' : 'unhealthy'
+  
   return NextResponse.json(
-    {
-      status: allHealthy ? 'healthy' : 'unhealthy',
-      checks,
-      uptime: process.uptime(),
-      memory: {
-        used: process.memoryUsage().heapUsed / 1024 / 1024,
-        total: process.memoryUsage().heapTotal / 1024 / 1024,
-        unit: 'MB'
-      }
-    },
+    responseData,
     { status: allHealthy ? 200 : 503 }
   )
 }
