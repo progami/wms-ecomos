@@ -91,6 +91,13 @@ export default function DashboardPage() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('yearToDate')
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false)
   
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/WMS/auth/login?callbackUrl=/WMS/dashboard')
+    }
+  }, [status, router])
+  
   // Auto-detect demo mode from user session
   const useDemoData = session?.user?.isDemo || false
   const isAdmin = session?.user?.role === 'admin'
@@ -333,7 +340,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (!session) {
+  if (status === 'unauthenticated' || !session) {
     return null
   }
 

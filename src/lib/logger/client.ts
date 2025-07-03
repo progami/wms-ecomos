@@ -15,7 +15,7 @@ class ClientLogger {
   private flushInterval: number = 5000; // 5 seconds
   private maxBufferSize: number = 50;
   private flushTimer: NodeJS.Timeout | null = null;
-  private endpoint: string = '/api/logs/client';
+  private endpoint: string = process.env.NODE_ENV === 'production' ? '/WMS/api/logs/client' : '/api/logs/client';
 
   constructor() {
     // Start flush timer
