@@ -15,7 +15,7 @@
     "lint": "next lint",
     "test": "cd tests && jest",
     "test:unit": "cd tests && jest unit/",
-    "test:integration": "cd tests && jest integration/ __tests__/",
+    "test:integration": "cd tests && DATABASE_URL=\"$DATABASE_URL\" PRISMA_SCHEMA_PATH=../prisma/schema.prisma jest integration/ __tests__/ --forceExit",
     "test:watch": "cd tests && jest --watch",
     "test:coverage": "cd tests && jest --coverage",
     "test:ci": "npm run lint && npm run type-check && npm run test:coverage && npm run test:e2e:ci",

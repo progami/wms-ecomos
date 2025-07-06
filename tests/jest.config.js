@@ -3,6 +3,7 @@ const path = require('path');
 module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testMatch: [
     '**/unit/**/*.test.[jt]s?(x)',
     '**/integration/**/*.test.[jt]s?(x)',

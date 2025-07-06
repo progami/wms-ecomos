@@ -22,11 +22,11 @@ function writeLog(level, message) {
 // Patch require to intercept Next.js modules
 const originalRequire = Module.prototype.require;
 Module.prototype.require = function(id) {
-  const module = originalRequire.apply(this, arguments);
+  const loadedModule = originalRequire.apply(this, arguments);
   
   // Patch Next.js server logger
   if (id.includes('next/dist/server/lib/logging')) {
-    if (module.Log && module.Log.log) {
+    if (loadedModule.Log && loadedModule.Log.log) {
       const originalLog = module.Log.log;
       module.Log.log = function(...args) {
         const logData = args.map(arg => {
@@ -74,7 +74,7 @@ Module.prototype.require = function(id) {
     };
   }
   
-  return module;
+  return loadedModule;
 };
 
 // Also intercept debug module (used by many packages)
