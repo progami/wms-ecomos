@@ -3,6 +3,12 @@ import request from 'supertest'
 import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
 import * as bcrypt from 'bcryptjs'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('User Management API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -39,9 +45,7 @@ describe('User Management API Endpoints', () => {
       await createTestUser(prisma, 'USER')
       await createTestUser(prisma, 'VIEWER')
       
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/admin/users')
@@ -54,9 +58,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should filter users by role', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/admin/users?role=ADMIN')
@@ -74,9 +76,7 @@ describe('User Management API Endpoints', () => {
         data: { isActive: false }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/admin/users?isActive=false')
@@ -100,9 +100,7 @@ describe('User Management API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/admin/users?search=searchable')
@@ -113,9 +111,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/admin/users')
@@ -128,9 +124,7 @@ describe('User Management API Endpoints', () => {
 
   describe('POST /api/admin/users', () => {
     it('should create new user with valid data', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const newUser = {
         email: 'newuser@example.com',
@@ -155,9 +149,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should validate email format', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/admin/users')
@@ -176,9 +168,7 @@ describe('User Management API Endpoints', () => {
     it('should prevent duplicate emails', async () => {
       const existingUser = await createTestUser(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/admin/users')
@@ -195,9 +185,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should validate password strength', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/admin/users')
@@ -214,9 +202,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should validate role', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/admin/users')
@@ -237,9 +223,7 @@ describe('User Management API Endpoints', () => {
     it('should update user details', async () => {
       const userToUpdate = await createTestUser(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const updates = {
         name: 'Updated Name',
@@ -258,9 +242,7 @@ describe('User Management API Endpoints', () => {
     it('should update user password', async () => {
       const userToUpdate = await createTestUser(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put(`/api/admin/users/${userToUpdate.id}`)
@@ -282,9 +264,7 @@ describe('User Management API Endpoints', () => {
     it('should deactivate user', async () => {
       const userToDeactivate = await createTestUser(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put(`/api/admin/users/${userToDeactivate.id}`)
@@ -298,9 +278,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should not allow updating own admin role', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put(`/api/admin/users/${adminUser.id}`)
@@ -314,9 +292,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should return 404 for non-existent user', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put('/api/admin/users/non-existent-id')
@@ -334,9 +310,7 @@ describe('User Management API Endpoints', () => {
     it('should soft delete user (deactivate)', async () => {
       const userToDelete = await createTestUser(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .delete(`/api/admin/users/${userToDelete.id}`)
@@ -352,9 +326,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should not allow deleting own account', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .delete(`/api/admin/users/${adminUser.id}`)
@@ -374,9 +346,7 @@ describe('User Management API Endpoints', () => {
         data: { role: 'USER' }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .delete(`/api/admin/users/${adminUser.id}`)
@@ -411,9 +381,7 @@ describe('User Management API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/audit-logs')
@@ -426,9 +394,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should filter audit logs by user', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/audit-logs?userId=${adminUser.id}`)
@@ -439,9 +405,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should filter audit logs by entity type', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/audit-logs?entityType=USER')
@@ -462,9 +426,7 @@ describe('User Management API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/audit-logs?startDate=2024-02-01')
@@ -477,9 +439,7 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/audit-logs')

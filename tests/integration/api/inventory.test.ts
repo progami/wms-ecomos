@@ -3,6 +3,12 @@ import request from 'supertest'
 import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
 import { createTestSku, createTestWarehouse, createTestInventoryBalance, createTestTransaction } from './setup/fixtures'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('Inventory API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -42,9 +48,7 @@ describe('Inventory API Endpoints', () => {
       await createTestInventoryBalance(prisma, sku1.id, warehouse.id, { availableQuantity: 100 })
       await createTestInventoryBalance(prisma, sku2.id, warehouse.id, { availableQuantity: 200 })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/balances')
@@ -64,9 +68,7 @@ describe('Inventory API Endpoints', () => {
       await createTestInventoryBalance(prisma, sku.id, warehouse1.id)
       await createTestInventoryBalance(prisma, sku.id, warehouse2.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/inventory/balances?warehouseId=${warehouse1.id}`)
@@ -85,9 +87,7 @@ describe('Inventory API Endpoints', () => {
       await createTestInventoryBalance(prisma, sku1.id, warehouse.id)
       await createTestInventoryBalance(prisma, sku2.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/inventory/balances?skuId=${sku1.id}`)
@@ -103,9 +103,7 @@ describe('Inventory API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma, { name: 'Detail Warehouse' })
       await createTestInventoryBalance(prisma, sku.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/balances?includeDetails=true')
@@ -119,9 +117,7 @@ describe('Inventory API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/balances')
@@ -145,9 +141,7 @@ describe('Inventory API Endpoints', () => {
         quantity: -50
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions')
@@ -172,9 +166,7 @@ describe('Inventory API Endpoints', () => {
         transactionDate: new Date('2024-03-01')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions?startDate=2024-01-15&endDate=2024-02-15')
@@ -198,9 +190,7 @@ describe('Inventory API Endpoints', () => {
         transactionType: 'ADJUST'
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions?type=RECEIVE')
@@ -222,9 +212,7 @@ describe('Inventory API Endpoints', () => {
         })
       }
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions?page=2&limit=10')
@@ -239,9 +227,7 @@ describe('Inventory API Endpoints', () => {
 
   describe('POST /api/inventory/shipments/email', () => {
     it('should send shipment email notification', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const emailData = {
         to: 'customer@example.com',
@@ -262,9 +248,7 @@ describe('Inventory API Endpoints', () => {
     })
 
     it('should validate email data', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/inventory/shipments/email')
@@ -294,9 +278,7 @@ describe('Inventory API Endpoints', () => {
         status: 'COMPLETED'
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/incomplete')
@@ -317,9 +299,7 @@ describe('Inventory API Endpoints', () => {
         referenceNumber: 'INC-REF-001'
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/incomplete')

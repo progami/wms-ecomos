@@ -10,9 +10,9 @@
  * - Set up as cron job: 0 2 * * 1 /usr/bin/node /path/to/weekly-storage-calculation.js
  */
 
-import { prisma } from '../src/lib/prisma'
-import { CostCalculationService } from '../src/lib/services/cost-calculation-service'
-import { auditLog } from '../src/lib/security/audit-logger'
+import { prisma } from '../../src/lib/prisma'
+import { CostCalculationService } from '../../src/lib/services/cost-calculation-service'
+import { auditLog } from '../../src/lib/security/audit-logger'
 import { endOfWeek } from 'date-fns'
 
 const SYSTEM_USER_ID = 'system' // You should create a system user in your database

@@ -3,6 +3,12 @@ import request from 'supertest'
 import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
 import { createTestSku } from './setup/fixtures'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('SKU API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -40,9 +46,7 @@ describe('SKU API Endpoints', () => {
       await createTestSku(prisma, { skuCode: 'TEST-002' })
       await createTestSku(prisma, { skuCode: 'TEST-003', isActive: false })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/skus')
@@ -55,9 +59,7 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/skus')
@@ -70,9 +72,7 @@ describe('SKU API Endpoints', () => {
       await createTestSku(prisma, { skuCode: 'WIDGET-001', description: 'Blue Widget' })
       await createTestSku(prisma, { skuCode: 'GADGET-001', description: 'Red Gadget' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/skus?search=widget')
@@ -87,9 +87,7 @@ describe('SKU API Endpoints', () => {
       await createTestSku(prisma, { isActive: true })
       await createTestSku(prisma, { isActive: false })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/skus?includeInactive=true')
@@ -105,9 +103,7 @@ describe('SKU API Endpoints', () => {
         await createTestSku(prisma, { skuCode: `BULK-${i.toString().padStart(3, '0')}` })
       }
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/skus?page=2&limit=10')
@@ -122,9 +118,7 @@ describe('SKU API Endpoints', () => {
 
   describe('POST /api/skus', () => {
     it('should create new SKU with valid data', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const newSku = {
         skuCode: 'NEW-SKU-001',
@@ -157,9 +151,7 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/skus')
@@ -176,9 +168,7 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should validate required fields', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/skus')
@@ -195,9 +185,7 @@ describe('SKU API Endpoints', () => {
     it('should prevent duplicate SKU codes', async () => {
       const existingSku = await createTestSku(prisma, { skuCode: 'DUPLICATE-001' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/skus')
@@ -214,9 +202,7 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should sanitize input data', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/skus')
@@ -238,9 +224,7 @@ describe('SKU API Endpoints', () => {
     it('should return SKU details by ID', async () => {
       const sku = await createTestSku(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/skus/${sku.id}`)
@@ -255,9 +239,7 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should return 404 for non-existent SKU', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/skus/non-existent-id')
@@ -272,9 +254,7 @@ describe('SKU API Endpoints', () => {
     it('should update SKU with valid data', async () => {
       const sku = await createTestSku(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const updates = {
         description: 'Updated Description',
@@ -294,9 +274,7 @@ describe('SKU API Endpoints', () => {
     it('should validate update data', async () => {
       const sku = await createTestSku(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put(`/api/skus/${sku.id}`)
@@ -314,9 +292,7 @@ describe('SKU API Endpoints', () => {
     it('should soft delete SKU (set inactive)', async () => {
       const sku = await createTestSku(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .delete(`/api/skus/${sku.id}`)
@@ -334,9 +310,7 @@ describe('SKU API Endpoints', () => {
     it('should return 403 for non-admin users', async () => {
       const sku = await createTestSku(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .delete(`/api/skus/${sku.id}`)
@@ -373,9 +347,7 @@ describe('SKU API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/skus/${sku.id}/next-batch`)

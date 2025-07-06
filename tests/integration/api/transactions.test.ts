@@ -3,6 +3,12 @@ import request from 'supertest'
 import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
 import { createTestSku, createTestWarehouse, createTestTransaction, createTestBatch } from './setup/fixtures'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('Transaction API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -47,9 +53,7 @@ describe('Transaction API Endpoints', () => {
         quantity: -50
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/transactions')
@@ -62,9 +66,7 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/transactions')
@@ -87,9 +89,7 @@ describe('Transaction API Endpoints', () => {
         transactionType: 'ADJUST'
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/transactions?type=RECEIVE')
@@ -114,9 +114,7 @@ describe('Transaction API Endpoints', () => {
         transactionDate: new Date('2024-03-01')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/transactions?startDate=2024-01-15&endDate=2024-02-15')
@@ -137,9 +135,7 @@ describe('Transaction API Endpoints', () => {
         })
       }
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/transactions?page=2&limit=10')
@@ -158,9 +154,7 @@ describe('Transaction API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const batch = await createTestBatch(prisma, sku.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const newTransaction = {
         transactionType: 'RECEIVE',
@@ -193,9 +187,7 @@ describe('Transaction API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/transactions')
@@ -221,9 +213,7 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should validate transaction data', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/transactions')
@@ -245,9 +235,7 @@ describe('Transaction API Endpoints', () => {
         totalQuantity: 50
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/transactions')
@@ -267,9 +255,7 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/transactions')
@@ -290,9 +276,7 @@ describe('Transaction API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/transactions/${transaction.id}`)
@@ -311,9 +295,7 @@ describe('Transaction API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma, { name: 'TX Warehouse' })
       const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/transactions/${transaction.id}?includeRelated=true`)
@@ -327,9 +309,7 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should return 404 for non-existent transaction', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/transactions/non-existent-id')
@@ -348,9 +328,7 @@ describe('Transaction API Endpoints', () => {
         status: 'PENDING'
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put(`/api/transactions/${transaction.id}`)
@@ -370,9 +348,7 @@ describe('Transaction API Endpoints', () => {
         quantity: 100
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put(`/api/transactions/${transaction.id}`)
@@ -392,9 +368,7 @@ describe('Transaction API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const attributes = {
         customField1: 'value1',
@@ -418,9 +392,7 @@ describe('Transaction API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/transactions/${transaction.id}/attachments`)
@@ -438,9 +410,7 @@ describe('Transaction API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       // Create a large buffer (over 10MB)
       const largeBuffer = Buffer.alloc(11 * 1024 * 1024)
@@ -477,9 +447,7 @@ describe('Transaction API Endpoints', () => {
         transactionDate: new Date('2024-01-20')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/transactions/ledger?skuId=${sku.id}&warehouseId=${warehouse.id}`)

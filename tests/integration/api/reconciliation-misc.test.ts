@@ -10,6 +10,12 @@ import {
   createTestCostRate 
 } from './setup/fixtures'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('Reconciliation and Miscellaneous API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -54,9 +60,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
         availableQuantity: 200 
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/reconciliation/run')
@@ -78,9 +82,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     it('should validate date range', async () => {
       const warehouse = await createTestWarehouse(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/reconciliation/run')
@@ -96,9 +98,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/reconciliation/run')
@@ -130,9 +130,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/reconciliation/${reconciliation.id}/details`)
@@ -151,9 +149,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should return 404 for non-existent reconciliation', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reconciliation/non-existent-id/details')
@@ -186,9 +182,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
         availableQuantity: 100 
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/reconciliation/${reconciliation.id}/resolve`)
@@ -231,9 +225,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/reconciliation/${reconciliation.id}/resolve`)
@@ -254,9 +246,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/reconciliation/test-id/resolve')
@@ -277,9 +267,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
       await createTestWarehouse(prisma, { warehouseId: 'WH-002', name: 'Warehouse 2' })
       await createTestWarehouse(prisma, { warehouseId: 'WH-003', name: 'Warehouse 3', isActive: false })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/warehouses')
@@ -292,9 +280,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should include inactive warehouses when requested', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/warehouses?includeInactive=true')
@@ -308,9 +294,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
       await createTestWarehouse(prisma, { type: 'FBA' })
       await createTestWarehouse(prisma, { type: 'FBM' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/warehouses?type=FBA')
@@ -321,9 +305,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/warehouses')
@@ -360,9 +342,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
 
   describe('POST /api/logs/client', () => {
     it('should log client-side errors', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const errorLog = {
         level: 'error',
@@ -384,9 +364,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should validate log level', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/logs/client')
@@ -401,9 +379,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should rate limit excessive logging', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       // Send multiple logs rapidly
       for (let i = 0; i < 15; i++) {
@@ -446,9 +422,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
       // Mock demo mode environment
       process.env.DEMO_MODE = 'true'
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/demo/setup')
@@ -468,9 +442,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     it('should return error when not in demo mode', async () => {
       process.env.DEMO_MODE = 'false'
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/demo/setup')
@@ -486,9 +458,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
 
   describe('Middleware and CSRF Protection', () => {
     it('should reject requests without CSRF token on state-changing operations', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/skus')
@@ -519,9 +489,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
       // Mock database error
       jest.spyOn(prisma.sKU, 'findMany').mockRejectedValueOnce(new Error('Database connection lost'))
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/skus')
@@ -533,9 +501,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     })
 
     it('should handle malformed JSON gracefully', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/skus')

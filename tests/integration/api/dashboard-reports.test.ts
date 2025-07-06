@@ -9,6 +9,12 @@ import {
   createTestInvoice 
 } from './setup/fixtures'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('Dashboard and Reports API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -73,9 +79,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         transactionDate: new Date()
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/dashboard/stats')
@@ -92,9 +96,7 @@ describe('Dashboard and Reports API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/dashboard/stats')
@@ -114,9 +116,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         totalAmount: 2000 
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/dashboard/stats?includeFinancial=true')
@@ -143,9 +143,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         transactionDate: new Date('2024-03-01')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/dashboard/stats?startDate=2024-01-15&endDate=2024-02-15')
@@ -172,9 +170,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         totalQuantity: 200 
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=inventory-summary')
@@ -212,9 +208,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         transactionDate: new Date('2024-01-20')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=transaction-history&startDate=2024-01-01&endDate=2024-01-31')
@@ -250,9 +244,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         invoiceDate: new Date('2024-01-25')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=financial-summary&startDate=2024-01-01&endDate=2024-01-31')
@@ -295,9 +287,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         transactionDate: new Date('2024-01-20')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=sku-performance&startDate=2024-01-01&endDate=2024-01-31')
@@ -344,9 +334,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         transactionDate: new Date()
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=warehouse-utilization')
@@ -363,9 +351,7 @@ describe('Dashboard and Reports API Endpoints', () => {
     })
 
     it('should validate report type', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=invalid-report')
@@ -376,9 +362,7 @@ describe('Dashboard and Reports API Endpoints', () => {
     })
 
     it('should require date range for certain reports', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=transaction-history')
@@ -395,9 +379,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         availableQuantity: 100 
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=inventory-summary&format=csv')
@@ -410,9 +392,7 @@ describe('Dashboard and Reports API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/reports?type=inventory-summary')
@@ -440,9 +420,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/admin/dashboard')
@@ -458,9 +436,7 @@ describe('Dashboard and Reports API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/admin/dashboard')
@@ -500,9 +476,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/finance/reports?type=cost-analysis&period=2024-01')
@@ -540,9 +514,7 @@ describe('Dashboard and Reports API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/finance/reports?type=profitability&period=2024-01')

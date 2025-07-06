@@ -24,16 +24,11 @@ export function createNextRequest(app: Server) {
   return request(app)
 }
 
-// Mock NextAuth session
-export function mockSession(session: any) {
-  jest.mock('next-auth', () => ({
-    getServerSession: jest.fn().mockResolvedValue(session)
-  }))
-}
+// Note: NextAuth mocking should be done at the module level in test files
+// See the integration test files for examples of proper mocking
 
 // Helper to create authenticated request
-export function authenticatedRequest(app: Server, session: any) {
-  mockSession(session)
+export function authenticatedRequest(app: Server) {
   return request(app)
 }
 

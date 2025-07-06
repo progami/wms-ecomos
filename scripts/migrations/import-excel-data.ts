@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx'
-import { prisma } from '../src/lib/prisma'
+import { prisma } from '../../src/lib/prisma'
 import * as path from 'path'
 import * as fs from 'fs'
 

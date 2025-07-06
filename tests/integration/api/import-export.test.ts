@@ -5,6 +5,12 @@ import { createTestSku, createTestWarehouse, createTestTransaction, createTestIn
 import * as fs from 'fs'
 import * as path from 'path'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('Import/Export API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -37,9 +43,7 @@ describe('Import/Export API Endpoints', () => {
 
   describe('GET /api/import/template', () => {
     it('should return SKU import template', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/import/template?type=sku')
@@ -54,9 +58,7 @@ describe('Import/Export API Endpoints', () => {
     })
 
     it('should return transaction import template', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/import/template?type=transaction')
@@ -71,9 +73,7 @@ describe('Import/Export API Endpoints', () => {
     })
 
     it('should return 400 for invalid template type', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/import/template?type=invalid')
@@ -84,9 +84,7 @@ describe('Import/Export API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/import/template?type=sku')
@@ -98,9 +96,7 @@ describe('Import/Export API Endpoints', () => {
 
   describe('POST /api/import', () => {
     it('should import SKUs from CSV file', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const csvContent = `skuCode,asin,description,packSize,material,unitDimensionsCm,unitWeightKg,unitsPerCarton,cartonDimensionsCm,cartonWeightKg,packagingType,notes
 IMPORT-001,B0IMPORT01,Imported Product 1,5,Plastic,10x10x10,0.5,24,40x40x40,12.5,Box,Test import 1
@@ -128,9 +124,7 @@ IMPORT-002,B0IMPORT02,Imported Product 2,10,Metal,15x15x15,1.0,12,50x50x50,13.0,
       const sku = await createTestSku(prisma, { skuCode: 'TX-IMPORT-001' })
       const warehouse = await createTestWarehouse(prisma, { warehouseId: 'WH-IMPORT-001' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const csvContent = `transactionType,transactionSubtype,skuCode,warehouseId,quantity,referenceNumber,amazonShipmentId,transactionDate,notes
 RECEIVE,STANDARD,TX-IMPORT-001,WH-IMPORT-001,100,IMP-REF-001,FBA-IMP-001,2024-01-15,Import test 1
@@ -154,9 +148,7 @@ SHIP,STANDARD,TX-IMPORT-001,WH-IMPORT-001,-50,IMP-REF-002,FBA-IMP-002,2024-01-20
     })
 
     it('should handle import errors gracefully', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const csvContent = `skuCode,description,packSize
 INVALID-001,,10
@@ -179,9 +171,7 @@ VALID-001,Valid Description,10`
     })
 
     it('should validate file size', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       // Create a large buffer (over 10MB)
       const largeBuffer = Buffer.alloc(11 * 1024 * 1024)
@@ -197,9 +187,7 @@ VALID-001,Valid Description,10`
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/import')
@@ -217,9 +205,7 @@ VALID-001,Valid Description,10`
       await createTestSku(prisma, { skuCode: 'EXPORT-SKU-001' })
       await createTestSku(prisma, { skuCode: 'EXPORT-SKU-002' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/export?type=sku')
@@ -240,9 +226,7 @@ VALID-001,Valid Description,10`
       await createTestTransaction(prisma, sku.id, warehouse1.id, { referenceNumber: 'EXP-001' })
       await createTestTransaction(prisma, sku.id, warehouse2.id, { referenceNumber: 'EXP-002' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/export?type=transaction&warehouseId=${warehouse1.id}`)
@@ -254,9 +238,7 @@ VALID-001,Valid Description,10`
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/export?type=sku')
@@ -275,9 +257,7 @@ VALID-001,Valid Description,10`
       await createTestInventoryBalance(prisma, sku1.id, warehouse.id, { availableQuantity: 100 })
       await createTestInventoryBalance(prisma, sku2.id, warehouse.id, { availableQuantity: 200 })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/export/inventory')
@@ -300,9 +280,7 @@ VALID-001,Valid Description,10`
       await createTestInventoryBalance(prisma, sku.id, warehouse1.id)
       await createTestInventoryBalance(prisma, sku.id, warehouse2.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/export/inventory?warehouseId=${warehouse1.id}`)
@@ -332,9 +310,7 @@ VALID-001,Valid Description,10`
         transactionDate: new Date('2024-01-15')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/export/ledger')
@@ -366,9 +342,7 @@ VALID-001,Valid Description,10`
         transactionDate: new Date('2024-03-01')
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/export/ledger?startDate=2024-01-15&endDate=2024-02-15')
@@ -400,9 +374,7 @@ VALID-001,Valid Description,10`
         notes: null
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/export/missing-attributes')
@@ -425,9 +397,7 @@ VALID-001,Valid Description,10`
       await createTestInventoryBalance(prisma, sku1.id, warehouse.id, { availableQuantity: 100 })
       await createTestInventoryBalance(prisma, sku2.id, warehouse.id, { availableQuantity: 200 })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const csvContent = `skuCode,warehouseId,newQuantity,reason
 ADJ-001,WH-ADJ-001,150,Physical count adjustment
@@ -453,9 +423,7 @@ ADJ-002,WH-ADJ-001,180,Damaged goods write-off`
     })
 
     it('should validate adjustment data', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const csvContent = `skuCode,warehouseId,newQuantity,reason
 INVALID-SKU,WH-001,100,Invalid SKU
@@ -473,9 +441,7 @@ ADJ-001,INVALID-WH,100,Invalid warehouse`
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/upload/inventory')

@@ -10,6 +10,12 @@ import {
   createTestInventoryBalance 
 } from './setup/fixtures'
 
+// Mock next-auth at module level
+const mockGetServerSession = jest.fn()
+jest.mock('next-auth', () => ({
+  getServerSession: mockGetServerSession
+}))
+
 describe('Finance API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -46,9 +52,7 @@ describe('Finance API Endpoints', () => {
       await createTestInvoice(prisma, warehouse.id, { invoiceNumber: 'INV-001' })
       await createTestInvoice(prisma, warehouse.id, { invoiceNumber: 'INV-002' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/invoices')
@@ -66,9 +70,7 @@ describe('Finance API Endpoints', () => {
       await createTestInvoice(prisma, warehouse.id, { status: 'PAID' })
       await createTestInvoice(prisma, warehouse.id, { status: 'DISPUTED' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/invoices?status=PENDING')
@@ -91,9 +93,7 @@ describe('Finance API Endpoints', () => {
         invoiceDate: new Date('2024-03-01') 
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/invoices?startDate=2024-01-15&endDate=2024-02-15')
@@ -104,9 +104,7 @@ describe('Finance API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(null)
-      }))
+      mockGetServerSession.mockResolvedValue(null)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/invoices')
@@ -120,9 +118,7 @@ describe('Finance API Endpoints', () => {
     it('should create new invoice with valid data', async () => {
       const warehouse = await createTestWarehouse(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const newInvoice = {
         invoiceNumber: 'INV-NEW-001',
@@ -163,9 +159,7 @@ describe('Finance API Endpoints', () => {
     })
 
     it('should validate invoice data', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/invoices')
@@ -183,9 +177,7 @@ describe('Finance API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       await createTestInvoice(prisma, warehouse.id, { invoiceNumber: 'INV-DUP-001' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/invoices')
@@ -204,9 +196,7 @@ describe('Finance API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/invoices')
@@ -225,9 +215,7 @@ describe('Finance API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const invoice = await createTestInvoice(prisma, warehouse.id, { status: 'PENDING' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/invoices/${invoice.id}/accept`)
@@ -245,9 +233,7 @@ describe('Finance API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const invoice = await createTestInvoice(prisma, warehouse.id, { status: 'PAID' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/invoices/${invoice.id}/accept`)
@@ -266,9 +252,7 @@ describe('Finance API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
       const invoice = await createTestInvoice(prisma, warehouse.id, { status: 'PENDING' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/invoices/${invoice.id}/dispute`)
@@ -290,9 +274,7 @@ describe('Finance API Endpoints', () => {
       await createTestCostRate(prisma, warehouse.id, { rateName: 'Storage Rate' })
       await createTestCostRate(prisma, warehouse.id, { rateName: 'Handling Rate', type: 'HANDLING' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/settings/rates')
@@ -310,9 +292,7 @@ describe('Finance API Endpoints', () => {
       await createTestCostRate(prisma, warehouse1.id)
       await createTestCostRate(prisma, warehouse2.id)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/settings/rates?warehouseId=${warehouse1.id}`)
@@ -329,9 +309,7 @@ describe('Finance API Endpoints', () => {
       await createTestCostRate(prisma, warehouse.id, { type: 'HANDLING' })
       await createTestCostRate(prisma, warehouse.id, { type: 'SHIPPING' })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/settings/rates?type=STORAGE')
@@ -347,9 +325,7 @@ describe('Finance API Endpoints', () => {
     it('should create new cost rate', async () => {
       const warehouse = await createTestWarehouse(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const newRate = {
         rateName: 'New Storage Rate',
@@ -386,9 +362,7 @@ describe('Finance API Endpoints', () => {
         maxQuantity: 100
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/settings/rates')
@@ -410,9 +384,7 @@ describe('Finance API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/settings/rates')
@@ -435,9 +407,7 @@ describe('Finance API Endpoints', () => {
         maxQuantity: 100
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get(`/api/settings/rates/check-overlap?warehouseId=${warehouse.id}&type=STORAGE&minQuantity=50&maxQuantity=150`)
@@ -468,9 +438,7 @@ describe('Finance API Endpoints', () => {
         totalQuantity: 100
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/finance/calculate-costs')
@@ -490,9 +458,7 @@ describe('Finance API Endpoints', () => {
     it('should handle missing cost rates', async () => {
       const warehouse = await createTestWarehouse(prisma)
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/finance/calculate-costs')
@@ -517,9 +483,7 @@ describe('Finance API Endpoints', () => {
       await createTestInvoice(prisma, warehouse.id, { status: 'PAID', totalAmount: 2000 })
       await createTestInvoice(prisma, warehouse.id, { status: 'DISPUTED', totalAmount: 500 })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/finance/dashboard')
@@ -563,9 +527,7 @@ describe('Finance API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/finance/cost-ledger')
@@ -605,9 +567,7 @@ describe('Finance API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/finance/cost-ledger?period=2024-01')
@@ -636,9 +596,7 @@ describe('Finance API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/finance/storage-ledger')
@@ -673,9 +631,7 @@ describe('Finance API Endpoints', () => {
         totalQuantity: 100
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(adminSession)
-      }))
+      mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/finance/storage-calculation/weekly')
@@ -708,9 +664,7 @@ describe('Finance API Endpoints', () => {
         }
       })
 
-      jest.mock('next-auth', () => ({
-        getServerSession: jest.fn().mockResolvedValue(userSession)
-      }))
+      mockGetServerSession.mockResolvedValue(userSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/finance/export/cost-ledger?period=2024-01')
