@@ -177,7 +177,7 @@ class EdgeLogger {
       // Construct the full URL for the logs endpoint
       const baseUrl = this.isBrowser 
         ? window.location.origin 
-        : (process.env.NEXTAUTH_URL || 'http://localhost:3000');
+        : (process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || '3002'}`);
       const url = `${baseUrl}${this.flushEndpoint}`;
       
       const response = await fetch(url, {

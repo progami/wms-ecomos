@@ -20,7 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <SessionProvider basePath="/WMS/api/auth">
+    <SessionProvider basePath="/api/auth">
       <QueryClientProvider client={queryClient}>
         {children}
       </QueryClientProvider>

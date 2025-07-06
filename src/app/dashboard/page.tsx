@@ -95,7 +95,7 @@ export default function DashboardPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/WMS/auth/login?callbackUrl=/WMS/dashboard')
+      router.push('/auth/login?callbackUrl=/dashboard')
     }
   }, [status, router])
   

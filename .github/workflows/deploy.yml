@@ -42,7 +42,7 @@ jobs:
 
     - name: Deploy to EC2 via SSM
       run: |
-        INSTANCE_ID="i-0d23b6d8d1d958e46"
+        INSTANCE_ID="i-03863f4f8f647537d"
         
         # Create deployment package
         echo "📦 Creating deployment package..."

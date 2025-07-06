@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth',
     '/api/health',
     '/api/demo',
+    '/api/logs',
   ]
   
   // Check if the route is public
@@ -25,7 +26,7 @@ export async function middleware(request: NextRequest) {
   // Handle root path redirect
   if (pathname === '/' || pathname === '/WMS' || pathname === '/WMS/') {
     const url = request.nextUrl.clone()
-    url.pathname = '/WMS/dashboard'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
   
@@ -38,7 +39,7 @@ export async function middleware(request: NextRequest) {
   // If no token and trying to access protected route, redirect to login
   if (!token && !pathname.includes('/auth/')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/WMS/auth/login'
+    url.pathname = '/auth/login'
     url.searchParams.set('callbackUrl', request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }

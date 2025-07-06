@@ -8,7 +8,7 @@ on:
       instance_id:
         description: 'EC2 Instance ID'
         required: false
-        default: 'i-0fb1f56a90fe95bac'
+        default: 'i-03863f4f8f647537d'
       action:
         description: 'Deployment action'
         required: false
@@ -36,7 +36,7 @@ jobs:
 
     - name: Check SSM connectivity
       run: |
-        INSTANCE_ID="${{ github.event.inputs.instance_id || 'i-0fb1f56a90fe95bac' }}"
+        INSTANCE_ID="${{ github.event.inputs.instance_id || 'i-03863f4f8f647537d' }}"
         echo "Checking SSM connectivity for instance: $INSTANCE_ID"
         
         STATUS=$(aws ssm describe-instance-information \
@@ -53,7 +53,7 @@ jobs:
 
     - name: Deploy application via SSM
       env:
-        INSTANCE_ID: ${{ github.event.inputs.instance_id || 'i-0fb1f56a90fe95bac' }}
+        INSTANCE_ID: ${{ github.event.inputs.instance_id || 'i-03863f4f8f647537d' }}
       run: |
         echo "🚀 Starting deployment to EC2 instance: $INSTANCE_ID"
         
@@ -250,7 +250,7 @@ jobs:
 
     - name: Verify deployment
       env:
-        INSTANCE_ID: ${{ github.event.inputs.instance_id || 'i-0fb1f56a90fe95bac' }}
+        INSTANCE_ID: ${{ github.event.inputs.instance_id || 'i-03863f4f8f647537d' }}
       run: |
         echo "🔍 Verifying deployment..."
         
