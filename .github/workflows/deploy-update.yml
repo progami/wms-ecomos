@@ -52,63 +52,24 @@ jobs:
 
       - name: Deploy updates via SSM
         run: |
-          # Create deployment script
-          cat > deploy.sh << 'EOF'
-          #!/bin/bash
-          set -e
-          
-          echo "Starting deployment at $(date)"
-          cd /home/wms/app
-          
-          # Pull latest changes
-          sudo -u wms git fetch origin main
-          sudo -u wms git reset --hard origin/main
-          
-          # Install dependencies if package.json changed
-          if ! sudo -u wms git diff HEAD@{1} --quiet -- package.json package-lock.json; then
-            echo "Installing dependencies..."
-            sudo -u wms npm ci
-          fi
-          
-          # Generate Prisma client
-          sudo -u wms npx prisma generate
-          
-          # Run migrations if schema changed
-          if ! sudo -u wms git diff HEAD@{1} --quiet -- prisma/schema.prisma; then
-            echo "Running database migrations..."
-            if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations)" ]; then
-              sudo -u wms npx prisma migrate deploy
-            else
-              sudo -u wms npx prisma db push --skip-generate
-            fi
-          fi
-          
-          # Build application
-          echo "Building application..."
-          sudo -u wms npm run build
-          
-          # Restart application
-          echo "Restarting application..."
-          sudo -u wms pm2 reload wms-app --update-env
-          
-          # Verify deployment
-          sleep 5
-          if curl -f -s http://localhost:3000/api/health > /dev/null; then
-            echo "✅ Deployment successful! Application is healthy."
-          else
-            echo "❌ Health check failed"
-            sudo -u wms pm2 logs wms-app --lines 50
-            exit 1
-          fi
-          
-          echo "Deployment completed at $(date)"
-          EOF
-          
-          # Send deployment script to instance
+          # Deploy using SSM
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ steps.instance.outputs.instance_id }} \
             --document-name "AWS-RunShellScript" \
-            --parameters file:///<(echo '{"commands":["bash -s < '"$(base64 -w0 deploy.sh | sed 's/$/\\n/' | tr -d '\n')"'"]}') \
+            --parameters '{"commands":[
+              "cd /home/wms/app",
+              "echo \"Starting deployment at $(date)\"",
+              "sudo -u wms git fetch origin main",
+              "sudo -u wms git reset --hard origin/main",
+              "sudo -u wms npm ci",
+              "sudo -u wms npx prisma generate",
+              "if [ -d prisma/migrations ] && [ \"$(ls -A prisma/migrations)\" ]; then sudo -u wms npx prisma migrate deploy; else sudo -u wms npx prisma db push --skip-generate; fi",
+              "sudo -u wms npm run build",
+              "sudo -u wms pm2 reload wms-app --update-env",
+              "sleep 5",
+              "curl -f -s http://localhost:3000/api/health && echo \"✅ Deployment successful!\" || (echo \"❌ Health check failed\" && sudo -u wms pm2 logs wms-app --lines 20 && exit 1)",
+              "echo \"Deployment completed at $(date)\""
+            ]}' \
             --output text \
             --query 'Command.CommandId')
           
