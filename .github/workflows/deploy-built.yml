@@ -33,6 +33,7 @@ jobs:
       - name: Build application
         run: npm run build
         env:
+          NODE_ENV: "production"
           DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
           NEXTAUTH_URL: "http://localhost:3000"
           NEXTAUTH_SECRET: "dummy"
