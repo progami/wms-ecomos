@@ -8,9 +8,9 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Subdirectory configuration for www.targonglobal.com/WMS
-  basePath: process.env.NODE_ENV === 'production' ? '/WMS' : '',
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/WMS' : '',
+  // Base path configuration - set BASE_PATH env var if needed
+  basePath: process.env.BASE_PATH || '',
+  assetPrefix: process.env.BASE_PATH || '',
   
   // Production optimizations
   swcMinify: true,

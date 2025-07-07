@@ -1,0 +1,11 @@
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Instance Configuration
+instance_name    = "WMS-TEST-IaC"
+instance_type    = "t3.medium"
+key_name         = "wms-deploy-key"
+root_volume_size = 30
+
+# Environment
+environment = "production"

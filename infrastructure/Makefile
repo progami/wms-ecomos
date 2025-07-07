@@ -1,84 +1,91 @@
-.PHONY: help deploy check-status retry-deploy plan apply destroy validate ssh logs
+.PHONY: help init plan apply destroy ansible-deploy deploy clean status
 
-# Default
-help:
-	@echo "WMS Infrastructure Management"
+# Default AWS profile and region
+export AWS_PROFILE ?= default
+export AWS_REGION ?= us-east-1
+
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+init: ## Initialize Terraform
+	@echo "Initializing Terraform..."
+	cd terraform && terraform init
+
+plan: init ## Show what Terraform will create/change
+	@echo "Running Terraform plan..."
+	cd terraform && terraform plan
+
+apply: init ## Create infrastructure with Terraform
+	@echo "Creating infrastructure..."
+	cd terraform && terraform apply -auto-approve
+	@echo "Infrastructure created successfully!"
+	@echo "Run 'make ansible-deploy' to deploy the application"
+
+ansible-check: ## Check Ansible connectivity
+	@echo "Checking Ansible connectivity..."
+	cd ansible && ansible all -m ping
+
+ansible-deploy: ## Deploy application with Ansible
+	@echo "Deploying application with Ansible..."
+	@if [ ! -f ansible/inventory/production.yml ]; then \
+		echo "Error: Ansible inventory not found. Run 'make apply' first."; \
+		exit 1; \
+	fi
+	@echo "Copying GitHub deploy key..."
+	@if [ -f ~/.ssh/github_deploy ]; then \
+		echo "Using existing GitHub deploy key"; \
+	else \
+		cp ~/.ssh/wms-deploy-key.pem ~/.ssh/github_deploy; \
+		chmod 600 ~/.ssh/github_deploy; \
+	fi
+	cd ansible && ansible-playbook playbook.yml -v
+
+deploy: apply ansible-deploy ## Full deployment (infrastructure + application)
+	@echo "Full deployment completed!"
+	@echo "Application URL: $$(cd terraform && terraform output -raw application_url)"
+
+destroy: ## Destroy all infrastructure
+	@echo "WARNING: This will destroy all infrastructure!"
+	@read -p "Are you sure? (yes/no): " confirm && \
+	if [ "$$confirm" = "yes" ]; then \
+		cd terraform && terraform destroy -auto-approve; \
+	else \
+		echo "Destroy cancelled."; \
+	fi
+
+status: ## Check infrastructure and application status
+	@echo "=== Infrastructure Status ==="
+	@cd terraform && terraform output
 	@echo ""
-	@echo "Usage: make [target]"
-	@echo ""
-	@echo "Targets:"
-	@echo "  provision     - Create AWS infrastructure (EC2, networking, etc.)"
-	@echo "  status        - Check infrastructure and app status"
-	@echo "  plan          - Preview infrastructure changes"
-	@echo "  apply         - Apply infrastructure changes only"
-	@echo "  destroy       - Destroy all AWS resources"
-	@echo "  validate      - Validate Terraform configuration"
-	@echo "  ssh           - SSH into the EC2 instance"
-	@echo "  logs          - View application logs"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make provision    # Create AWS infrastructure"
-	@echo "  make status       # Check if app is running"
-	@echo "  make destroy      # Remove all AWS resources"
+	@echo "=== Application Status ==="
+	@if [ -f ansible/inventory/production.yml ]; then \
+		cd ansible && ansible all -m command -a "pm2 list" --become-user=wms; \
+	else \
+		echo "No infrastructure deployed yet"; \
+	fi
 
-# Infrastructure targets
-provision:
-	@echo "Provisioning AWS infrastructure..."
-	@cd terraform/environments/prod && terraform init && terraform apply -auto-approve
-	@echo ""
-	@echo "Infrastructure created! To deploy the app:"
-	@echo "1. Add these GitHub secrets:"
-	@echo "   - EC2_HOST: $$(cd terraform/environments/prod && terraform output -raw instance_ip)"
-	@echo "   - EC2_SSH_KEY: contents of ~/.ssh/wms-prod"
-	@echo "2. Push to main branch or run GitHub Actions manually"
+logs: ## View application logs
+	@if [ -f ansible/inventory/production.yml ]; then \
+		cd ansible && ansible all -m command -a "pm2 logs wms-app --lines 50" --become-user=wms; \
+	else \
+		echo "No infrastructure deployed yet"; \
+	fi
 
-status:
-	@echo "Checking infrastructure and application status..."
-	@cd terraform/environments/prod && \
-		IP=$$(terraform output -raw instance_ip 2>/dev/null) && \
-		if [ -n "$$IP" ]; then \
-			echo "Instance IP: $$IP"; \
-			echo "Instance URL: http://$$IP"; \
-			echo ""; \
-			echo "Checking services:"; \
-			curl -s -o /dev/null -w "- Nginx: %{http_code}\n" http://$$IP || echo "- Nginx: Not responding"; \
-			curl -s http://$$IP | grep -q "WMS" && echo "- App: Running ✓" || echo "- App: Not deployed"; \
-		else \
-			echo "No infrastructure found. Run 'make provision' first."; \
-		fi
+ssh: ## SSH into the server
+	@if [ -f ansible/inventory/production.yml ]; then \
+		IP=$$(grep ansible_host ansible/inventory/production.yml | awk '{print $$2}'); \
+		ssh -i ~/.ssh/wms-deploy-key.pem ubuntu@$$IP; \
+	else \
+		echo "No infrastructure deployed yet"; \
+	fi
 
-# Terraform targets
-plan:
-	@cd terraform/environments/prod && terraform plan
-
-apply:
-	@cd terraform/environments/prod && terraform apply
-
-destroy:
-	@echo "WARNING: This will destroy all AWS resources!"
-	@cd terraform/environments/prod && terraform destroy
-
-# Validation
-validate:
-	@echo "Validating Terraform configuration..."
-	@cd terraform/environments/prod && terraform init -backend=false && terraform validate
-	@echo "Configuration is valid!"
-
-# Utility commands
-ssh:
-	@cd terraform/environments/prod && \
-		IP=$$(terraform output -raw instance_ip 2>/dev/null) && \
-		if [ -n "$$IP" ]; then \
-			ssh -i ~/.ssh/wms-prod ubuntu@$$IP; \
-		else \
-			echo "No instance found. Run 'make deploy' first."; \
-		fi
-
-logs:
-	@cd terraform/environments/prod && \
-		IP=$$(terraform output -raw instance_ip 2>/dev/null) && \
-		if [ -n "$$IP" ]; then \
-			ssh -i ~/.ssh/wms-prod ubuntu@$$IP "pm2 logs wms --lines 100"; \
-		else \
-			echo "No instance found. Run 'make deploy' first."; \
-		fi
+clean: ## Clean up generated files
+	@echo "Cleaning up..."
+	rm -f ansible/inventory/production.yml
+	rm -rf terraform/.terraform
+	rm -f terraform/*.tfstate*
+	rm -f terraform/.terraform.lock.hcl
+	@echo "Cleanup complete"
