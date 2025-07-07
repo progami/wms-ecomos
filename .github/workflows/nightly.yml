@@ -180,7 +180,7 @@ jobs:
           npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma > schema-snapshot.sql
           
       - name: Upload schema snapshot
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: schema-snapshot-${{ github.run_number }}
           path: schema-snapshot.sql
