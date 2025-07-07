@@ -1,23 +1,9 @@
-name: Deploy to EC2 via SSM
+name: Deploy to EC2
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      instance_id:
-        description: 'EC2 Instance ID'
-        required: false
-        default: 'i-03863f4f8f647537d'
-      action:
-        description: 'Deployment action'
-        required: false
-        default: 'deploy'
-        type: choice
-        options:
-          - deploy
-          - restart
-          - status
 
 jobs:
   deploy:
@@ -34,243 +20,26 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: Check SSM connectivity
+    - name: Deploy to EC2 via SSM
       run: |
-        INSTANCE_ID="${{ github.event.inputs.instance_id || 'i-03863f4f8f647537d' }}"
-        echo "Checking SSM connectivity for instance: $INSTANCE_ID"
+        INSTANCE_ID="i-03863f4f8f647537d"
         
-        STATUS=$(aws ssm describe-instance-information \
-          --instance-information-filter-list key=InstanceIds,valueSet="$INSTANCE_ID" \
-          --query 'InstanceInformationList[0].PingStatus' \
-          --output text 2>/dev/null || echo "NotFound")
+        echo "🚀 Deploying to EC2 instance: $INSTANCE_ID"
         
-        if [ "$STATUS" != "Online" ]; then
-          echo "❌ Instance is not reachable via SSM (Status: $STATUS)"
-          exit 1
-        fi
-        
-        echo "✅ Instance is online and reachable via SSM"
-
-    - name: Deploy application via SSM
-      env:
-        INSTANCE_ID: ${{ github.event.inputs.instance_id || 'i-03863f4f8f647537d' }}
-      run: |
-        echo "🚀 Starting deployment to EC2 instance: $INSTANCE_ID"
-        
-        # Create deployment script
-        cat << 'DEPLOY_SCRIPT' > /tmp/ssm-deploy-commands.sh
-        #!/bin/bash
-        set -euo pipefail
-        
-        echo "📦 Starting WMS deployment..."
-        
-        # Ensure required tools are installed
-        if ! command -v git &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y git
-        fi
-        
-        if ! command -v node &> /dev/null; then
-            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-            sudo apt-get install -y nodejs
-        fi
-        
-        if ! command -v pm2 &> /dev/null; then
-            sudo npm install -g pm2
-        fi
-        
-        # Create application directory
-        sudo mkdir -p /var/www/wms
-        sudo chown -R ubuntu:ubuntu /var/www/wms
-        
-        # Navigate to app directory
-        cd /var/www/wms
-        
-        # Clone or update repository
-        if [ -d ".git" ]; then
-            echo "📥 Updating existing repository..."
-            git fetch origin
-            git reset --hard origin/main
-        else
-            echo "📥 Cloning repository..."
-            git clone https://github.com/${{ github.repository }}.git .
-        fi
-        
-        # Create production environment file
-        echo "🔧 Creating environment configuration..."
-        cat > .env.production << 'EOF'
-        NODE_ENV=production
-        DATABASE_URL=postgresql://wms_user:wms_password@localhost:5432/wms_db
-        NEXTAUTH_URL=http://ec2-54-221-58-217.compute-1.amazonaws.com:3000
-        NEXTAUTH_SECRET=$(openssl rand -base64 32)
-        PORT=3000
-        NEXT_TELEMETRY_DISABLED=1
-        EOF
-        
-        # Install dependencies
-        echo "📦 Installing dependencies..."
-        npm ci
-        
-        # Generate Prisma client
-        echo "🔨 Generating Prisma client..."
-        npx prisma generate
-        
-        # Ensure PostgreSQL is installed and running
-        if ! systemctl is-active --quiet postgresql; then
-            echo "🐘 Installing PostgreSQL..."
-            sudo apt-get update
-            sudo apt-get install -y postgresql postgresql-contrib
-            sudo systemctl start postgresql
-            sudo systemctl enable postgresql
-        fi
-        
-        # Setup database
-        echo "🗄️ Setting up database..."
-        sudo -u postgres psql << 'EOSQL' || true
-        CREATE DATABASE wms_db;
-        CREATE USER wms_user WITH PASSWORD 'wms_password';
-        GRANT ALL PRIVILEGES ON DATABASE wms_db TO wms_user;
-        ALTER DATABASE wms_db OWNER TO wms_user;
-        EOSQL
-        
-        # Run migrations
-        echo "🔄 Running database migrations..."
-        NODE_ENV=production npx prisma migrate deploy || echo "Migration deployment skipped"
-        
-        # Build application
-        echo "🔨 Building application..."
-        npm run build
-        
-        # Stop existing PM2 process
-        pm2 delete wms 2>/dev/null || true
-        
-        # Start application with PM2
-        echo "🚀 Starting application with PM2..."
-        NODE_ENV=production pm2 start npm --name wms -- start
-        pm2 save
-        
-        # Setup PM2 startup script
-        sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
-        
-        # Configure nginx if needed
-        if ! command -v nginx &> /dev/null; then
-            echo "🔧 Installing nginx..."
-            sudo apt-get install -y nginx
-        fi
-        
-        # Create nginx configuration
-        echo "🔧 Configuring nginx..."
-        sudo tee /etc/nginx/sites-available/wms > /dev/null << 'EONGINX'
-        server {
-            listen 80;
-            server_name _;
-            
-            location / {
-                proxy_pass http://localhost:3000;
-                proxy_http_version 1.1;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection 'upgrade';
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-                proxy_cache_bypass $http_upgrade;
-            }
-        }
-        EONGINX
-        
-        # Enable site and restart nginx
-        sudo ln -sf /etc/nginx/sites-available/wms /etc/nginx/sites-enabled/
-        sudo rm -f /etc/nginx/sites-enabled/default
-        sudo nginx -t && sudo systemctl restart nginx
-        
-        # Open firewall ports
-        echo "🔧 Configuring firewall..."
-        sudo ufw allow 80/tcp 2>/dev/null || true
-        sudo ufw allow 3000/tcp 2>/dev/null || true
-        
-        # Health check
-        echo "✅ Deployment complete! Checking application health..."
-        sleep 10
-        curl -s http://localhost:3000/api/health | jq . || echo "Application is starting..."
-        
-        # Show PM2 status
-        pm2 status
-        
-        echo "🎉 Deployment successful!"
-        echo "📍 Application URL: http://ec2-54-221-58-217.compute-1.amazonaws.com:3000"
-        DEPLOY_SCRIPT
-        
-        # Send deployment script to instance
-        echo "📤 Sending deployment commands to instance..."
-        
-        COMMAND_ID=$(aws ssm send-command \
+        # Run deployment commands directly
+        aws ssm send-command \
           --instance-ids "$INSTANCE_ID" \
           --document-name "AWS-RunShellScript" \
-          --parameters file:///tmp/ssm-deploy-commands.sh \
-          --output text \
-          --query 'Command.CommandId')
+          --parameters commands='[
+            "cd /home/ubuntu",
+            "if [ -d wms ]; then cd wms && git pull origin main; else git clone https://github.com/progami/WMS_EcomOS.git wms && cd wms; fi",
+            "npm ci --production",
+            "npx prisma generate",
+            "npm run build",
+            "pm2 restart wms-app || PORT=3000 pm2 start npm --name wms-app -- start",
+            "pm2 save"
+          ]' \
+          --output json
         
-        echo "Command ID: $COMMAND_ID"
-        
-        # Wait for command to complete
-        echo "⏳ Waiting for deployment to complete..."
-        aws ssm wait command-executed \
-          --command-id "$COMMAND_ID" \
-          --instance-id "$INSTANCE_ID" \
-          || true
-        
-        # Get command status and output
-        STATUS=$(aws ssm get-command-invocation \
-          --command-id "$COMMAND_ID" \
-          --instance-id "$INSTANCE_ID" \
-          --query 'Status' \
-          --output text)
-        
-        echo "Deployment status: $STATUS"
-        
-        # Get output
-        if [ "$STATUS" = "Success" ]; then
-          echo "✅ Deployment completed successfully!"
-          echo "📋 Deployment output:"
-          aws ssm get-command-invocation \
-            --command-id "$COMMAND_ID" \
-            --instance-id "$INSTANCE_ID" \
-            --query 'StandardOutputContent' \
-            --output text | base64 --decode || true
-        else
-          echo "❌ Deployment failed!"
-          echo "📋 Error output:"
-          aws ssm get-command-invocation \
-            --command-id "$COMMAND_ID" \
-            --instance-id "$INSTANCE_ID" \
-            --query 'StandardErrorContent' \
-            --output text | base64 --decode || true
-          exit 1
-        fi
-
-    - name: Verify deployment
-      env:
-        INSTANCE_ID: ${{ github.event.inputs.instance_id || 'i-03863f4f8f647537d' }}
-      run: |
-        echo "🔍 Verifying deployment..."
-        
-        # Quick verification command
-        VERIFY_CMD="pm2 list && curl -s http://localhost:3000/api/health"
-        
-        COMMAND_ID=$(aws ssm send-command \
-          --instance-ids "$INSTANCE_ID" \
-          --document-name "AWS-RunShellScript" \
-          --parameters "commands=[\"$VERIFY_CMD\"]" \
-          --output text \
-          --query 'Command.CommandId')
-        
-        sleep 10
-        
-        aws ssm get-command-invocation \
-          --command-id "$COMMAND_ID" \
-          --instance-id "$INSTANCE_ID" \
-          --query 'StandardOutputContent' \
-          --output text | base64 --decode || true
-        
-        echo "✅ Deployment verification complete!"
-        echo "🌐 Application should be accessible at: http://ec2-54-221-58-217.compute-1.amazonaws.com:3000"
+        echo "✅ Deployment command sent!"
+        echo "📍 Check app at: http://3.88.163.217:3000"
