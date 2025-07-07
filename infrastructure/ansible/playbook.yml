@@ -132,13 +132,29 @@
         chdir: "{{ app_dir }}/app"
       become_user: "{{ app_user }}"
 
-    - name: Run database migrations
+    - name: Check if migrations exist
+      stat:
+        path: "{{ app_dir }}/app/prisma/migrations"
+      register: migrations_dir
+      become_user: "{{ app_user }}"
+
+    - name: Run database migrations (if exist)
       command: npx prisma migrate deploy
       args:
         chdir: "{{ app_dir }}/app"
       become_user: "{{ app_user }}"
       environment:
         DATABASE_URL: "postgresql://{{ db_user }}:{{ db_password }}@localhost:5432/{{ db_name }}"
+      when: migrations_dir.stat.exists and migrations_dir.stat.isdir
+
+    - name: Push database schema (if no migrations)
+      command: npx prisma db push --skip-generate
+      args:
+        chdir: "{{ app_dir }}/app"
+      become_user: "{{ app_user }}"
+      environment:
+        DATABASE_URL: "postgresql://{{ db_user }}:{{ db_password }}@localhost:5432/{{ db_name }}"
+      when: not (migrations_dir.stat.exists and migrations_dir.stat.isdir)
 
     - name: Seed database (if needed)
       command: npx prisma db seed
