@@ -46,7 +46,7 @@ useradd -m -s /bin/bash wms
 
 # Clone repository
 cd /home/wms
-sudo -u wms git clone ${github_repo} app
+sudo -u wms git clone https://github.com/progami/WMS_EcomOS.git app
 
 # Create .env file
 cat > /home/wms/app/.env <<EOF
