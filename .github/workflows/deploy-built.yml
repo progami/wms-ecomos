@@ -94,7 +94,8 @@ jobs:
           # Create deployment script
           cat > deploy-commands.json << 'EOFSCRIPT'
           {
-            "commands": [
+            "Parameters": {
+              "commands": [
               "# Download and extract deployment",
               "cd /home/wms",
               "sudo -u wms wget -q -O deploy-new.tar.gz '${{ env.download_url }}'",
@@ -128,7 +129,8 @@ jobs:
               "# Health check",
               "sleep 10",
               "curl -f http://localhost:3000 && echo 'Deployment successful!' || echo 'Health check failed'"
-            ]
+              ]
+            }
           }
           EOFSCRIPT
           
