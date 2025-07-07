@@ -1,0 +1,160 @@
+name: Deploy Application Updates
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'infrastructure/**'
+      - '*.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get current instance ID
+        id: instance
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=WMS-TEST-IaC" \
+                      "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+          
+          if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
+            echo "Error: No running WMS instance found"
+            exit 1
+          fi
+          
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          
+          # Get instance IP
+          INSTANCE_IP=$(aws ec2 describe-instances \
+            --instance-ids $INSTANCE_ID \
+            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --output text)
+          echo "instance_ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
+
+      - name: Deploy updates via SSM
+        run: |
+          # Create deployment script
+          cat > deploy.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          echo "Starting deployment at $(date)"
+          cd /home/wms/app
+          
+          # Pull latest changes
+          sudo -u wms git fetch origin main
+          sudo -u wms git reset --hard origin/main
+          
+          # Install dependencies if package.json changed
+          if ! sudo -u wms git diff HEAD@{1} --quiet -- package.json package-lock.json; then
+            echo "Installing dependencies..."
+            sudo -u wms npm ci
+          fi
+          
+          # Generate Prisma client
+          sudo -u wms npx prisma generate
+          
+          # Run migrations if schema changed
+          if ! sudo -u wms git diff HEAD@{1} --quiet -- prisma/schema.prisma; then
+            echo "Running database migrations..."
+            if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations)" ]; then
+              sudo -u wms npx prisma migrate deploy
+            else
+              sudo -u wms npx prisma db push --skip-generate
+            fi
+          fi
+          
+          # Build application
+          echo "Building application..."
+          sudo -u wms npm run build
+          
+          # Restart application
+          echo "Restarting application..."
+          sudo -u wms pm2 reload wms-app --update-env
+          
+          # Verify deployment
+          sleep 5
+          if curl -f -s http://localhost:3000/api/health > /dev/null; then
+            echo "✅ Deployment successful! Application is healthy."
+          else
+            echo "❌ Health check failed"
+            sudo -u wms pm2 logs wms-app --lines 50
+            exit 1
+          fi
+          
+          echo "Deployment completed at $(date)"
+          EOF
+          
+          # Send deployment script to instance
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids ${{ steps.instance.outputs.instance_id }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters file:///<(echo '{"commands":["bash -s < '"$(base64 -w0 deploy.sh | sed 's/$/\\n/' | tr -d '\n')"'"]}') \
+            --output text \
+            --query 'Command.CommandId')
+          
+          echo "SSM Command ID: $COMMAND_ID"
+          
+          # Wait for deployment to complete
+          aws ssm wait command-executed \
+            --command-id $COMMAND_ID \
+            --instance-id ${{ steps.instance.outputs.instance_id }} || true
+          
+          # Get deployment output
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id $COMMAND_ID \
+            --instance-id ${{ steps.instance.outputs.instance_id }} \
+            --query 'Status' \
+            --output text)
+          
+          echo "Deployment Status: $STATUS"
+          
+          if [ "$STATUS" = "Success" ]; then
+            echo "✅ Deployment completed successfully!"
+            aws ssm get-command-invocation \
+              --command-id $COMMAND_ID \
+              --instance-id ${{ steps.instance.outputs.instance_id }} \
+              --query 'StandardOutputContent' \
+              --output text
+          else
+            echo "❌ Deployment failed!"
+            aws ssm get-command-invocation \
+              --command-id $COMMAND_ID \
+              --instance-id ${{ steps.instance.outputs.instance_id }} \
+              --query 'StandardErrorContent' \
+              --output text
+            exit 1
+          fi
+
+      - name: Create deployment summary
+        if: success()
+        run: |
+          echo "## 🚀 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Instance ID**: ${{ steps.instance.outputs.instance_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application URL**: http://${{ steps.instance.outputs.instance_ip }}:3000" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Changes Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          git log -1 --pretty=format:"%h - %s (%an)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
