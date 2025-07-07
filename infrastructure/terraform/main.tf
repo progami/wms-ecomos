@@ -97,6 +97,14 @@ resource "aws_instance" "wms" {
     ManagedBy   = "Terraform"
   }
 
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    db_user     = "wms"
+    db_password = "wms_secure_password_2024"
+    db_name     = "wms_production"
+    github_repo = "https://github.com/progami/WMS_EcomOS.git"
+    app_port    = "3000"
+  }))
+
   lifecycle {
     create_before_destroy = true
   }

@@ -1,0 +1,92 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/deploy-infrastructure.yml'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.5.0
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        if: github.event.inputs.action != 'destroy'
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        if: github.event.inputs.action != 'destroy'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
+
+      - name: Get outputs
+        if: github.event.inputs.action != 'destroy'
+        id: outputs
+        run: |
+          echo "instance_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
+          echo "application_url=$(terraform output -raw application_url)" >> $GITHUB_OUTPUT
+
+      - name: Wait for application
+        if: github.event.inputs.action != 'destroy'
+        run: |
+          echo "Waiting for application to be ready..."
+          for i in {1..30}; do
+            if curl -f -s -o /dev/null "${{ steps.outputs.outputs.application_url }}/api/health"; then
+              echo "✅ Application is healthy!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 20
+          done
+
+      - name: Create deployment summary
+        if: github.event.inputs.action != 'destroy'
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application URL**: ${{ steps.outputs.outputs.application_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Instance IP**: ${{ steps.outputs.outputs.instance_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Login Credentials" >> $GITHUB_STEP_SUMMARY
+          echo "- Username: \`demo-admin\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Password: \`SecureWarehouse2024!\`" >> $GITHUB_STEP_SUMMARY
