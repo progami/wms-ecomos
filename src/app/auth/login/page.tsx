@@ -29,32 +29,19 @@ export default function LoginPage() {
     password: '',
   })
   
-  // Prevent autofill on mount
+  // Enable autofill properly
   useEffect(() => {
-    // Clear any autofilled values and set readonly initially
+    // Remove readonly after component mounts to allow autofill
     const timer = setTimeout(() => {
       const emailInput = document.getElementById('emailOrUsername') as HTMLInputElement
       const passwordInput = document.getElementById('password') as HTMLInputElement
       
-      if (emailInput && passwordInput) {
-        // Force clear autofilled values
-        if (emailInput.value && !formData.emailOrUsername) {
-          emailInput.value = ''
-        }
-        if (passwordInput.value && !formData.password) {
-          passwordInput.value = ''
-        }
-        
-        // Remove readonly attribute after a delay
-        setTimeout(() => {
-          emailInput.removeAttribute('readonly')
-          passwordInput.removeAttribute('readonly')
-        }, 500)
-      }
+      if (emailInput) emailInput.removeAttribute('readonly')
+      if (passwordInput) passwordInput.removeAttribute('readonly')
     }, 100)
     
     return () => clearTimeout(timer)
-  }, [formData.emailOrUsername, formData.password])
+  }, [])
   
   // Removed auto-fill on mount to allow buttons to work properly
 
@@ -73,13 +60,10 @@ export default function LoginPage() {
         toast.error('Invalid email/username or password')
       } else {
         toast.success('Login successful!')
-        // If there's a callback URL, use it. Otherwise, let middleware handle the redirect
-        if (callbackUrl) {
-          router.push(callbackUrl)
-        } else {
-          // Redirect to home and let middleware handle role-based routing
-          router.push('/')
-        }
+        
+        // Use router.push for proper Next.js navigation
+        const redirectUrl = callbackUrl || '/dashboard'
+        router.push(redirectUrl)
         router.refresh()
       }
     } catch (error) {
@@ -147,13 +131,15 @@ export default function LoginPage() {
         duration: 6000,
       })
       
-      // Redirect to unified dashboard
-      if (callbackUrl) {
-        router.push(callbackUrl)
-      } else {
-        router.push('/dashboard')
-      }
+      // Force a page refresh to ensure the session is properly established
       router.refresh()
+      
+      // Small delay to ensure the session is set
+      setTimeout(() => {
+        // Redirect to dashboard
+        const redirectUrl = callbackUrl || '/dashboard'
+        window.location.href = redirectUrl
+      }, 100)
     } catch (error) {
       console.error('Error setting up demo:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to set up demo')
@@ -180,10 +166,8 @@ export default function LoginPage() {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit} name="wms-login-form" autoComplete="off">
-          {/* Hidden inputs to prevent autofill */}
-          <input type="text" name="fake-username" style={{ display: 'none' }} />
-          <input type="password" name="fake-password" style={{ display: 'none' }} />
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {/* Allow autofill */}
           
           {/* Quick fill buttons - Only in development */}
           {process.env.NODE_ENV === 'development' && (
@@ -222,14 +206,12 @@ export default function LoginPage() {
               </label>
               <input
                 id="emailOrUsername"
-                name="wms-username"
+                name="emailOrUsername"
                 type="text"
-                autoComplete="off"
+                autoComplete="username email"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck="false"
-                readOnly
-                onFocus={(e) => e.target.removeAttribute('readonly')}
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 placeholder="Email or Username"
@@ -245,11 +227,9 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
-                name="wms-password"
+                name="password"
                 type="password"
-                autoComplete="new-password"
-                readOnly
-                onFocus={(e) => e.target.removeAttribute('readonly')}
+                autoComplete="current-password"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                 placeholder="Password"
