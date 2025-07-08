@@ -1,0 +1,52 @@
+{
+    "Command": {
+        "CommandId": "4c9982ff-9bcb-4d21-944f-6ee3d7f49987",
+        "DocumentName": "AWS-RunShellScript",
+        "DocumentVersion": "$DEFAULT",
+        "Comment": "",
+        "ExpiresAfter": "2025-07-07T22:20:40.436000-05:00",
+        "Parameters": {
+            "commands": [
+                "cd /home/wms/wms-app",
+                "pm2 start .next/standalone/server.js --name wms-production --env production -- --port 3000",
+                "pm2 save --force",
+                "sleep 5",
+                "pm2 list",
+                "curl -I http://127.0.0.1:3000/",
+                "curl -I http://127.0.0.1:3000/WMS"
+            ]
+        },
+        "InstanceIds": [
+            "i-03d738739b052fbe7"
+        ],
+        "Targets": [],
+        "RequestedDateTime": "2025-07-07T20:20:40.436000-05:00",
+        "Status": "Pending",
+        "StatusDetails": "Pending",
+        "OutputS3Region": "us-east-1",
+        "OutputS3BucketName": "",
+        "OutputS3KeyPrefix": "",
+        "MaxConcurrency": "50",
+        "MaxErrors": "0",
+        "TargetCount": 1,
+        "CompletedCount": 0,
+        "ErrorCount": 0,
+        "DeliveryTimedOutCount": 0,
+        "ServiceRole": "",
+        "NotificationConfig": {
+            "NotificationArn": "",
+            "NotificationEvents": [],
+            "NotificationType": ""
+        },
+        "CloudWatchOutputConfig": {
+            "CloudWatchLogGroupName": "",
+            "CloudWatchOutputEnabled": false
+        },
+        "TimeoutSeconds": 3600,
+        "AlarmConfiguration": {
+            "IgnorePollAlarmFailure": false,
+            "Alarms": []
+        },
+        "TriggeredAlarms": []
+    }
+}

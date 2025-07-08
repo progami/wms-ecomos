@@ -1,0 +1,50 @@
+{
+    "Command": {
+        "CommandId": "fee19331-ea16-490f-9539-bf8fae0323d4",
+        "DocumentName": "AWS-RunShellScript",
+        "DocumentVersion": "$DEFAULT",
+        "Comment": "",
+        "ExpiresAfter": "2025-07-07T22:24:53.423000-05:00",
+        "Parameters": {
+            "commands": [
+                "rm /etc/nginx/sites-enabled/wms",
+                "nginx -t",
+                "systemctl reload nginx",
+                "sleep 2",
+                "curl -I -H \"Host: targonglobal.com\" http://127.0.0.1/WMS"
+            ]
+        },
+        "InstanceIds": [
+            "i-03d738739b052fbe7"
+        ],
+        "Targets": [],
+        "RequestedDateTime": "2025-07-07T20:24:53.423000-05:00",
+        "Status": "Pending",
+        "StatusDetails": "Pending",
+        "OutputS3Region": "us-east-1",
+        "OutputS3BucketName": "",
+        "OutputS3KeyPrefix": "",
+        "MaxConcurrency": "50",
+        "MaxErrors": "0",
+        "TargetCount": 1,
+        "CompletedCount": 0,
+        "ErrorCount": 0,
+        "DeliveryTimedOutCount": 0,
+        "ServiceRole": "",
+        "NotificationConfig": {
+            "NotificationArn": "",
+            "NotificationEvents": [],
+            "NotificationType": ""
+        },
+        "CloudWatchOutputConfig": {
+            "CloudWatchLogGroupName": "",
+            "CloudWatchOutputEnabled": false
+        },
+        "TimeoutSeconds": 3600,
+        "AlarmConfiguration": {
+            "IgnorePollAlarmFailure": false,
+            "Alarms": []
+        },
+        "TriggeredAlarms": []
+    }
+}

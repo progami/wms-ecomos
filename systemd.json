@@ -1,0 +1,76 @@
+{
+    "Command": {
+        "CommandId": "fb6d97a5-9c64-4d6f-892c-1931e4bc3246",
+        "DocumentName": "AWS-RunShellScript",
+        "DocumentVersion": "$DEFAULT",
+        "Comment": "",
+        "ExpiresAfter": "2025-07-07T22:33:02.234000-05:00",
+        "Parameters": {
+            "commands": [
+                "cat > /etc/systemd/system/wms-app.service << 'EOF'",
+                "[Unit]",
+                "Description=WMS Next.js Application",
+                "After=network.target postgresql.service",
+                "",
+                "[Service]",
+                "Type=simple",
+                "User=wms",
+                "WorkingDirectory=/home/wms/wms-app",
+                "Environment=\"NODE_ENV=production\"",
+                "Environment=\"PORT=3000\"",
+                "Environment=\"HOSTNAME=127.0.0.1\"",
+                "Environment=\"BASE_PATH=/WMS\"",
+                "Environment=\"NEXT_PUBLIC_BASE_PATH=/WMS\"",
+                "Environment=\"DATABASE_URL=postgresql://wms:wms_secure_password_2024@localhost:5432/wms\"",
+                "Environment=\"NEXTAUTH_URL=https://targonglobal.com/WMS\"",
+                "Environment=\"NEXTAUTH_URL_INTERNAL=http://127.0.0.1:3000\"",
+                "Environment=\"NEXTAUTH_SECRET=production_secret_key_change_in_production_123456\"",
+                "Environment=\"NEXT_PUBLIC_APP_URL=https://targonglobal.com/WMS\"",
+                "ExecStart=/usr/bin/node /home/wms/wms-app/.next/standalone/server.js",
+                "Restart=always",
+                "RestartSec=10",
+                "",
+                "[Install]",
+                "WantedBy=multi-user.target",
+                "EOF",
+                "systemctl daemon-reload",
+                "systemctl enable wms-app",
+                "systemctl start wms-app",
+                "sleep 5",
+                "systemctl status wms-app --no-pager"
+            ]
+        },
+        "InstanceIds": [
+            "i-03d738739b052fbe7"
+        ],
+        "Targets": [],
+        "RequestedDateTime": "2025-07-07T20:33:02.234000-05:00",
+        "Status": "Pending",
+        "StatusDetails": "Pending",
+        "OutputS3Region": "us-east-1",
+        "OutputS3BucketName": "",
+        "OutputS3KeyPrefix": "",
+        "MaxConcurrency": "50",
+        "MaxErrors": "0",
+        "TargetCount": 1,
+        "CompletedCount": 0,
+        "ErrorCount": 0,
+        "DeliveryTimedOutCount": 0,
+        "ServiceRole": "",
+        "NotificationConfig": {
+            "NotificationArn": "",
+            "NotificationEvents": [],
+            "NotificationType": ""
+        },
+        "CloudWatchOutputConfig": {
+            "CloudWatchLogGroupName": "",
+            "CloudWatchOutputEnabled": false
+        },
+        "TimeoutSeconds": 3600,
+        "AlarmConfiguration": {
+            "IgnorePollAlarmFailure": false,
+            "Alarms": []
+        },
+        "TriggeredAlarms": []
+    }
+}

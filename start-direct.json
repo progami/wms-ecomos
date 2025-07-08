@@ -1,0 +1,61 @@
+{
+    "Command": {
+        "CommandId": "82f3cfcc-64d2-4879-9ac3-f366b0921468",
+        "DocumentName": "AWS-RunShellScript",
+        "DocumentVersion": "$DEFAULT",
+        "Comment": "",
+        "ExpiresAfter": "2025-07-07T22:29:08.987000-05:00",
+        "Parameters": {
+            "commands": [
+                "cd /home/wms/wms-app",
+                "pkill -f \"server.js\" || true",
+                "export NODE_ENV=production",
+                "export PORT=3000",
+                "export HOSTNAME=127.0.0.1",
+                "export BASE_PATH=/WMS",
+                "export NEXT_PUBLIC_BASE_PATH=/WMS",
+                "export DATABASE_URL=postgresql://wms:wms_secure_password_2024@localhost:5432/wms",
+                "export NEXTAUTH_URL=https://targonglobal.com/WMS",
+                "export NEXTAUTH_URL_INTERNAL=http://127.0.0.1:3000",
+                "export NEXTAUTH_SECRET=production_secret_key_change_in_production_123456",
+                "export NEXT_PUBLIC_APP_URL=https://targonglobal.com/WMS",
+                "nohup node .next/standalone/server.js > server.log 2>&1 &",
+                "sleep 5",
+                "ps aux | grep server.js | grep -v grep",
+                "curl -I http://127.0.0.1:3000/WMS"
+            ]
+        },
+        "InstanceIds": [
+            "i-03d738739b052fbe7"
+        ],
+        "Targets": [],
+        "RequestedDateTime": "2025-07-07T20:29:08.987000-05:00",
+        "Status": "Pending",
+        "StatusDetails": "Pending",
+        "OutputS3Region": "us-east-1",
+        "OutputS3BucketName": "",
+        "OutputS3KeyPrefix": "",
+        "MaxConcurrency": "50",
+        "MaxErrors": "0",
+        "TargetCount": 1,
+        "CompletedCount": 0,
+        "ErrorCount": 0,
+        "DeliveryTimedOutCount": 0,
+        "ServiceRole": "",
+        "NotificationConfig": {
+            "NotificationArn": "",
+            "NotificationEvents": [],
+            "NotificationType": ""
+        },
+        "CloudWatchOutputConfig": {
+            "CloudWatchLogGroupName": "",
+            "CloudWatchOutputEnabled": false
+        },
+        "TimeoutSeconds": 3600,
+        "AlarmConfiguration": {
+            "IgnorePollAlarmFailure": false,
+            "Alarms": []
+        },
+        "TriggeredAlarms": []
+    }
+}
