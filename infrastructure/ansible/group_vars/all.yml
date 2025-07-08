@@ -9,17 +9,23 @@ git_branch: main
 github_deploy_key_path: ~/.ssh/github_deploy
 
 # Application Configuration
-nextauth_url: "http://{{ ansible_host }}:3000"
+nextauth_url: "https://targonglobal.com/WMS"
 nextauth_secret: production_secret_key_change_in_production
 node_env: production
+base_path: "/WMS"
+app_port: 3001
 
 # Demo Data
 demo_admin_password: SecureWarehouse2024!
 demo_staff_password: DemoStaff2024!
 setup_demo_data: true
 
+# Domain Configuration
+domain_name: targonglobal.com
+certbot_email: admin@targonglobal.com
+
 # Nginx Configuration
-server_name: "{{ ansible_host }}"
-use_ssl: false
-ssl_cert_path: ""
-ssl_key_path: ""
+server_name: targonglobal.com
+use_ssl: true
+ssl_cert_path: "/etc/letsencrypt/live/targonglobal.com/fullchain.pem"
+ssl_key_path: "/etc/letsencrypt/live/targonglobal.com/privkey.pem"
