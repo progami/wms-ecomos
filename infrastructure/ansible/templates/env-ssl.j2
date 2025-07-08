@@ -1,0 +1,18 @@
+# Environment Configuration
+NODE_ENV={{ node_env }}
+PORT={{ app_port }}
+BASE_PATH={{ base_path }}
+
+# NextAuth Configuration
+NEXTAUTH_URL={{ nextauth_url }}
+NEXTAUTH_SECRET={{ nextauth_secret }}
+
+# Database Configuration
+DATABASE_URL=postgresql://{{ db_user }}:{{ db_password }}@localhost:5432/{{ db_name }}
+
+# Demo Data Passwords
+DEMO_ADMIN_PASSWORD={{ demo_admin_password }}
+DEMO_STAFF_PASSWORD={{ demo_staff_password }}
+
+# Optional: Additional configurations
+# NEXT_PUBLIC_API_URL=https://{{ domain_name }}{{ base_path }}

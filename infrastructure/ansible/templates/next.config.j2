@@ -1,0 +1,55 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  basePath: '{{ base_path }}',
+  reactStrictMode: true,
+  swcMinify: true,
+  poweredByHeader: false,
+  compress: true,
+  
+  // Optimize for production
+  productionBrowserSourceMaps: false,
+  
+  // Image optimization
+  images: {
+    domains: ['localhost', '{{ domain_name }}'],
+    unoptimized: process.env.NODE_ENV === 'development',
+  },
+
+  // Headers for security
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
+
+  // Webpack configuration
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
+};
+
+module.exports = nextConfig;
