@@ -31,12 +31,15 @@ fi
 
 # Check if remote exists
 if ! git remote get-url origin &>/dev/null; then
-    echo "Please add your Git remote:"
-    echo "git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git"
-    echo "or"
-    echo "git remote add origin git@github.com:YOUR_USERNAME/YOUR_REPO.git"
-    exit 1
+    echo "Adding Git remote for progami/WMS_EcomOS..."
+    git remote add origin https://github.com/progami/WMS_EcomOS.git
 fi
+
+# Fetch and checkout main branch
+echo "Fetching from remote..."
+git fetch origin main
+git checkout -b main origin/main || git checkout main
+git pull origin main
 
 # Create .gitignore for server-specific files
 cat > .gitignore.server << 'GITIGNORE'
