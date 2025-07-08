@@ -1,0 +1,100 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Deploy to production server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        script: |
+          echo "🚀 Starting deployment..."
+          
+          # Run deployment as wms user
+          sudo -u wms bash << 'EOF'
+          set -e
+          
+          echo "📁 Navigating to application directory..."
+          cd /home/wms/app
+          
+          echo "🔄 Pulling latest changes from main branch..."
+          git fetch origin main
+          git reset --hard origin/main
+          
+          echo "📦 Installing dependencies..."
+          npm ci --production=false
+          
+          echo "🔨 Building application..."
+          npm run build
+          
+          echo "♻️ Restarting application..."
+          pm2 restart wms-app || pm2 start ecosystem.config.js
+          
+          echo "💾 Saving PM2 configuration..."
+          pm2 save
+          
+          echo "✅ Deployment completed successfully!"
+          echo "📊 Application status:"
+          pm2 list
+          EOF
+    
+    - name: Health check
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        script: |
+          echo "🏥 Running health check..."
+          sleep 10
+          
+          # Check if app is running
+          if curl -f -s http://localhost:3001/api/health > /dev/null; then
+            echo "✅ Health check passed!"
+          else
+            echo "❌ Health check failed!"
+            sudo -u wms pm2 logs wms-app --lines 50
+            exit 1
+          fi
+    
+    - name: Notify deployment status
+      if: always()
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        script: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful - $(date)"
+          else
+            echo "❌ Deployment failed - $(date)"
+          fi
