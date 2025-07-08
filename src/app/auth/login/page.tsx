@@ -16,6 +16,7 @@ import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { Package2, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { withBasePath } from '@/lib/utils/base-path'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -61,8 +62,8 @@ export default function LoginPage() {
       } else {
         toast.success('Login successful!')
         
-        // Use router.push for proper Next.js navigation
-        const redirectUrl = callbackUrl || '/dashboard'
+        // Use router.push for proper Next.js navigation with base path
+        const redirectUrl = callbackUrl || withBasePath('/dashboard')
         router.push(redirectUrl)
         router.refresh()
       }
@@ -78,7 +79,7 @@ export default function LoginPage() {
     
     try {
       // First, check if demo data already exists
-      const statusResponse = await fetch('/api/demo/status')
+      const statusResponse = await fetch(withBasePath('/api/demo/status'))
       const statusData = await statusResponse.json()
       
       if (!statusData.isDemoMode) {
@@ -90,7 +91,7 @@ export default function LoginPage() {
           .find(row => row.startsWith('csrf-token='))
           ?.split('=')[1];
         
-        const setupResponse = await fetch('/api/demo/setup', {
+        const setupResponse = await fetch(withBasePath('/api/demo/setup'), {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -136,8 +137,8 @@ export default function LoginPage() {
       
       // Small delay to ensure the session is set
       setTimeout(() => {
-        // Redirect to dashboard
-        const redirectUrl = callbackUrl || '/dashboard'
+        // Redirect to dashboard with base path
+        const redirectUrl = callbackUrl || withBasePath('/dashboard')
         window.location.href = redirectUrl
       }, 100)
     } catch (error) {

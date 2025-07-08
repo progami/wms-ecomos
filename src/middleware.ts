@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
+const basePath = process.env.BASE_PATH || ''
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  
+  // Remove base path from pathname for route checking
+  const pathWithoutBase = basePath ? pathname.replace(basePath, '') : pathname
   
   // Public routes that don't require authentication
   const publicRoutes = [
@@ -15,8 +20,8 @@ export async function middleware(request: NextRequest) {
     '/api/logs',
   ]
   
-  // Check if the route is public
-  const isPublicRoute = publicRoutes.some(route => pathname.includes(route))
+  // Check if the route is public (using path without base)
+  const isPublicRoute = publicRoutes.some(route => pathWithoutBase.includes(route))
   
   // Skip auth check for public routes, static files, and API routes
   if (isPublicRoute || pathname.includes('/_next') || pathname.includes('/favicon.ico')) {
@@ -24,9 +29,9 @@ export async function middleware(request: NextRequest) {
   }
   
   // Handle root path redirect
-  if (pathname === '/' || pathname === '/WMS' || pathname === '/WMS/') {
+  if (pathWithoutBase === '/' || pathWithoutBase === '') {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = `${basePath}/dashboard`
     return NextResponse.redirect(url)
   }
   
@@ -37,9 +42,9 @@ export async function middleware(request: NextRequest) {
   })
   
   // If no token and trying to access protected route, redirect to login
-  if (!token && !pathname.includes('/auth/')) {
+  if (!token && !pathWithoutBase.includes('/auth/')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
+    url.pathname = `${basePath}/auth/login`
     url.searchParams.set('callbackUrl', request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
