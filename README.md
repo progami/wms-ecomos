@@ -1,5 +1,7 @@
 # WMS - Warehouse Management System
 
+![Deploy Status](https://github.com/progami/WMS_EcomOS/actions/workflows/deploy.yml/badge.svg)
+
 Modern 3PL warehouse management system with inventory tracking, billing automation, and multi-warehouse support.
 
 ## Tech Stack
