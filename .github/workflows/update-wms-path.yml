@@ -17,11 +17,8 @@ jobs:
 
     - name: Update Nginx configuration
       run: |
-        # Get instance ID
-        INSTANCE_ID=$(aws ec2 describe-instances \
-          --filters "Name=tag:Name,Values=wms-production" "Name=instance-state-name,Values=running" \
-          --query "Reservations[0].Instances[0].InstanceId" \
-          --output text)
+        # Get instance ID - using the specific instance with IP 44.198.217.24
+        INSTANCE_ID="i-03d738739b052fbe7"
         
         echo "Instance ID: $INSTANCE_ID"
         
@@ -74,10 +71,7 @@ jobs:
 
     - name: Update Next.js configuration
       run: |
-        INSTANCE_ID=$(aws ec2 describe-instances \
-          --filters "Name=tag:Name,Values=wms-production" "Name=instance-state-name,Values=running" \
-          --query "Reservations[0].Instances[0].InstanceId" \
-          --output text)
+        INSTANCE_ID="i-03d738739b052fbe7"
         
         # Update next.config.js
         aws ssm send-command \
@@ -111,10 +105,7 @@ jobs:
 
     - name: Update PM2 configuration and rebuild
       run: |
-        INSTANCE_ID=$(aws ec2 describe-instances \
-          --filters "Name=tag:Name,Values=wms-production" "Name=instance-state-name,Values=running" \
-          --query "Reservations[0].Instances[0].InstanceId" \
-          --output text)
+        INSTANCE_ID="i-03d738739b052fbe7"
         
         # Update PM2 ecosystem config and rebuild
         aws ssm send-command \
