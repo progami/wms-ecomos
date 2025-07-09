@@ -115,7 +115,7 @@ class EdgeLogger {
   private buffer: LogEntry[] = [];
   private flushEndpoint: string = '/api/logs/edge';
   private maxBufferSize: number = 100;
-  private isEdgeRuntime: boolean = typeof EdgeRuntime !== 'undefined';
+  private isEdgeRuntime: boolean = typeof globalThis !== 'undefined' && 'EdgeRuntime' in globalThis;
   private isBrowser: boolean = typeof window !== 'undefined';
 
   constructor() {

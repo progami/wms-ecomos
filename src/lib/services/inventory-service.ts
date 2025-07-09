@@ -43,7 +43,7 @@ function getAdvisoryLockKey(warehouseId: string, skuId: string, batchLot: string
   // Take first 8 bytes and convert to bigint
   // Use absolute value to ensure positive number
   const lockKey = BigInt('0x' + hash.subarray(0, 8).toString('hex'))
-  return lockKey > 0n ? lockKey : -lockKey
+  return lockKey > BigInt(0) ? lockKey : -lockKey
 }
 
 export class InventoryService {
@@ -124,7 +124,23 @@ export class InventoryService {
       // Create the transaction with units per carton captured
       const transaction = await tx.inventoryTransaction.create({
         data: {
-          ...validatedInput,
+          warehouseId: validatedInput.warehouseId,
+          skuId: validatedInput.skuId,
+          batchLot: validatedInput.batchLot,
+          transactionType: validatedInput.transactionType,
+          referenceId: validatedInput.referenceId,
+          cartonsIn: validatedInput.cartonsIn,
+          cartonsOut: validatedInput.cartonsOut,
+          storagePalletsIn: validatedInput.storagePalletsIn,
+          shippingPalletsOut: validatedInput.shippingPalletsOut,
+          transactionDate: validatedInput.transactionDate,
+          pickupDate: validatedInput.pickupDate,
+          shippingCartonsPerPallet: validatedInput.shippingCartonsPerPallet,
+          storageCartonsPerPallet: validatedInput.storageCartonsPerPallet,
+          shipName: validatedInput.shipName,
+          trackingNumber: validatedInput.trackingNumber,
+          modeOfTransportation: validatedInput.modeOfTransportation,
+          attachments: validatedInput.attachments,
           transactionId,
           createdById: userId,
           unitsPerCarton: sku.unitsPerCarton, // Capture SKU value at transaction time
@@ -282,7 +298,23 @@ export class InventoryService {
           
           const transaction = await tx.inventoryTransaction.create({
             data: {
-              ...t,
+              warehouseId: t.warehouseId,
+              skuId: t.skuId,
+              batchLot: t.batchLot,
+              transactionType: t.transactionType,
+              referenceId: t.referenceId,
+              cartonsIn: t.cartonsIn,
+              cartonsOut: t.cartonsOut,
+              storagePalletsIn: t.storagePalletsIn,
+              shippingPalletsOut: t.shippingPalletsOut,
+              transactionDate: t.transactionDate,
+              pickupDate: t.pickupDate,
+              shippingCartonsPerPallet: t.shippingCartonsPerPallet,
+              storageCartonsPerPallet: t.storageCartonsPerPallet,
+              shipName: t.shipName,
+              trackingNumber: t.trackingNumber,
+              modeOfTransportation: t.modeOfTransportation,
+              attachments: t.attachments,
               transactionId,
               createdById: userId,
               unitsPerCarton: sku.unitsPerCarton, // Capture SKU value at transaction time

@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 // Store for rate limit tracking (in production, use Redis)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()

@@ -147,8 +147,8 @@ export class ReconciliationService {
               invoicedQuantity: lineItem.quantity,
               unitRate: lineItem.unitRate || expected.unitRate,
               status: difference.abs().lte(0.01) ? 
-                ReconciliationStatus.matched : 
-                ReconciliationStatus.variance,
+                ReconciliationStatus.match : 
+                difference.gt(0) ? ReconciliationStatus.overbilled : ReconciliationStatus.underbilled,
             }
           })
           
@@ -167,7 +167,7 @@ export class ReconciliationService {
               expectedQuantity: new Prisma.Decimal(0),
               invoicedQuantity: lineItem.quantity,
               unitRate: lineItem.unitRate,
-              status: ReconciliationStatus.unmatched,
+              status: ReconciliationStatus.overbilled,
             }
           })
           
@@ -188,7 +188,7 @@ export class ReconciliationService {
             expectedQuantity: expected.quantity,
             invoicedQuantity: new Prisma.Decimal(0),
             unitRate: expected.unitRate,
-            status: ReconciliationStatus.missing,
+            status: ReconciliationStatus.underbilled,
           }
         })
         
@@ -197,15 +197,11 @@ export class ReconciliationService {
       
       // Update invoice status
       const hasVariances = reconciliations.some(r => 
-        r.status !== ReconciliationStatus.matched
+        r.status !== ReconciliationStatus.match
       )
       
-      if (hasVariances && invoice.status === InvoiceStatus.pending) {
-        await tx.invoice.update({
-          where: { id: invoice.id },
-          data: { status: InvoiceStatus.reconciling }
-        })
-      }
+      // Keep invoice in pending status if there are variances
+      // The invoice will be reconciled when all variances are resolved
       
       // Audit log
       await auditLog({
@@ -217,10 +213,9 @@ export class ReconciliationService {
           invoiceNumber: invoice.invoiceNumber,
           billingPeriod: `${validatedInput.billingPeriodStart.toISOString()} - ${validatedInput.billingPeriodEnd.toISOString()}`,
           reconciliationsCreated: reconciliations.length,
-          matched: reconciliations.filter(r => r.status === ReconciliationStatus.matched).length,
-          variances: reconciliations.filter(r => r.status === ReconciliationStatus.variance).length,
-          unmatched: reconciliations.filter(r => r.status === ReconciliationStatus.unmatched).length,
-          missing: reconciliations.filter(r => r.status === ReconciliationStatus.missing).length,
+          matched: reconciliations.filter(r => r.status === ReconciliationStatus.match).length,
+          overbilled: reconciliations.filter(r => r.status === ReconciliationStatus.overbilled).length,
+          underbilled: reconciliations.filter(r => r.status === ReconciliationStatus.underbilled).length,
         }
       })
       
@@ -231,10 +226,9 @@ export class ReconciliationService {
           totalExpected: reconciliations.reduce((sum, r) => sum.add(r.expectedAmount), new Prisma.Decimal(0)),
           totalInvoiced: reconciliations.reduce((sum, r) => sum.add(r.invoicedAmount), new Prisma.Decimal(0)),
           totalVariance: reconciliations.reduce((sum, r) => sum.add(r.difference.abs()), new Prisma.Decimal(0)),
-          matchedCount: reconciliations.filter(r => r.status === ReconciliationStatus.matched).length,
-          varianceCount: reconciliations.filter(r => r.status === ReconciliationStatus.variance).length,
-          unmatchedCount: reconciliations.filter(r => r.status === ReconciliationStatus.unmatched).length,
-          missingCount: reconciliations.filter(r => r.status === ReconciliationStatus.missing).length,
+          matchedCount: reconciliations.filter(r => r.status === ReconciliationStatus.match).length,
+          overbilledCount: reconciliations.filter(r => r.status === ReconciliationStatus.overbilled).length,
+          underbilledCount: reconciliations.filter(r => r.status === ReconciliationStatus.underbilled).length,
         }
       }
     }, {
@@ -304,7 +298,7 @@ export class ReconciliationService {
       where: {
         invoiceId: reconciliation.invoiceId,
         status: {
-          in: [ReconciliationStatus.variance, ReconciliationStatus.unmatched, ReconciliationStatus.missing]
+          not: ReconciliationStatus.match
         }
       }
     })
@@ -356,11 +350,10 @@ export class ReconciliationService {
     
     const summary = {
       total: reconciliations.length,
-      matched: reconciliations.filter(r => r.status === ReconciliationStatus.matched).length,
-      variance: reconciliations.filter(r => r.status === ReconciliationStatus.variance).length,
-      unmatched: reconciliations.filter(r => r.status === ReconciliationStatus.unmatched).length,
-      missing: reconciliations.filter(r => r.status === ReconciliationStatus.missing).length,
-      resolved: reconciliations.filter(r => r.status === ReconciliationStatus.resolved).length,
+      matched: reconciliations.filter(r => r.status === ReconciliationStatus.match).length,
+      overbilled: reconciliations.filter(r => r.status === ReconciliationStatus.overbilled).length,
+      underbilled: reconciliations.filter(r => r.status === ReconciliationStatus.underbilled).length,
+      resolved: reconciliations.filter(r => r.resolvedAt !== null).length,
       totalExpected: reconciliations.reduce((sum, r) => sum.add(r.expectedAmount), new Prisma.Decimal(0)),
       totalInvoiced: reconciliations.reduce((sum, r) => sum.add(r.invoicedAmount), new Prisma.Decimal(0)),
       totalVariance: reconciliations.reduce((sum, r) => sum.add(r.difference.abs()), new Prisma.Decimal(0)),
@@ -384,7 +377,7 @@ export class ReconciliationService {
     const invoices = await prisma.invoice.findMany({
       where: {
         warehouseId,
-        status: InvoiceStatus.reconciling,
+        status: InvoiceStatus.pending,
       }
     })
     
@@ -394,7 +387,9 @@ export class ReconciliationService {
       const reconciliations = await prisma.invoiceReconciliation.findMany({
         where: {
           invoiceId: invoice.id,
-          status: ReconciliationStatus.variance,
+          status: {
+          not: ReconciliationStatus.match
+        },
         }
       })
       
@@ -416,10 +411,12 @@ export class ReconciliationService {
         await prisma.invoiceReconciliation.updateMany({
           where: {
             invoiceId: invoice.id,
-            status: ReconciliationStatus.variance,
+            status: {
+          not: ReconciliationStatus.match
+        },
           },
           data: {
-            status: ReconciliationStatus.resolved,
+            status: ReconciliationStatus.match,
             resolutionNotes: `Auto-reconciled: variance within ${tolerancePercentage}% tolerance`,
             resolvedById: userId,
             resolvedAt: new Date(),
@@ -489,9 +486,8 @@ export class ReconciliationService {
       reconciliationSummary: {
         totalReconciliations: 0,
         matched: 0,
-        variance: 0,
-        unmatched: 0,
-        missing: 0,
+        overbilled: 0,
+        underbilled: 0,
         resolved: 0,
         totalVariance: new Prisma.Decimal(0),
       },
@@ -505,11 +501,10 @@ export class ReconciliationService {
         status: invoice.status,
         reconciliations: {
           total: invoice.reconciliations.length,
-          matched: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.matched).length,
-          variance: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.variance).length,
-          unmatched: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.unmatched).length,
-          missing: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.missing).length,
-          resolved: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.resolved).length,
+          matched: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.match).length,
+          overbilled: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.overbilled).length,
+          underbilled: invoice.reconciliations.filter(r => r.status === ReconciliationStatus.underbilled).length,
+          resolved: invoice.reconciliations.filter(r => r.resolvedAt !== null).length,
           totalVariance: invoice.reconciliations.reduce((sum, r) => sum.add(r.difference.abs()), new Prisma.Decimal(0)),
         }
       }
@@ -519,9 +514,8 @@ export class ReconciliationService {
       // Update totals
       report.reconciliationSummary.totalReconciliations += invoice.reconciliations.length
       report.reconciliationSummary.matched += invoiceSummary.reconciliations.matched
-      report.reconciliationSummary.variance += invoiceSummary.reconciliations.variance
-      report.reconciliationSummary.unmatched += invoiceSummary.reconciliations.unmatched
-      report.reconciliationSummary.missing += invoiceSummary.reconciliations.missing
+      report.reconciliationSummary.overbilled += invoiceSummary.reconciliations.overbilled
+      report.reconciliationSummary.underbilled += invoiceSummary.reconciliations.underbilled
       report.reconciliationSummary.resolved += invoiceSummary.reconciliations.resolved
       report.reconciliationSummary.totalVariance = report.reconciliationSummary.totalVariance.add(invoiceSummary.reconciliations.totalVariance)
     }

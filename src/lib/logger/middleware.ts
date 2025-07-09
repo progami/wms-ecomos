@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiLogger, perfLogger } from './index';
-import { v4 as uuidv4 } from 'crypto';
+import crypto from 'crypto';
 
 interface LogContext {
   requestId: string;
@@ -30,7 +30,7 @@ function sanitizeHeaders(headers: Headers): Record<string, string> {
 }
 
 // Extract request body safely
-async function extractBody(request: NextRequest): Promise<any> {
+async function extractBody(request: Request | NextRequest): Promise<any> {
   try {
     const contentType = request.headers.get('content-type') || '';
     
@@ -53,10 +53,10 @@ async function extractBody(request: NextRequest): Promise<any> {
 // API logging middleware
 export async function apiLoggingMiddleware(
   request: NextRequest,
-  handler: (req: NextRequest, context?: any) => Promise<NextResponse>
-): Promise<NextResponse> {
+  handler: (req: NextRequest, context?: any) => Promise<Response>
+): Promise<Response> {
   const startTime = Date.now();
-  const requestId = uuidv4();
+  const requestId = crypto.randomUUID();
   
   // Clone the request to read the body
   const clonedRequest = request.clone();
@@ -112,7 +112,7 @@ export async function apiLoggingMiddleware(
     const modifiedResponse = response.clone();
     modifiedResponse.headers.set('x-request-id', requestId);
     
-    return modifiedResponse;
+    return modifiedResponse as Response;
   } catch (error) {
     const duration = Date.now() - startTime;
     
@@ -147,7 +147,7 @@ export async function apiLoggingMiddleware(
 }
 
 // Wrapper for API route handlers
-export function withLogging<T extends (...args: any[]) => Promise<NextResponse>>(
+export function withLogging<T extends (...args: any[]) => Promise<Response>>(
   handler: T,
   options?: { category?: string }
 ): T {
@@ -164,7 +164,7 @@ export function withLogging<T extends (...args: any[]) => Promise<NextResponse>>
 export function createLoggingMiddleware() {
   return async (req: any, res: any, next: any) => {
     const startTime = Date.now();
-    const requestId = uuidv4();
+    const requestId = crypto.randomUUID();
     
     // Log request
     apiLogger.http('API Request', {
