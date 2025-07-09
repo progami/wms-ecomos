@@ -1,28 +1,37 @@
 interface RetryOptions {
   maxRetries?: number;
+  maxAttempts?: number; // Alias for maxRetries + 1
   initialDelayMs?: number;
+  initialDelay?: number; // Alias for initialDelayMs
   maxDelayMs?: number;
+  maxDelay?: number; // Alias for maxDelayMs
   backoffMultiplier?: number;
+  factor?: number; // Alias for backoffMultiplier
+  jitter?: boolean;
   retryOn?: (error: any) => boolean;
+  shouldRetry?: (error: any) => boolean; // Alias for retryOn
+  onRetry?: (attempt: number, delay: number) => void;
 }
 
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options: RetryOptions = {}
 ): Promise<T> {
-  const {
-    maxRetries = 3,
-    initialDelayMs = 1000,
-    maxDelayMs = 30000,
-    backoffMultiplier = 2,
-    retryOn = (error) => {
-      // Retry on network errors and 5xx status codes
-      if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') return true;
-      if (error.status >= 500) return true;
-      if (error.status === 429) return true; // Rate limited
-      return false;
-    }
-  } = options;
+  // Handle aliases
+  const maxRetries = options.maxAttempts !== undefined ? options.maxAttempts - 1 : (options.maxRetries ?? 3);
+  const initialDelayMs = options.initialDelay ?? options.initialDelayMs ?? 1000;
+  const maxDelayMs = options.maxDelay ?? options.maxDelayMs ?? 30000;
+  const backoffMultiplier = options.factor ?? options.backoffMultiplier ?? 2;
+  const jitter = options.jitter ?? false;
+  const onRetry = options.onRetry;
+  
+  const retryOn = options.shouldRetry ?? options.retryOn ?? ((error: any) => {
+    // Retry on network errors and 5xx status codes
+    if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') return true;
+    if (error.status >= 500) return true;
+    if (error.status === 429) return true; // Rate limited
+    return false;
+  });
 
   let lastError: Error | undefined;
   let delayMs = initialDelayMs;
@@ -42,8 +51,23 @@ export async function withRetry<T>(
         delayMs = parseInt(error.headers['retry-after']) * 1000;
       }
 
+      // Apply jitter if enabled
+      let actualDelay = delayMs;
+      if (jitter) {
+        // Add random jitter between 0% and 25% of the delay
+        actualDelay = delayMs + Math.random() * delayMs * 0.25;
+      }
+
+      // Cap the delay
+      actualDelay = Math.min(actualDelay, maxDelayMs);
+
+      // Call onRetry callback if provided
+      if (onRetry) {
+        onRetry(attempt + 1, actualDelay);
+      }
+
       // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, Math.min(delayMs, maxDelayMs)));
+      await new Promise(resolve => setTimeout(resolve, actualDelay));
 
       // Exponential backoff
       delayMs *= backoffMultiplier;
@@ -54,14 +78,33 @@ export async function withRetry<T>(
 }
 
 export async function withTimeout<T>(
-  fn: () => Promise<T>,
+  fn: ((signal?: AbortSignal) => Promise<T>) | (() => Promise<T>),
   timeoutMs: number = 5000
 ): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+    controller.signal.addEventListener('abort', () => {
+      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+    });
   });
 
-  return Promise.race([fn(), timeoutPromise]);
+  try {
+    // Try to pass abort signal if function accepts it
+    const result = await Promise.race([
+      fn.length > 0 ? (fn as (signal: AbortSignal) => Promise<T>)(controller.signal) : (fn as () => Promise<T>)(),
+      timeoutPromise
+    ]);
+    clearTimeout(timeoutId);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (controller.signal.aborted) {
+      throw new Error('Operation timed out');
+    }
+    throw error;
+  }
 }
 
 // Circuit breaker implementation
@@ -205,6 +248,84 @@ export async function processBatch<T, R>(
   }
 
   return { successful, failed };
+}
+
+// Wrapper function for circuit breaker
+export function withCircuitBreaker<T>(
+  fn: () => Promise<T>,
+  options: {
+    failureThreshold?: number;
+    resetTimeout?: number;
+    halfOpenRequests?: number;
+    monitoringPeriod?: number;
+    onStateChange?: (from: string, to: string) => void;
+  } = {}
+): () => Promise<T> {
+  const {
+    failureThreshold = 5,
+    resetTimeout = 60000,
+    halfOpenRequests = 3,
+    onStateChange
+  } = options;
+
+  const circuitBreaker = new CircuitBreaker(failureThreshold, resetTimeout, halfOpenRequests);
+  let previousState = 'CLOSED';
+
+  return async () => {
+    // Check current state for monitoring
+    const currentState = circuitBreaker['state'].toUpperCase();
+    if (previousState !== currentState && onStateChange) {
+      onStateChange(previousState, currentState);
+      previousState = currentState;
+    }
+
+    try {
+      return await circuitBreaker.execute(fn);
+    } catch (error: any) {
+      if (error.message === 'Circuit breaker is open') {
+        throw new Error('Circuit breaker is OPEN');
+      }
+      throw error;
+    }
+  };
+}
+
+// Wrapper function for rate limiting
+interface RateLimitOptions {
+  maxRequests: number;
+  windowMs: number;
+}
+
+export function withRateLimit<T>(
+  fn: (...args: any[]) => Promise<T>,
+  options: RateLimitOptions
+): (...args: any[]) => Promise<T> {
+  const { maxRequests, windowMs } = options;
+  const requests: number[] = [];
+
+  return async (...args: any[]) => {
+    const now = Date.now();
+    
+    // Remove old requests outside the window
+    while (requests.length > 0 && requests[0] < now - windowMs) {
+      requests.shift();
+    }
+
+    // Check if we've exceeded the limit
+    if (requests.length >= maxRequests) {
+      const oldestRequest = requests[0];
+      const retryAfter = Math.ceil((oldestRequest + windowMs - now) / 1000);
+      const error = new Error(`Rate limit exceeded. Try again in ${retryAfter} seconds.`);
+      (error as any).retryAfter = retryAfter;
+      throw error;
+    }
+
+    // Record this request
+    requests.push(now);
+
+    // Execute the function
+    return fn(...args);
+  };
 }
 
 // Token refresh manager

@@ -109,8 +109,79 @@ jobs:
           path: .next
           retention-days: 1
 
-  # Tests
-  test:
+  # Fast Tests (Unit + Integration) - Run on every push
+  test-fast:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+          
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - run: npm install
+      
+      - name: Setup Database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy || echo "No migrations"
+          
+      - name: Run Unit Tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+        run: npm run test:unit
+        
+      - name: Run Integration Tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+        run: npm run test:integration
+        
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-fast
+          path: |
+            tests/coverage/
+            tests/junit.xml
+          retention-days: 7
+
+  # E2E Tests - Run on PR and main branch only
+  test-e2e:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     services:
@@ -138,7 +209,7 @@ jobs:
           
     strategy:
       matrix:
-        suite: [unit, integration, e2e]
+        browser: [chromium, firefox, webkit]
         
     steps:
       - uses: actions/checkout@v4
@@ -146,6 +217,64 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - run: npm install
+      
+      - name: Install Playwright Browsers
+        run: cd tests && npx playwright install --with-deps ${{ matrix.browser }}
+      
+      - name: Setup Database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy || echo "No migrations"
+          
+      - name: Run E2E Tests - ${{ matrix.browser }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+        run: cd tests && playwright test e2e/ --project=${{ matrix.browser }}
+        
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.browser }}
+          path: |
+            tests/playwright-report/
+            tests/playwright-results.xml
+            tests/test-results/
+          retention-days: 7
+
+  # Security Tests - Run on schedule or manual trigger
+  test-security:
+    if: github.event_name == 'schedule' || github.event.inputs.run-security == 'true' || github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
           
       - run: npm install
       
@@ -155,53 +284,109 @@ jobs:
         run: |
           npx prisma generate
           npx prisma migrate deploy || echo "No migrations"
+      
+      - name: Run Security Tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+        run: npm run test:security
+        
+      - name: Dependency Audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+        
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'WMS'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --enableRetired
+        continue-on-error: true
+        
+      - name: Upload security results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-results
+          path: |
+            reports/
+            tests/security-results/
+          retention-days: 30
+
+  # Performance Tests - Run on schedule or manual trigger
+  test-performance:
+    if: github.event_name == 'schedule' || github.event.inputs.run-performance == 'true' || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[perf]'))
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
           
-      - name: Run ${{ matrix.suite }} tests
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+          
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - run: npm install
+      
+      - name: Install Playwright Browsers
+        run: cd tests && npx playwright install --with-deps chromium
+      
+      - name: Setup Database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy || echo "No migrations"
+          npm run seed:performance || echo "No performance seed"
+      
+      - name: Run Performance Tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
-        run: npm run test:${{ matrix.suite }}
-
-  # Security (conditional)
-  security:
-    if: github.event_name == 'schedule' || github.event.inputs.run-security == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
+        run: npm run test:performance
+        
+      - name: Upload performance results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - run: npm install
-      
-      - name: Audit
-        run: npm audit --audit-level=high || true
-        continue-on-error: true
-
-  # Performance (conditional)  
-  performance:
-    if: github.event_name == 'schedule' || github.event.inputs.run-performance == 'true'
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - run: npm install
-      
-      - name: Performance tests
-        run: echo "Performance tests would run here"
+          name: performance-results
+          path: |
+            tests/performance-report/
+            tests/lighthouse-results/
+          retention-days: 30
 
   # Release (tags only)
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test]
+    needs: [test-fast, test-e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -218,7 +403,7 @@ jobs:
   # Update badges (main only)
   badges:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [test]
+    needs: [test-fast]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -229,20 +414,40 @@ jobs:
         run: |
           echo "Badge update would happen here"
           
-  # PR Comment
+  # PR Comment with test summary
   comment:
     if: github.event_name == 'pull_request'
-    needs: [quality, test]
+    needs: [quality, test-fast, test-e2e]
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-results*'
+          path: test-results
+          
       - uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let testSummary = '## Test Results Summary\n\n';
+            testSummary += '| Test Suite | Status |\n';
+            testSummary += '|------------|--------|\n';
+            testSummary += '| Quality Checks | ✅ |\n';
+            testSummary += '| Unit Tests | ✅ |\n';
+            testSummary += '| Integration Tests | ✅ |\n';
+            testSummary += '| E2E Tests | ✅ |\n';
+            testSummary += '\n✅ All CI checks passed!';
+            
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '✅ All CI checks passed!'
+              body: testSummary
             })

@@ -44,15 +44,13 @@ describe('API Resilience Integration Tests', () => {
         return { success: true, data: 'OK' }
       })
 
-      const resilientAPI = withRetry(mockAPI, {
+      const startTime = Date.now()
+      const result = await withRetry(mockAPI, {
         maxAttempts: 3,
         initialDelay: 100,
         maxDelay: 1000,
         factor: 2
       })
-
-      const startTime = Date.now()
-      const result = await resilientAPI()
       const duration = Date.now() - startTime
 
       expect(result.success).toBe(true)
@@ -66,14 +64,14 @@ describe('API Resilience Integration Tests', () => {
         new Error('Invalid API key')
       )
 
-      const resilientAPI = withRetry(mockAPI, {
-        maxAttempts: 3,
-        shouldRetry: (error) => {
-          return !error.message.includes('Invalid API key')
-        }
-      })
-
-      await expect(resilientAPI()).rejects.toThrow('Invalid API key')
+      await expect(
+        withRetry(mockAPI, {
+          maxAttempts: 3,
+          shouldRetry: (error) => {
+            return !error.message.includes('Invalid API key')
+          }
+        })
+      ).rejects.toThrow('Invalid API key')
       expect(mockAPI).toHaveBeenCalledTimes(1) // No retries
     })
 
@@ -83,17 +81,15 @@ describe('API Resilience Integration Tests', () => {
         throw new Error('Retry needed')
       })
 
-      const resilientAPI = withRetry(mockAPI, {
-        maxAttempts: 5,
-        initialDelay: 100,
-        jitter: true,
-        onRetry: (attempt, delay) => {
-          delays.push(delay)
-        }
-      })
-
       try {
-        await resilientAPI()
+        await withRetry(mockAPI, {
+          maxAttempts: 5,
+          initialDelay: 100,
+          jitter: true,
+          onRetry: (attempt, delay) => {
+            delays.push(delay)
+          }
+        })
       } catch (error) {
         // Expected to fail after all retries
       }
@@ -111,9 +107,9 @@ describe('API Resilience Integration Tests', () => {
         return { data: 'too late' }
       })
 
-      const timeoutAPI = withTimeout(mockSlowAPI, 1000)
-
-      await expect(timeoutAPI()).rejects.toThrow('Operation timed out')
+      await expect(
+        withTimeout(mockSlowAPI, 1000)
+      ).rejects.toThrow('Operation timed out')
     })
 
     test('should handle timeout with cleanup', async () => {
@@ -130,10 +126,8 @@ describe('API Resilience Integration Tests', () => {
         })
       })
 
-      const timeoutAPI = withTimeout(mockAPI, 500)
-
       try {
-        await timeoutAPI()
+        await withTimeout(mockAPI, 500)
       } catch (error) {
         // Expected timeout
       }
@@ -146,8 +140,7 @@ describe('API Resilience Integration Tests', () => {
     test('should complete fast API calls without timeout', async () => {
       const mockFastAPI = jest.fn().mockResolvedValue({ data: 'quick response' })
 
-      const timeoutAPI = withTimeout(mockFastAPI, 1000)
-      const result = await timeoutAPI()
+      const result = await withTimeout(mockFastAPI, 1000)
 
       expect(result.data).toBe('quick response')
     })
@@ -358,10 +351,10 @@ describe('API Resilience Integration Tests', () => {
         return { data: 'success' }
       })
 
-      // Apply all patterns
+      // Apply all patterns - need to wrap in functions for composition
       const resilientAPI = withCircuitBreaker(
-        withRetry(
-          withTimeout(mockAPI, 1000),
+        () => withRetry(
+          () => withTimeout(mockAPI, 1000),
           { maxAttempts: 3 }
         ),
         { failureThreshold: 5 }
@@ -386,7 +379,7 @@ describe('API Resilience Integration Tests', () => {
       })
 
       const resilientServiceA = withCircuitBreaker(
-        withRetry(serviceA, { maxAttempts: 2 }),
+        () => withRetry(serviceA, { maxAttempts: 2 }),
         { failureThreshold: 3 }
       )
 
