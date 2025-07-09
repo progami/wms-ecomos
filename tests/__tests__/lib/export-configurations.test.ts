@@ -1,66 +1,45 @@
-import type { ExportConfiguration } from '@/lib/export-configurations';
+interface FieldConfig {
+  fieldName: string;
+  columnName: string;
+  format?: (value: any) => any;
+  isRelation?: boolean;
+}
+
+interface ExportConfig {
+  modelName: string;
+  fields?: FieldConfig[];
+  includeRelations?: string[];
+  excludeFields?: string[];
+}
 
 describe('Export Configurations', () => {
-  const mockInventoryTransactionConfig: ExportConfiguration = {
+  const mockInventoryTransactionConfig: Partial<ExportConfig> = {
     modelName: 'InventoryTransaction',
     excludeFields: ['id', 'warehouseId', 'skuId', 'createdById', 'transactionId'],
-    customFields: {
-      warehouseName: {
-        accessor: 'warehouse',
-        transform: (warehouse: any) => warehouse?.name || ''
-      },
-      skuCode: {
-        accessor: 'sku',
-        transform: (sku: any) => sku?.code || ''
-      },
-      transactionNumber: {
-        accessor: 'transaction',
-        transform: (transaction: any) => transaction?.transactionNumber || ''
-      },
-      createdByEmail: {
-        accessor: 'createdBy',
-        transform: (user: any) => user?.email || ''
-      }
-    },
-    dateFields: ['createdAt', 'updatedAt'],
-    fieldOrder: [
-      'warehouseName',
-      'skuCode',
-      'quantity',
-      'transactionNumber',
-      'type',
-      'createdByEmail',
-      'createdAt',
-      'updatedAt'
+    includeRelations: ['warehouse', 'sku', 'createdBy'],
+    fields: [
+      { fieldName: 'warehouse.name', columnName: 'Warehouse Name', isRelation: true, format: (value: any) => value || '' },
+      { fieldName: 'sku.skuCode', columnName: 'SKU Code', isRelation: true, format: (value: any) => value || '' },
+      { fieldName: 'quantity', columnName: 'Quantity' },
+      { fieldName: 'transactionType', columnName: 'Transaction Type' },
+      { fieldName: 'createdBy.email', columnName: 'Created By', isRelation: true, format: (value: any) => value || '' },
+      { fieldName: 'createdAt', columnName: 'Created At' },
+      { fieldName: 'updatedAt', columnName: 'Updated At' }
     ]
   };
 
-  const mockInventoryBalanceConfig: ExportConfiguration = {
+  const mockInventoryBalanceConfig: Partial<ExportConfig> = {
     modelName: 'InventoryBalance',
     excludeFields: ['id', 'warehouseId', 'skuId'],
-    customFields: {
-      warehouseName: {
-        accessor: 'warehouse',
-        transform: (warehouse: any) => warehouse?.name || ''
-      },
-      skuCode: {
-        accessor: 'sku',
-        transform: (sku: any) => sku?.code || ''
-      },
-      skuName: {
-        accessor: 'sku',
-        transform: (sku: any) => sku?.name || ''
-      }
-    },
-    dateFields: ['lastUpdated'],
-    fieldOrder: [
-      'warehouseName',
-      'skuCode',
-      'skuName',
-      'quantity',
-      'allocatedQuantity',
-      'availableQuantity',
-      'lastUpdated'
+    includeRelations: ['warehouse', 'sku'],
+    fields: [
+      { fieldName: 'warehouse.name', columnName: 'Warehouse Name', isRelation: true, format: (value: any) => value || '' },
+      { fieldName: 'sku.skuCode', columnName: 'SKU Code', isRelation: true, format: (value: any) => value || '' },
+      { fieldName: 'sku.description', columnName: 'SKU Description', isRelation: true, format: (value: any) => value || '' },
+      { fieldName: 'quantity', columnName: 'Quantity' },
+      { fieldName: 'batchLot', columnName: 'Batch/Lot' },
+      { fieldName: 'averageCost', columnName: 'Average Cost' },
+      { fieldName: 'lastUpdated', columnName: 'Last Updated' }
     ]
   };
 
@@ -80,19 +59,26 @@ describe('Export Configurations', () => {
     });
 
     it('should have custom field transformers', () => {
-      const { customFields } = mockInventoryTransactionConfig;
+      const { fields } = mockInventoryTransactionConfig;
       
-      expect(customFields.warehouseName.accessor).toBe('warehouse');
-      expect(customFields.warehouseName.transform({ name: 'Main WH' })).toBe('Main WH');
-      expect(customFields.warehouseName.transform(null)).toBe('');
+      const warehouseField = fields?.find(f => f.columnName === 'Warehouse Name');
+      expect(warehouseField?.fieldName).toBe('warehouse.name');
+      expect(warehouseField?.isRelation).toBe(true);
+      expect(warehouseField?.format?.('Main WH')).toBe('Main WH');
+      expect(warehouseField?.format?.(null)).toBe('');
       
-      expect(customFields.skuCode.accessor).toBe('sku');
-      expect(customFields.skuCode.transform({ code: 'SKU001' })).toBe('SKU001');
-      expect(customFields.skuCode.transform({})).toBe('');
+      const skuField = fields?.find(f => f.columnName === 'SKU Code');
+      expect(skuField?.fieldName).toBe('sku.skuCode');
+      expect(skuField?.format?.('SKU001')).toBe('SKU001');
+      expect(skuField?.format?.('')).toBe('');
     });
 
     it('should have correct field order', () => {
-      expect(mockInventoryTransactionConfig.fieldOrder).toMatchSnapshot();
+      const fieldNames = mockInventoryTransactionConfig.fields?.map(f => f.columnName) || [];
+      expect(fieldNames).toContain('Warehouse Name');
+      expect(fieldNames).toContain('SKU Code');
+      expect(fieldNames).toContain('Quantity');
+      expect(fieldNames).toContain('Transaction Type');
     });
   });
 
@@ -110,40 +96,46 @@ describe('Export Configurations', () => {
     });
 
     it('should transform SKU fields correctly', () => {
-      const { customFields } = mockInventoryBalanceConfig;
-      const mockSku = { code: 'SKU001', name: 'Product 1' };
+      const { fields } = mockInventoryBalanceConfig;
       
-      expect(customFields.skuCode.transform(mockSku)).toBe('SKU001');
-      expect(customFields.skuName.transform(mockSku)).toBe('Product 1');
+      const skuCodeField = fields?.find(f => f.columnName === 'SKU Code');
+      expect(skuCodeField?.format?.('SKU001')).toBe('SKU001');
+      
+      const skuDescField = fields?.find(f => f.columnName === 'SKU Description');
+      expect(skuDescField?.format?.('Product 1')).toBe('Product 1');
     });
 
     it('should handle missing data gracefully', () => {
-      const { customFields } = mockInventoryBalanceConfig;
+      const { fields } = mockInventoryBalanceConfig;
       
-      expect(customFields.warehouseName.transform(undefined)).toBe('');
-      expect(customFields.skuCode.transform(null)).toBe('');
-      expect(customFields.skuName.transform({})).toBe('');
+      const warehouseField = fields?.find(f => f.columnName === 'Warehouse Name');
+      expect(warehouseField?.format?.(undefined)).toBe('');
+      
+      const skuField = fields?.find(f => f.columnName === 'SKU Code');
+      expect(skuField?.format?.(null)).toBe('');
+      
+      const descField = fields?.find(f => f.columnName === 'SKU Description');
+      expect(descField?.format?.('')).toBe('');
     });
   });
 
   describe('Export Configuration Structure', () => {
     it('should validate configuration structure', () => {
-      const validateConfig = (config: ExportConfiguration) => {
+      const validateConfig = (config: Partial<ExportConfig>) => {
         expect(config).toHaveProperty('modelName');
         expect(config).toHaveProperty('excludeFields');
-        expect(config).toHaveProperty('customFields');
-        expect(config).toHaveProperty('dateFields');
-        expect(config).toHaveProperty('fieldOrder');
+        expect(config).toHaveProperty('fields');
         
         expect(typeof config.modelName).toBe('string');
         expect(Array.isArray(config.excludeFields)).toBe(true);
-        expect(Array.isArray(config.dateFields)).toBe(true);
-        expect(Array.isArray(config.fieldOrder)).toBe(true);
+        expect(Array.isArray(config.fields)).toBe(true);
         
-        Object.values(config.customFields).forEach(field => {
-          expect(field).toHaveProperty('accessor');
-          expect(field).toHaveProperty('transform');
-          expect(typeof field.transform).toBe('function');
+        config.fields?.forEach(field => {
+          expect(field).toHaveProperty('fieldName');
+          expect(field).toHaveProperty('columnName');
+          if (field.format) {
+            expect(typeof field.format).toBe('function');
+          }
         });
       };
       

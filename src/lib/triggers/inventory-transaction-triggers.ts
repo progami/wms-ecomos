@@ -308,11 +308,13 @@ export function validateTransactionForCostCalculation(transaction: any): boolean
  * Check if cost calculation is needed for a transaction type
  */
 export function shouldCalculateCosts(transactionType: TransactionType): boolean {
-  // Costs are calculated for all transaction types except adjustments
+  // Costs are calculated for all transaction types
   return [
     TransactionType.RECEIVE,
     TransactionType.SHIP,
     TransactionType.TRANSFER,
+    TransactionType.ADJUST_IN,
+    TransactionType.ADJUST_OUT,
   ].includes(transactionType)
 }
 

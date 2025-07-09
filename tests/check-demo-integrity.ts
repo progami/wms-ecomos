@@ -18,31 +18,31 @@ async function checkDemoDataIntegrity() {
   try {
     // Check 1: Receive transactions before ship transactions
     console.log('1️⃣ Checking receive before ship rule...');
-    const items = await prisma.inventoryItem.findMany();
+    const skus = await prisma.sku.findMany();
     let receiveBeforeShipPassed = true;
     const receiveBeforeShipIssues: string[] = [];
     
-    for (const item of items) {
-      const transactions = await prisma.inventoryLedger.findMany({
-        where: { itemId: item.id },
-        orderBy: { createdAt: 'asc' }
+    for (const sku of skus) {
+      const transactions = await prisma.inventoryTransaction.findMany({
+        where: { skuId: sku.id },
+        orderBy: { transactionDate: 'asc' }
       });
       
       if (transactions.length > 0) {
         const firstTransaction = transactions[0];
-        if (firstTransaction.type !== 'receive') {
+        if (firstTransaction.transactionType !== 'RECEIVE') {
           receiveBeforeShipPassed = false;
-          receiveBeforeShipIssues.push(`❌ Item ${item.sku}: First transaction is ${firstTransaction.type}, not receive`);
+          receiveBeforeShipIssues.push(`❌ SKU ${sku.skuCode}: First transaction is ${firstTransaction.transactionType}, not RECEIVE`);
         }
         
         let hasReceived = false;
         for (const transaction of transactions) {
-          if (transaction.type === 'receive') {
+          if (transaction.transactionType === 'RECEIVE') {
             hasReceived = true;
           }
-          if (transaction.type === 'ship' && !hasReceived) {
+          if (transaction.transactionType === 'SHIP' && !hasReceived) {
             receiveBeforeShipPassed = false;
-            receiveBeforeShipIssues.push(`❌ Item ${item.sku}: Ship transaction before any receive`);
+            receiveBeforeShipIssues.push(`❌ SKU ${sku.skuCode}: Ship transaction before any receive`);
             break;
           }
         }
@@ -62,37 +62,79 @@ async function checkDemoDataIntegrity() {
     let balancePassed = true;
     const balanceIssues: string[] = [];
     
-    for (const item of items) {
-      const receivedSum = await prisma.inventoryLedger.aggregate({
-        where: { itemId: item.id, type: 'receive' },
-        _sum: { quantity: true }
-      });
-      
-      const shippedSum = await prisma.inventoryLedger.aggregate({
-        where: { itemId: item.id, type: 'ship' },
-        _sum: { quantity: true }
-      });
-      
-      const adjustmentSum = await prisma.inventoryLedger.aggregate({
-        where: { itemId: item.id, type: 'adjustment' },
-        _sum: { quantity: true }
-      });
-      
-      const received = receivedSum._sum.quantity || 0;
-      const shipped = shippedSum._sum.quantity || 0;
-      const adjustments = adjustmentSum._sum.quantity || 0;
-      const calculatedBalance = received - shipped + adjustments;
-      
-      if (calculatedBalance !== item.quantity) {
-        balancePassed = false;
-        balanceIssues.push(
-          `❌ Item ${item.sku}: Calculated balance (${calculatedBalance}) != Current quantity (${item.quantity})`
-        );
-      }
-      
-      if (item.quantity < 0) {
-        balancePassed = false;
-        balanceIssues.push(`❌ Item ${item.sku}: Negative quantity (${item.quantity})`);
+    const warehouses = await prisma.warehouse.findMany();
+    
+    for (const warehouse of warehouses) {
+      for (const sku of skus) {
+        const balance = await prisma.inventoryBalance.findUnique({
+          where: {
+            warehouseId_skuId_batchLot: {
+              warehouseId: warehouse.id,
+              skuId: sku.id,
+              batchLot: 'DEFAULT'
+            }
+          }
+        });
+        
+        if (balance) {
+          const receivedSum = await prisma.inventoryTransaction.aggregate({
+            where: {
+              warehouseId: warehouse.id,
+              skuId: sku.id,
+              batchLot: 'DEFAULT',
+              transactionType: 'RECEIVE'
+            },
+            _sum: { cartonsIn: true }
+          });
+          
+          const shippedSum = await prisma.inventoryTransaction.aggregate({
+            where: {
+              warehouseId: warehouse.id,
+              skuId: sku.id,
+              batchLot: 'DEFAULT',
+              transactionType: 'SHIP'
+            },
+            _sum: { cartonsOut: true }
+          });
+          
+          const adjustInSum = await prisma.inventoryTransaction.aggregate({
+            where: {
+              warehouseId: warehouse.id,
+              skuId: sku.id,
+              batchLot: 'DEFAULT',
+              transactionType: 'ADJUST_IN'
+            },
+            _sum: { cartonsIn: true }
+          });
+          
+          const adjustOutSum = await prisma.inventoryTransaction.aggregate({
+            where: {
+              warehouseId: warehouse.id,
+              skuId: sku.id,
+              batchLot: 'DEFAULT',
+              transactionType: 'ADJUST_OUT'
+            },
+            _sum: { cartonsOut: true }
+          });
+          
+          const received = receivedSum._sum.cartonsIn || 0;
+          const shipped = shippedSum._sum.cartonsOut || 0;
+          const adjustedIn = adjustInSum._sum.cartonsIn || 0;
+          const adjustedOut = adjustOutSum._sum.cartonsOut || 0;
+          const calculatedBalance = received + adjustedIn - shipped - adjustedOut;
+          
+          if (Math.abs(calculatedBalance - balance.currentCartons) > 0.01) {
+            balancePassed = false;
+            balanceIssues.push(
+              `❌ SKU ${sku.skuCode} at ${warehouse.name}: Calculated balance (${calculatedBalance}) != Current quantity (${balance.currentCartons})`
+            );
+          }
+          
+          if (balance.currentCartons < 0) {
+            balancePassed = false;
+            balanceIssues.push(`❌ SKU ${sku.skuCode} at ${warehouse.name}: Negative quantity (${balance.currentCartons})`);
+          }
+        }
       }
     }
     
@@ -104,47 +146,33 @@ async function checkDemoDataIntegrity() {
       details: balanceIssues
     });
     
-    // Check 3: Financial data integrity
-    console.log('\n3️⃣ Checking financial data integrity...');
+    // Check 3: Invoice data integrity
+    console.log('\n3️⃣ Checking invoice data integrity...');
     let financialPassed = true;
     const financialIssues: string[] = [];
     
-    const purchaseOrders = await prisma.purchaseOrder.findMany({
-      include: { items: true }
+    const invoices = await prisma.invoice.findMany({
+      include: { lineItems: true }
     });
     
-    for (const po of purchaseOrders) {
-      let poTotal = 0;
-      for (const item of po.items) {
-        poTotal += item.quantity * item.unitPrice;
+    for (const invoice of invoices) {
+      let calculatedTotal = 0;
+      for (const item of invoice.lineItems) {
+        calculatedTotal += Number(item.amount);
       }
       
-      const invoice = await prisma.invoice.findFirst({
-        where: { purchaseOrderId: po.id }
-      });
-      
-      if (invoice && Math.abs(invoice.amount - poTotal) > 0.01) {
+      if (Math.abs(Number(invoice.subtotal) - calculatedTotal) > 0.01) {
         financialPassed = false;
         financialIssues.push(
-          `❌ PO ${po.orderNumber}: Invoice amount ($${invoice.amount}) != PO total ($${poTotal})`
+          `❌ Invoice ${invoice.invoiceNumber}: Subtotal ($${invoice.subtotal}) != Line items total ($${calculatedTotal})`
         );
       }
-    }
-    
-    const salesOrders = await prisma.salesOrder.findMany({
-      include: { items: true }
-    });
-    
-    for (const so of salesOrders) {
-      let soTotal = 0;
-      for (const item of so.items) {
-        soTotal += item.quantity * item.unitPrice;
-      }
       
-      if (Math.abs(so.totalAmount - soTotal) > 0.01) {
+      const expectedTotal = Number(invoice.subtotal) + Number(invoice.taxAmount);
+      if (Math.abs(Number(invoice.totalAmount) - expectedTotal) > 0.01) {
         financialPassed = false;
         financialIssues.push(
-          `❌ SO ${so.orderNumber}: Total amount ($${so.totalAmount}) != Calculated total ($${soTotal})`
+          `❌ Invoice ${invoice.invoiceNumber}: Total amount ($${invoice.totalAmount}) != Subtotal + Tax ($${expectedTotal})`
         );
       }
     }
@@ -152,88 +180,77 @@ async function checkDemoDataIntegrity() {
     results.push({
       passed: financialPassed,
       message: financialPassed 
-        ? '✅ All financial data matches transaction volumes' 
-        : '❌ Some financial data mismatches found',
+        ? '✅ All invoice data is correctly calculated' 
+        : '❌ Some invoice data mismatches found',
       details: financialIssues
     });
     
-    // Check 4: Shipment constraints
-    console.log('\n4️⃣ Checking shipment constraints...');
-    let shipmentPassed = true;
-    const shipmentIssues: string[] = [];
+    // Check 4: Transaction date constraints
+    console.log('\n4️⃣ Checking transaction date constraints...');
+    let datePassed = true;
+    const dateIssues: string[] = [];
     
-    const shippedSalesOrders = await prisma.salesOrder.findMany({
-      where: { status: 'shipped' },
-      include: {
-        items: {
-          include: { inventoryItem: true }
-        }
-      }
+    const transactions = await prisma.inventoryTransaction.findMany({
+      include: { sku: true, warehouse: true },
+      orderBy: { transactionDate: 'asc' }
     });
     
-    for (const so of shippedSalesOrders) {
-      for (const soItem of so.items) {
-        const shippedBefore = await prisma.salesOrderItem.aggregate({
-          where: {
-            inventoryItemId: soItem.inventoryItemId,
-            salesOrder: {
-              shippedAt: { lte: so.shippedAt },
-              status: 'shipped'
-            }
-          },
-          _sum: { quantity: true }
-        });
-        
-        const receivedBefore = await prisma.inventoryLedger.aggregate({
-          where: {
-            itemId: soItem.inventoryItemId,
-            type: 'receive',
-            createdAt: { lte: so.shippedAt || new Date() }
-          },
-          _sum: { quantity: true }
-        });
-        
-        const totalShipped = shippedBefore._sum.quantity || 0;
-        const totalReceived = receivedBefore._sum.quantity || 0;
-        
-        if (totalShipped > totalReceived) {
-          shipmentPassed = false;
-          shipmentIssues.push(
-            `❌ Item ${soItem.inventoryItem.sku} in SO ${so.orderNumber}: Shipped (${totalShipped}) > Received (${totalReceived})`
-          );
+    // Group by SKU and warehouse to check date logic
+    const grouped = new Map<string, typeof transactions>();
+    for (const tx of transactions) {
+      const key = `${tx.warehouseId}-${tx.skuId}-${tx.batchLot}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(tx);
+    }
+    
+    for (const [key, txList] of Array.from(grouped.entries())) {
+      let runningBalance = 0;
+      for (const tx of txList) {
+        if (tx.transactionType === 'RECEIVE' || tx.transactionType === 'ADJUST_IN') {
+          runningBalance += tx.cartonsIn;
+        } else if (tx.transactionType === 'SHIP' || tx.transactionType === 'ADJUST_OUT' || tx.transactionType === 'TRANSFER') {
+          runningBalance -= tx.cartonsOut;
+          if (runningBalance < 0) {
+            datePassed = false;
+            dateIssues.push(
+              `❌ ${tx.sku.skuCode} at ${tx.warehouse.name}: Negative balance on ${tx.transactionDate.toISOString().split('T')[0]}`
+            );
+          }
         }
       }
     }
     
     results.push({
-      passed: shipmentPassed,
-      message: shipmentPassed 
-        ? '✅ No items shipped more than available inventory' 
-        : '❌ Some items shipped exceed available inventory',
-      details: shipmentIssues
+      passed: datePassed,
+      message: datePassed 
+        ? '✅ All transactions maintain positive inventory balance over time' 
+        : '❌ Some transactions result in negative inventory',
+      details: dateIssues
     });
     
     // Print summary
     console.log('\n📊 Demo Data Statistics:');
     const stats = {
-      items: await prisma.inventoryItem.count(),
-      locations: await prisma.location.count(),
-      purchaseOrders: await prisma.purchaseOrder.count(),
-      salesOrders: await prisma.salesOrder.count(),
+      skus: await prisma.sku.count(),
+      warehouses: await prisma.warehouse.count(),
+      inventoryBalances: await prisma.inventoryBalance.count(),
+      inventoryTransactions: await prisma.inventoryTransaction.count(),
       invoices: await prisma.invoice.count(),
-      vendors: await prisma.vendor.count(),
-      customers: await prisma.customer.count(),
-      transactions: await prisma.inventoryLedger.count()
+      costRates: await prisma.costRate.count(),
+      calculatedCosts: await prisma.calculatedCost.count(),
+      users: await prisma.user.count()
     };
     
-    console.log(`  - Inventory Items: ${stats.items}`);
-    console.log(`  - Locations: ${stats.locations}`);
-    console.log(`  - Purchase Orders: ${stats.purchaseOrders}`);
-    console.log(`  - Sales Orders: ${stats.salesOrders}`);
+    console.log(`  - SKUs: ${stats.skus}`);
+    console.log(`  - Warehouses: ${stats.warehouses}`);
+    console.log(`  - Inventory Balances: ${stats.inventoryBalances}`);
+    console.log(`  - Inventory Transactions: ${stats.inventoryTransactions}`);
     console.log(`  - Invoices: ${stats.invoices}`);
-    console.log(`  - Vendors: ${stats.vendors}`);
-    console.log(`  - Customers: ${stats.customers}`);
-    console.log(`  - Ledger Transactions: ${stats.transactions}`);
+    console.log(`  - Cost Rates: ${stats.costRates}`);
+    console.log(`  - Calculated Costs: ${stats.calculatedCosts}`);
+    console.log(`  - Users: ${stats.users}`);
     
     // Print results
     console.log('\n📋 Integrity Check Results:');
