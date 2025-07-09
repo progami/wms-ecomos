@@ -21,17 +21,18 @@ describe('Database Connection Errors and Recovery', () => {
           name: 'DB Error Test Warehouse',
           code: 'DBETW',
           address: 'Test Address',
-          status: 'active'
+          isActive: true
         }
       });
       testWarehouseId = warehouse.id;
 
       const sku = await prisma.sku.create({
         data: {
-          name: 'DB Error Test SKU',
-          code: 'SKU-DBERROR',
-          barcode: 'DBE123',
-          status: 'active'
+          skuCode: 'SKU-DBERROR',
+          description: 'DB Error Test SKU',
+          packSize: 1,
+          unitsPerCarton: 10,
+          isActive: true
         }
       });
       testSkuId = sku.id;
@@ -135,35 +136,41 @@ describe('Database Connection Errors and Recovery', () => {
         // Create inventory transaction
         const transaction = await tx.inventoryTransaction.create({
           data: {
-            type: 'receive',
-            status: 'completed',
+            transactionId: `TX-DEADLOCK-${Date.now()}`,
+            transactionType: 'RECEIVE',
             warehouseId: testWarehouseId,
             skuId: testSkuId,
-            palletCount: 5,
-            unitsPerPallet: 100,
-            totalUnits: 500,
-            batchLotNumber: 'DEADLOCK-TEST',
-            transactionDate: new Date()
+            batchLot: 'DEADLOCK-TEST',
+            cartonsIn: 50,
+            cartonsOut: 0,
+            storagePalletsIn: 5,
+            shippingPalletsOut: 0,
+            transactionDate: new Date(),
+            createdById: 'test-user'
           }
         });
 
         // Update balance
         await tx.inventoryBalance.upsert({
           where: {
-            warehouseId_skuId: {
+            warehouseId_skuId_batchLot: {
               warehouseId: testWarehouseId,
-              skuId: testSkuId
+              skuId: testSkuId,
+              batchLot: 'DEADLOCK-TEST'
             }
           },
           update: {
-            totalUnits: { increment: 500 },
-            totalPallets: { increment: 5 }
+            currentUnits: { increment: 500 },
+            currentCartons: { increment: 50 },
+            currentPallets: { increment: 5 }
           },
           create: {
             warehouseId: testWarehouseId,
             skuId: testSkuId,
-            totalUnits: 500,
-            totalPallets: 5
+            batchLot: 'DEADLOCK-TEST',
+            currentUnits: 500,
+            currentCartons: 50,
+            currentPallets: 5
           }
         });
 
@@ -194,7 +201,7 @@ describe('Database Connection Errors and Recovery', () => {
         throw new Error('Connection refused');
       }
       return originalQueryRaw.call(prisma, query);
-    });
+    }) as any;
 
     // Initial health check should pass
     expect(await healthCheck()).toBe(true);
@@ -241,15 +248,17 @@ describe('Database Connection Errors and Recovery', () => {
     // Create first transaction
     await prisma.inventoryTransaction.create({
       data: {
-        type: 'receive',
-        status: 'completed',
+        transactionId: `TX-UNIQUE-${Date.now()}-1`,
+        transactionType: 'RECEIVE',
         warehouseId: testWarehouseId,
         skuId: testSkuId,
-        palletCount: 5,
-        unitsPerPallet: 100,
-        totalUnits: 500,
-        batchLotNumber: batchNumber,
-        transactionDate: new Date()
+        batchLot: batchNumber,
+        cartonsIn: 50,
+        cartonsOut: 0,
+        storagePalletsIn: 5,
+        shippingPalletsOut: 0,
+        transactionDate: new Date(),
+        createdById: 'test-user'
       }
     });
 
@@ -258,15 +267,17 @@ describe('Database Connection Errors and Recovery', () => {
       try {
         await prisma.inventoryTransaction.create({
           data: {
-            type: 'receive',
-            status: 'completed',
+            transactionId: `TX-UNIQUE-${Date.now()}-1`, // Duplicate ID
+            transactionType: 'RECEIVE',
             warehouseId: testWarehouseId,
             skuId: testSkuId,
-            palletCount: 3,
-            unitsPerPallet: 100,
-            totalUnits: 300,
-            batchLotNumber: batchNumber,
-            transactionDate: new Date()
+            batchLot: batchNumber,
+            cartonsIn: 30,
+            cartonsOut: 0,
+            storagePalletsIn: 3,
+            shippingPalletsOut: 0,
+            transactionDate: new Date(),
+            createdById: 'test-user'
           }
         });
       } catch (error: any) {
@@ -275,15 +286,17 @@ describe('Database Connection Errors and Recovery', () => {
           const newBatchNumber = `${batchNumber}-${Date.now()}`;
           return await prisma.inventoryTransaction.create({
             data: {
-              type: 'receive',
-              status: 'completed',
+              transactionId: `TX-UNIQUE-${Date.now()}-2`,
+              transactionType: 'RECEIVE',
               warehouseId: testWarehouseId,
               skuId: testSkuId,
-              palletCount: 3,
-              unitsPerPallet: 100,
-              totalUnits: 300,
-              batchLotNumber: newBatchNumber,
-              transactionDate: new Date()
+              batchLot: newBatchNumber,
+              cartonsIn: 30,
+              cartonsOut: 0,
+              storagePalletsIn: 3,
+              shippingPalletsOut: 0,
+              transactionDate: new Date(),
+              createdById: 'test-user'
             }
           });
         }
@@ -293,7 +306,7 @@ describe('Database Connection Errors and Recovery', () => {
 
     const result = await createDuplicate();
     expect(result).toBeDefined();
-    expect(result.batchLotNumber).not.toBe(batchNumber);
+    expect(result.batchLot).not.toBe(batchNumber);
 
     // Verify both transactions exist
     const transactions = await prisma.inventoryTransaction.findMany({
@@ -310,16 +323,18 @@ describe('Database Connection Errors and Recovery', () => {
     const largeDataPromises = Array(100).fill(null).map(async (_, i) => {
       return prisma.inventoryTransaction.create({
         data: {
-          type: i % 2 === 0 ? 'receive' : 'ship',
-          status: 'completed',
+          transactionId: `TX-TIMEOUT-${Date.now()}-${i}`,
+          transactionType: i % 2 === 0 ? 'RECEIVE' : 'SHIP',
           warehouseId: testWarehouseId,
           skuId: testSkuId,
-          palletCount: 1,
-          unitsPerPallet: 100,
-          totalUnits: 100,
-          batchLotNumber: `BATCH-TIMEOUT-${i}`,
+          batchLot: `BATCH-TIMEOUT-${i}`,
+          cartonsIn: i % 2 === 0 ? 10 : 0,
+          cartonsOut: i % 2 === 1 ? 10 : 0,
+          storagePalletsIn: i % 2 === 0 ? 1 : 0,
+          shippingPalletsOut: i % 2 === 1 ? 1 : 0,
           trackingNumber: i % 2 === 1 ? `TRACK-${i}` : undefined,
-          transactionDate: new Date()
+          transactionDate: new Date(),
+          createdById: 'test-user'
         }
       });
     });
@@ -354,7 +369,7 @@ describe('Database Connection Errors and Recovery', () => {
       },
       orderBy: [
         { transactionDate: 'desc' },
-        { totalUnits: 'desc' }
+        { cartonsIn: 'desc' }
       ]
     });
 
@@ -408,7 +423,7 @@ describe('Database Connection Errors and Recovery', () => {
     // Test operation that would fail with schema mismatch
     const result = await handleSchemaChange(async () => {
       return await prisma.sku.findMany({
-        where: { status: 'active' }
+        where: { isActive: true }
       });
     });
 
@@ -469,9 +484,9 @@ describe('Database Connection Errors and Recovery', () => {
 
     // Mock replica clients
     const mockReplicas = [
-      { $queryRaw: jest.fn().mockRejectedValue(new Error('Replica 1 down')) },
-      { $queryRaw: jest.fn().mockRejectedValue(new Error('Replica 2 down')) }
-    ];
+      { $queryRaw: jest.fn().mockRejectedValue(new Error('Replica 1 down')) as any },
+      { $queryRaw: jest.fn().mockRejectedValue(new Error('Replica 2 down')) as any }
+    ] as any[];
 
     const router = new DatabaseRouter(prisma, mockReplicas);
 

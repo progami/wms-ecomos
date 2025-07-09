@@ -35,6 +35,7 @@ describe('Memory Leaks and Performance Degradation', () => {
   let monitor: MemoryMonitor;
   let testWarehouseId: string;
   let testSkuId: string;
+  let testUserId: string;
 
   beforeEach(async () => {
     monitor = new MemoryMonitor();
@@ -46,20 +47,31 @@ describe('Memory Leaks and Performance Degradation', () => {
         name: 'Memory Test Warehouse',
         code: 'MTW',
         address: 'Test Address',
-        status: 'active'
+        isActive: true
       }
     });
     testWarehouseId = warehouse.id;
 
     const sku = await prisma.sku.create({
       data: {
-        name: 'Memory Test SKU',
-        code: 'SKU-MEMORY',
-        barcode: 'MEM123',
-        status: 'active'
+        skuCode: 'SKU-MEMORY',
+        description: 'Memory Test SKU',
+        packSize: 1,
+        unitsPerCarton: 10,
+        isActive: true
       }
     });
     testSkuId = sku.id;
+
+    const user = await prisma.user.create({
+      data: {
+        email: 'memory@test.com',
+        fullName: 'Memory Test User',
+        passwordHash: 'hashed',
+        role: 'admin'
+      }
+    });
+    testUserId = user.id;
   });
 
   afterEach(async () => {
@@ -71,6 +83,7 @@ describe('Memory Leaks and Performance Degradation', () => {
     // Cleanup
     await prisma.inventoryTransaction.deleteMany({});
     await prisma.inventoryBalance.deleteMany({});
+    await prisma.user.delete({ where: { id: testUserId } });
     await prisma.sku.delete({ where: { id: testSkuId } });
     await prisma.warehouse.delete({ where: { id: testWarehouseId } });
   });
@@ -82,15 +95,17 @@ describe('Memory Leaks and Performance Degradation', () => {
 
     for (let batch = 0; batch < batches; batch++) {
       const transactions = Array(batchSize).fill(null).map((_, i) => ({
-        type: 'receive' as const,
-        status: 'completed' as const,
+        transactionId: `TX-${batch}-${i}`,
+        transactionType: 'RECEIVE' as const,
         warehouseId: testWarehouseId,
         skuId: testSkuId,
-        palletCount: 1,
-        unitsPerPallet: 100,
-        totalUnits: 100,
-        batchLotNumber: `BATCH-${batch}-${i}`,
-        transactionDate: new Date()
+        batchLot: `BATCH-${batch}-${i}`,
+        cartonsIn: 100,
+        cartonsOut: 0,
+        storagePalletsIn: 10,
+        shippingPalletsOut: 0,
+        transactionDate: new Date(),
+        createdById: testUserId
       }));
 
       await prisma.inventoryTransaction.createMany({ data: transactions });
@@ -346,15 +361,17 @@ describe('Memory Leaks and Performance Degradation', () => {
     // Create large dataset
     const totalRecords = 5000;
     const records = Array(totalRecords).fill(null).map((_, i) => ({
-      type: 'receive' as const,
-      status: 'completed' as const,
+      transactionId: `TX-STREAM-${i}`,
+      transactionType: 'RECEIVE' as const,
       warehouseId: testWarehouseId,
       skuId: testSkuId,
-      palletCount: 1,
-      unitsPerPallet: 100,
-      totalUnits: 100,
-      batchLotNumber: `STREAM-${i}`,
-      transactionDate: new Date()
+      batchLot: `STREAM-${i}`,
+      cartonsIn: 100,
+      cartonsOut: 0,
+      storagePalletsIn: 10,
+      shippingPalletsOut: 0,
+      transactionDate: new Date(),
+      createdById: testUserId
     }));
 
     await prisma.inventoryTransaction.createMany({ data: records });

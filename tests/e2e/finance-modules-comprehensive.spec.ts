@@ -1010,7 +1010,8 @@ test.describe('Finance - Accessibility & Performance', () => {
 
   test('Print optimization for financial reports', async ({ page }) => {
     // Navigate to a report
-    await page.click('button:has-text("Reports")').first()
+    const reportsButton = page.locator('button:has-text("Reports")').first();
+    await reportsButton.click();
     
     // Emulate print media
     await page.emulateMedia({ media: 'print' })

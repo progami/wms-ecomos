@@ -596,7 +596,8 @@ test.describe('Operations - Pallet Variance Management', () => {
 
   test('Variance resolution and adjustment', async ({ page }) => {
     // Find variance to resolve
-    await page.click('tr:has-text("Under Investigation")').first()
+    const investigationRow = page.locator('tr:has-text("Under Investigation")').first();
+    await investigationRow.click();
     
     // Go to resolution tab
     await page.click('tab:has-text("Resolution")')

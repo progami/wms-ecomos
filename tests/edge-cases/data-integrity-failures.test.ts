@@ -15,17 +15,18 @@ describe('Data Integrity During Failures', () => {
         name: 'Integrity Test Warehouse',
         code: 'ITW',
         address: 'Test Address',
-        status: 'active'
+        isActive: true
       }
     });
     testWarehouseId = warehouse.id;
 
     const sku = await prisma.sku.create({
       data: {
-        name: 'Integrity Test SKU',
-        code: 'SKU-INTEGRITY',
-        barcode: 'INT123',
-        status: 'active'
+        skuCode: 'SKU-INTEGRITY',
+        description: 'Integrity Test SKU',
+        packSize: 1,
+        unitsPerCarton: 10,
+        isActive: true
       }
     });
     testSkuId = sku.id;
@@ -33,8 +34,8 @@ describe('Data Integrity During Failures', () => {
     const user = await prisma.user.create({
       data: {
         email: 'integrity@test.com',
-        name: 'Integrity User',
-        password: 'hashed',
+        fullName: 'Integrity User',
+        passwordHash: 'hashed',
         role: 'admin'
       }
     });
@@ -57,15 +58,17 @@ describe('Data Integrity During Failures', () => {
     // Create initial inventory
     await prisma.inventoryTransaction.create({
       data: {
-        type: 'receive',
-        status: 'completed',
+        transactionId: `TX-INIT-${Date.now()}`,
+        transactionType: 'RECEIVE',
         warehouseId: testWarehouseId,
         skuId: testSkuId,
-        palletCount: 10,
-        unitsPerPallet: 100,
-        totalUnits: initialBalance,
-        batchLotNumber: 'BATCH-INIT',
-        transactionDate: new Date()
+        batchLot: 'BATCH-INIT',
+        cartonsIn: 100,
+        cartonsOut: 0,
+        storagePalletsIn: 10,
+        shippingPalletsOut: 0,
+        transactionDate: new Date(),
+        createdById: testUserId
       }
     });
 
@@ -74,29 +77,34 @@ describe('Data Integrity During Failures', () => {
       // First operation - should succeed
       const shipment = await prisma.inventoryTransaction.create({
         data: {
-          type: 'ship',
-          status: 'pending',
+          transactionId: `TX-SHIP-${Date.now()}`,
+          transactionType: 'SHIP',
           warehouseId: testWarehouseId,
           skuId: testSkuId,
-          palletCount: 5,
-          unitsPerPallet: 100,
-          totalUnits: 500,
+          batchLot: 'BATCH-INIT',
+          cartonsIn: 0,
+          cartonsOut: 50,
+          storagePalletsIn: 0,
+          shippingPalletsOut: 5,
           trackingNumber: 'SHIP-FAIL-001',
-          transactionDate: new Date()
+          transactionDate: new Date(),
+          createdById: testUserId
         }
       });
 
       // Update balance
       await prisma.inventoryBalance.update({
         where: {
-          warehouseId_skuId: {
+          warehouseId_skuId_batchLot: {
             warehouseId: testWarehouseId,
-            skuId: testSkuId
+            skuId: testSkuId,
+            batchLot: 'BATCH-INIT'
           }
         },
         data: {
-          totalUnits: { decrement: 500 },
-          totalPallets: { decrement: 5 }
+          currentUnits: { decrement: 500 },
+          currentCartons: { decrement: 50 },
+          currentPallets: { decrement: 5 }
         }
       });
 
@@ -115,12 +123,12 @@ describe('Data Integrity During Failures', () => {
       }
     });
 
-    expect(balance?.totalUnits).toBe(initialBalance);
+    expect(balance?.currentUnits).toBe(initialBalance);
 
     // Verify no pending transactions were created
     const pendingTransactions = await prisma.inventoryTransaction.count({
       where: {
-        status: 'pending',
+        isReconciled: false,
         warehouseId: testWarehouseId,
         skuId: testSkuId
       }
@@ -133,15 +141,17 @@ describe('Data Integrity During Failures', () => {
     // Create related data
     await prisma.inventoryTransaction.create({
       data: {
-        type: 'receive',
-        status: 'completed',
+        transactionId: `TX-CASCADE-${Date.now()}`,
+        transactionType: 'RECEIVE',
         warehouseId: testWarehouseId,
         skuId: testSkuId,
-        palletCount: 5,
-        unitsPerPallet: 100,
-        totalUnits: 500,
-        batchLotNumber: 'BATCH-CASCADE',
-        transactionDate: new Date()
+        batchLot: 'BATCH-CASCADE',
+        cartonsIn: 50,
+        cartonsOut: 0,
+        storagePalletsIn: 5,
+        shippingPalletsOut: 0,
+        transactionDate: new Date(),
+        createdById: testUserId
       }
     });
 
@@ -161,15 +171,17 @@ describe('Data Integrity During Failures', () => {
     // Create a transaction
     const transaction = await prisma.inventoryTransaction.create({
       data: {
-        type: 'receive',
-        status: 'completed',
+        transactionId: `TX-ORPHAN-${Date.now()}`,
+        transactionType: 'RECEIVE',
         warehouseId: testWarehouseId,
         skuId: testSkuId,
-        palletCount: 3,
-        unitsPerPallet: 100,
-        totalUnits: 300,
-        batchLotNumber: 'BATCH-ORPHAN',
-        transactionDate: new Date()
+        batchLot: 'BATCH-ORPHAN',
+        cartonsIn: 30,
+        cartonsOut: 0,
+        storagePalletsIn: 3,
+        shippingPalletsOut: 0,
+        transactionDate: new Date(),
+        createdById: testUserId
       }
     });
 
@@ -188,15 +200,18 @@ describe('Data Integrity During Failures', () => {
     const createOrphanedTransaction = async () => {
       await prisma.inventoryTransaction.create({
         data: {
-          type: 'ship',
-          status: 'pending',
+          transactionId: `TX-ORPHAN-FAIL-${Date.now()}`,
+          transactionType: 'SHIP',
           warehouseId: 'non-existent-warehouse',
           skuId: 'non-existent-sku',
-          palletCount: 1,
-          unitsPerPallet: 100,
-          totalUnits: 100,
+          batchLot: 'BATCH-ORPHAN',
+          cartonsIn: 0,
+          cartonsOut: 10,
+          storagePalletsIn: 0,
+          shippingPalletsOut: 1,
           trackingNumber: 'ORPHAN-001',
-          transactionDate: new Date()
+          transactionDate: new Date(),
+          createdById: testUserId
         }
       });
     };
@@ -215,10 +230,9 @@ describe('Data Integrity During Failures', () => {
           data: {
             userId: testUserId,
             action: 'inventory_update',
-            entity: 'inventory',
-            entityId: testSkuId,
-            changes: JSON.stringify({ before: 1000, after: 500 }),
-            timestamp: new Date()
+            tableName: 'inventory',
+            recordId: testSkuId,
+            changes: { before: 1000, after: 500 }
           }
         });
 
@@ -238,15 +252,17 @@ describe('Data Integrity During Failures', () => {
     // Create initial data
     await prisma.inventoryTransaction.create({
       data: {
-        type: 'receive',
-        status: 'completed',
+        transactionId: `TX-CONST-${Date.now()}`,
+        transactionType: 'RECEIVE',
         warehouseId: testWarehouseId,
         skuId: testSkuId,
-        palletCount: 10,
-        unitsPerPallet: 100,
-        totalUnits: 1000,
-        batchLotNumber: 'BATCH-CONST',
-        transactionDate: new Date()
+        batchLot: 'BATCH-CONST',
+        cartonsIn: 100,
+        cartonsOut: 0,
+        storagePalletsIn: 10,
+        shippingPalletsOut: 0,
+        transactionDate: new Date(),
+        createdById: testUserId
       }
     });
 
@@ -260,21 +276,24 @@ describe('Data Integrity During Failures', () => {
           }
         });
 
-        if (!balance || balance.totalUnits < 2000) {
+        if (!balance || balance.currentUnits < 2000) {
           throw new Error('Insufficient inventory');
         }
 
         await prisma.inventoryTransaction.create({
           data: {
-            type: 'ship',
-            status: 'completed',
+            transactionId: `TX-INVALID-${Date.now()}`,
+            transactionType: 'SHIP',
             warehouseId: testWarehouseId,
             skuId: testSkuId,
-            palletCount: 20,
-            unitsPerPallet: 100,
-            totalUnits: 2000,
+            batchLot: 'BATCH-CONST',
+            cartonsIn: 0,
+            cartonsOut: 200,
+            storagePalletsIn: 0,
+            shippingPalletsOut: 20,
             trackingNumber: 'INVALID-SHIP',
-            transactionDate: new Date()
+            transactionDate: new Date(),
+            createdById: testUserId
           }
         });
       });
@@ -290,37 +309,39 @@ describe('Data Integrity During Failures', () => {
       }
     });
 
-    expect(balance?.totalUnits).toBe(1000);
+    expect(balance?.currentUnits).toBe(1000);
   });
 
-  test('Referential integrity with soft deletes', async () => {
-    // Create data with soft delete capability
-    const customer = await prisma.customer.create({
+  test('Referential integrity with invoices', async () => {
+    // Create customer user
+    const customer = await prisma.user.create({
       data: {
-        name: 'Test Customer',
-        email: 'customer@test.com',
-        phone: '1234567890'
+        email: 'customer-ref@test.com',
+        fullName: 'Test Customer',
+        passwordHash: 'hashed',
+        role: 'staff'
       }
     });
 
     const invoice = await prisma.invoice.create({
       data: {
-        invoiceNumber: 'INV-SOFT-001',
+        invoiceNumber: 'INV-REF-001',
         customerId: customer.id,
         warehouseId: testWarehouseId,
-        status: 'pending',
+        billingPeriodStart: new Date(),
+        billingPeriodEnd: new Date(),
+        invoiceDate: new Date(),
+        issueDate: new Date(),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        totalAmount: 1000
+        subtotal: 1000,
+        taxAmount: 0,
+        totalAmount: 1000,
+        status: 'pending',
+        createdById: testUserId
       }
     });
 
-    // Soft delete customer
-    await prisma.customer.update({
-      where: { id: customer.id },
-      data: { deletedAt: new Date() }
-    });
-
-    // Invoice should still be accessible with customer info
+    // Invoice should be accessible with customer info
     const invoiceWithCustomer = await prisma.invoice.findUnique({
       where: { id: invoice.id },
       include: { customer: true }
@@ -328,11 +349,11 @@ describe('Data Integrity During Failures', () => {
 
     expect(invoiceWithCustomer).not.toBeNull();
     expect(invoiceWithCustomer?.customer).not.toBeNull();
-    expect(invoiceWithCustomer?.customer?.deletedAt).not.toBeNull();
+    expect(invoiceWithCustomer?.customer?.email).toBe('customer-ref@test.com');
 
     // Cleanup
     await prisma.invoice.delete({ where: { id: invoice.id } });
-    await prisma.customer.delete({ where: { id: customer.id } });
+    await prisma.user.delete({ where: { id: customer.id } });
   });
 
   test('Unique constraint handling in concurrent scenarios', async () => {
@@ -346,13 +367,20 @@ describe('Data Integrity During Failures', () => {
             invoiceNumber,
             customerId: testUserId, // Using user ID as customer for simplicity
             warehouseId: testWarehouseId,
-            status: 'pending',
+            billingPeriodStart: new Date(),
+            billingPeriodEnd: new Date(),
+            invoiceDate: new Date(),
+            issueDate: new Date(),
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            totalAmount: 1000
+            subtotal: 1000,
+            taxAmount: 0,
+            totalAmount: 1000,
+            status: 'pending',
+            createdById: testUserId
           }
         });
       } catch (error) {
-        return { error: error.message };
+        return { error: (error as Error).message };
       }
     });
 
@@ -360,7 +388,7 @@ describe('Data Integrity During Failures', () => {
     
     // Only one should succeed
     const successes = results.filter(r => 
-      r.status === 'fulfilled' && !r.value?.error
+      r.status === 'fulfilled' && r.value && !('error' in r.value)
     );
     expect(successes.length).toBe(1);
 

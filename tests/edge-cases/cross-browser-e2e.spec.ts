@@ -120,15 +120,11 @@ test.describe('Cross-Browser Compatibility Tests', () => {
     if (await swipeableElement.count() > 0) {
       const box = await swipeableElement.boundingBox();
       if (box) {
-        // Simulate swipe
-        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-        await page.touchscreen.swipe({
-          startX: box.x + box.width - 10,
-          startY: box.y + box.height / 2,
-          endX: box.x + 10,
-          endY: box.y + box.height / 2,
-          steps: 10
-        });
+        // Simulate swipe using drag
+        await page.mouse.move(box.x + box.width - 10, box.y + box.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(box.x + 10, box.y + box.height / 2, { steps: 10 });
+        await page.mouse.up();
 
         // Check if swipe action was registered
         await expect(page.locator('[data-testid="swipe-actions"]')).toBeVisible();
@@ -141,12 +137,9 @@ test.describe('Cross-Browser Compatibility Tests', () => {
     if (await chart.count() > 0) {
       const chartBox = await chart.boundingBox();
       if (chartBox) {
-        // Simulate pinch-to-zoom
-        await page.touchscreen.pinch({
-          x: chartBox.x + chartBox.width / 2,
-          y: chartBox.y + chartBox.height / 2,
-          scale: 2
-        });
+        // Simulate zoom using mouse wheel
+        await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y + chartBox.height / 2);
+        await page.mouse.wheel(0, -100); // Zoom in by scrolling up
 
         // Verify zoom was applied
         const transform = await chart.evaluate((el) => {
@@ -283,7 +276,7 @@ test.describe('Cross-Browser Compatibility Tests', () => {
       }
     });
 
-    expect(indexedDBTest.supported).toBe(true);
+    expect((indexedDBTest as any).supported).toBe(true);
 
     // Test storage quota
     const storageEstimate = await page.evaluate(async () => {
@@ -336,9 +329,9 @@ test.describe('Cross-Browser Compatibility Tests', () => {
       });
     });
 
-    expect(wsTest.supported).toBe(true);
-    if (wsTest.supported) {
-      expect(wsTest.echo).toBe('test message');
+    expect((wsTest as any).supported).toBe(true);
+    if ((wsTest as any).supported) {
+      expect((wsTest as any).echo).toBe('test message');
     }
   });
 

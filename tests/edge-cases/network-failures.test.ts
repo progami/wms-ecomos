@@ -21,17 +21,18 @@ describe('Network Failures and Recovery', () => {
         name: 'Network Test Warehouse',
         code: 'NTW',
         address: 'Test Address',
-        status: 'active'
+        isActive: true
       }
     });
     testWarehouseId = warehouse.id;
 
     const sku = await prisma.sku.create({
       data: {
-        name: 'Network Test SKU',
-        code: 'SKU-NETWORK',
-        barcode: 'NET123',
-        status: 'active'
+        skuCode: 'SKU-NETWORK',
+        description: 'Network Test SKU',
+        packSize: 1,
+        unitsPerCarton: 10,
+        isActive: true
       }
     });
     testSkuId = sku.id;
@@ -39,8 +40,8 @@ describe('Network Failures and Recovery', () => {
     const user = await prisma.user.create({
       data: {
         email: 'network@test.com',
-        name: 'Network User',
-        password: 'hashed',
+        fullName: 'Network User',
+        passwordHash: 'hashed',
         role: 'staff'
       }
     });

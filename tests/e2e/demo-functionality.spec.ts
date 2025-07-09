@@ -155,7 +155,8 @@ test.describe('Demo Functionality Tests', () => {
       expect(rowCount).toBeGreaterThan(0);
       
       // Navigate back to dashboard
-      await page.locator('link:has-text("Dashboard")').first().click();
+      const dashboardLink = page.locator('a:has-text("Dashboard")').first();
+      await dashboardLink.click();
       await page.waitForURL('**/dashboard');
       
       // Verify demo data indicator is still present
@@ -185,7 +186,8 @@ test.describe('Demo Functionality Tests', () => {
       await page.waitForURL('**/ship');
       
       // Try to create an outbound transaction with quantity exceeding available stock
-      await page.locator('button:has-text("New"), button:has-text("Add"), button:has-text("Create")').first().click();
+      const actionButton = page.locator('button:has-text("New"), button:has-text("Add"), button:has-text("Create")').first();
+      await actionButton.click();
       
       // Fill form with excessive quantity
       const warehouseSelect = page.locator('select[name="warehouseId"], select[name="warehouse"]').first();
@@ -248,7 +250,8 @@ test.describe('Demo Functionality Tests', () => {
       await page.waitForURL('**/ship');
       
       // Try to create outbound exceeding current stock
-      await page.locator('button:has-text("New"), button:has-text("Add"), button:has-text("Create")').first().click();
+      const actionButton = page.locator('button:has-text("New"), button:has-text("Add"), button:has-text("Create")').first();
+      await actionButton.click();
       
       const warehouseSelect = page.locator('select[name="warehouseId"], select[name="warehouse"]').first();
       await warehouseSelect.selectOption({ index: 1 });
@@ -285,7 +288,8 @@ test.describe('Demo Functionality Tests', () => {
       await page.waitForURL('**/products');
       
       // Try to create product with invalid SKU
-      await page.locator('button:has-text("Add"), button:has-text("New"), button:has-text("Create")').first().click();
+      const createButton = page.locator('button:has-text("Add"), button:has-text("New"), button:has-text("Create")').first();
+      await createButton.click();
       
       // Wait for form to appear
       await page.waitForSelector('input[name="sku"], input[name="skuCode"]');
@@ -344,7 +348,8 @@ test.describe('Demo Functionality Tests', () => {
           expect(accessDenied).toBe(false);
           
           // Go back to dashboard for next iteration
-          await page.locator('link:has-text("Dashboard")').first().click();
+          const dashboardLink = page.locator('a:has-text("Dashboard")').first();
+      await dashboardLink.click();
           await page.waitForURL('**/dashboard');
         }
       }
@@ -400,7 +405,8 @@ test.describe('Demo Functionality Tests', () => {
           expect(accessDenied).toBe(false);
           
           // Navigate back
-          await page.locator('link:has-text("Dashboard")').first().click();
+          const dashboardLink = page.locator('a:has-text("Dashboard")').first();
+      await dashboardLink.click();
           await page.waitForURL('**/dashboard');
         }
       }

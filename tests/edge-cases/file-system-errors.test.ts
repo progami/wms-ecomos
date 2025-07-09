@@ -138,7 +138,7 @@ describe('File System Error Scenarios', () => {
         error.code = 'ENOSPC';
         throw error;
       }
-      return originalWriteFile(path, data);
+      return originalWriteFile(path as any, data);
     });
 
     // Attempt to save files
@@ -384,7 +384,7 @@ describe('File System Error Scenarios', () => {
     await fs.writeFile(watchedFile, 'initial');
 
     const fsModule = await import('fs');
-    const watchers: fsModule.FSWatcher[] = [];
+    const watchers: Array<import('fs').FSWatcher> = [];
 
     try {
       // Create multiple watchers

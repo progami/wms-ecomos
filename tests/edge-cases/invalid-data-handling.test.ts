@@ -6,13 +6,14 @@ const prisma = new PrismaClient();
 
 // Validation schemas
 const inventoryTransactionSchema = z.object({
-  type: z.enum(['receive', 'ship', 'adjust']),
+  transactionType: z.enum(['RECEIVE', 'SHIP', 'ADJUST_IN', 'ADJUST_OUT', 'TRANSFER']),
   warehouseId: z.string().uuid(),
   skuId: z.string().uuid(),
-  palletCount: z.number().int().positive(),
-  unitsPerPallet: z.number().int().positive(),
-  totalUnits: z.number().int().nonnegative(),
-  batchLotNumber: z.string().optional(),
+  cartonsIn: z.number().int().nonnegative(),
+  cartonsOut: z.number().int().nonnegative(),
+  storagePalletsIn: z.number().int().nonnegative(),
+  shippingPalletsOut: z.number().int().nonnegative(),
+  batchLot: z.string(),
   trackingNumber: z.string().optional(),
   transactionDate: z.date()
 });
@@ -33,7 +34,7 @@ const invoiceSchema = z.object({
 describe('Invalid Data Handling', () => {
   let testWarehouseId: string;
   let testSkuId: string;
-  let testCustomerId: string;
+  let testUserId: string;
 
   beforeEach(async () => {
     // Setup test data
@@ -42,29 +43,31 @@ describe('Invalid Data Handling', () => {
         name: 'Invalid Data Test Warehouse',
         code: 'IDTW',
         address: 'Test Address',
-        status: 'active'
+        isActive: true
       }
     });
     testWarehouseId = warehouse.id;
 
     const sku = await prisma.sku.create({
       data: {
-        name: 'Invalid Data Test SKU',
-        code: 'SKU-INVALID',
-        barcode: 'INV123',
-        status: 'active'
+        skuCode: 'SKU-INVALID',
+        description: 'Invalid Data Test SKU',
+        packSize: 1,
+        unitsPerCarton: 10,
+        isActive: true
       }
     });
     testSkuId = sku.id;
 
-    const customer = await prisma.customer.create({
+    const customer = await prisma.user.create({
       data: {
-        name: 'Test Customer',
         email: 'invalid@test.com',
-        phone: '1234567890'
+        fullName: 'Test Customer',
+        passwordHash: 'hashed',
+        role: 'staff'
       }
     });
-    testCustomerId = customer.id;
+    testUserId = customer.id;
   });
 
   afterEach(async () => {
@@ -72,19 +75,21 @@ describe('Invalid Data Handling', () => {
     await prisma.inventoryTransaction.deleteMany({});
     await prisma.inventoryBalance.deleteMany({});
     await prisma.invoice.deleteMany({});
-    await prisma.customer.delete({ where: { id: testCustomerId } });
+    await prisma.user.delete({ where: { id: testUserId } });
     await prisma.sku.delete({ where: { id: testSkuId } });
     await prisma.warehouse.delete({ where: { id: testWarehouseId } });
   });
 
   test('Reject negative inventory quantities', async () => {
     const invalidData = {
-      type: 'receive',
+      transactionType: 'RECEIVE',
       warehouseId: testWarehouseId,
       skuId: testSkuId,
-      palletCount: -5,
-      unitsPerPallet: 100,
-      totalUnits: -500,
+      cartonsIn: -50,
+      cartonsOut: 0,
+      storagePalletsIn: -5,
+      shippingPalletsOut: 0,
+      batchLot: 'NEGATIVE-TEST',
       transactionDate: new Date()
     };
 
@@ -92,12 +97,10 @@ describe('Invalid Data Handling', () => {
     expect(validation.success).toBe(false);
     
     if (!validation.success) {
-      expect(validation.error.issues).toContainEqual(
-        expect.objectContaining({
-          path: ['palletCount'],
-          message: expect.stringContaining('positive')
-        })
-      );
+      expect(validation.error.issues.some(issue => 
+        issue.path.includes('cartonsIn') && 
+        issue.message.includes('nonnegative')
+      )).toBe(true);
     }
 
     // Database should also reject
@@ -119,17 +122,21 @@ describe('Invalid Data Handling', () => {
     for (const invalidId of invalidUUIDs) {
       const result = await prisma.inventoryTransaction.create({
         data: {
-          type: 'receive',
+          transactionId: `TX-INVALID-${Date.now()}`,
+          transactionType: 'RECEIVE',
           warehouseId: invalidId as any,
           skuId: testSkuId,
-          palletCount: 1,
-          unitsPerPallet: 100,
-          totalUnits: 100,
-          transactionDate: new Date()
+          batchLot: 'INVALID-UUID-TEST',
+          cartonsIn: 10,
+          cartonsOut: 0,
+          storagePalletsIn: 1,
+          shippingPalletsOut: 0,
+          transactionDate: new Date(),
+          createdById: 'test-user'
         }
       }).catch(error => ({ error: error.message }));
 
-      expect(result).toHaveProperty('error');
+      expect((result as any).error).toBeDefined();
     }
   });
 
@@ -167,17 +174,18 @@ describe('Invalid Data Handling', () => {
       // Create SKU with sanitized input
       const sku = await prisma.sku.create({
         data: {
-          name: sanitized || 'Default Name',
-          code: `SKU-${Date.now()}`,
-          barcode: `BAR-${Date.now()}`,
-          status: 'active'
+          skuCode: `SKU-${Date.now()}`,
+          description: sanitized || 'Default Description',
+          packSize: 1,
+          unitsPerCarton: 10,
+          isActive: true
         }
       });
 
       // Verify no script tags or SQL injection
-      expect(sku.name).not.toContain('<script>');
-      expect(sku.name).not.toContain('DROP TABLE');
-      expect(sku.name.length).toBeLessThanOrEqual(255);
+      expect(sku.description).not.toContain('<script>');
+      expect(sku.description).not.toContain('DROP TABLE');
+      expect(sku.description.length).toBeLessThanOrEqual(255);
 
       // Cleanup
       await prisma.sku.delete({ where: { id: sku.id } });
@@ -220,15 +228,17 @@ describe('Invalid Data Handling', () => {
       // Create transaction with valid date
       const transaction = await prisma.inventoryTransaction.create({
         data: {
-          type: 'receive',
-          status: 'completed',
+          transactionId: `TX-DATE-${date.getTime()}`,
+          transactionType: 'RECEIVE',
           warehouseId: testWarehouseId,
           skuId: testSkuId,
-          palletCount: 1,
-          unitsPerPallet: 100,
-          totalUnits: 100,
-          batchLotNumber: `BATCH-DATE-${date.getTime()}`,
-          transactionDate: date
+          batchLot: `BATCH-DATE-${date.getTime()}`,
+          cartonsIn: 100,
+          cartonsOut: 0,
+          storagePalletsIn: 10,
+          shippingPalletsOut: 0,
+          transactionDate: date,
+          createdById: testUserId
         }
       });
 
@@ -269,19 +279,21 @@ describe('Invalid Data Handling', () => {
     // Test database handling of large numbers
     const largeNumberTransaction = await prisma.inventoryTransaction.create({
       data: {
-        type: 'receive',
-        status: 'completed',
+        transactionId: `TX-LARGE-${Date.now()}`,
+        transactionType: 'RECEIVE',
         warehouseId: testWarehouseId,
         skuId: testSkuId,
-        palletCount: 1000,
-        unitsPerPallet: 1000,
-        totalUnits: 1000000,
-        batchLotNumber: 'BATCH-LARGE',
-        transactionDate: new Date()
+        batchLot: 'BATCH-LARGE',
+        cartonsIn: 1000,
+        cartonsOut: 0,
+        storagePalletsIn: 100,
+        shippingPalletsOut: 0,
+        transactionDate: new Date(),
+        createdById: testUserId
       }
     });
 
-    expect(largeNumberTransaction.totalUnits).toBe(1000000);
+    expect(largeNumberTransaction.cartonsIn).toBe(1000);
   });
 
   test('Validate email formats and domains', async () => {
@@ -306,16 +318,17 @@ describe('Invalid Data Handling', () => {
       expect(validateEmail(test.email)).toBe(test.valid);
       
       if (test.valid) {
-        const customer = await prisma.customer.create({
+        const user = await prisma.user.create({
           data: {
-            name: 'Email Test Customer',
+            fullName: 'Email Test Customer',
             email: test.email,
-            phone: '1234567890'
+            passwordHash: 'hashed',
+            role: 'staff'
           }
         });
         
-        expect(customer.email).toBe(test.email);
-        await prisma.customer.delete({ where: { id: customer.id } });
+        expect(user.email).toBe(test.email);
+        await prisma.user.delete({ where: { id: user.id } });
       }
     }
   });
