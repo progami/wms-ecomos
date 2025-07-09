@@ -72,8 +72,7 @@ jobs:
         run: npm run lint
         
       - name: Type Check
-        run: npm run type-check || echo "Type check has errors but continuing"
-        continue-on-error: true
+        run: npm run type-check
 
   # Build
   build:

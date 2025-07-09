@@ -146,7 +146,7 @@ export async function createTestAdminUser(prisma: PrismaClient) {
       email: `admin-${randomBytes(4).toString('hex')}@example.com`,
       name: 'Test Admin',
       password: '$2a$10$K7L1mrbVHC5SZxyoakG6wuqJPqm3WNmRuW9fhJz1w9TNJLXdJ1aJS', // password: "password123"
-      role: 'ADMIN',
+      role: 'admin',
       emailVerified: new Date(),
       isActive: true
     }

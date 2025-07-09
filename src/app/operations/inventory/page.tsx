@@ -1496,14 +1496,7 @@ export default function UnifiedInventoryPage() {
                           {missingAttributes.length > 0 ? (
                             <div className="flex items-center justify-center">
                               <Tooltip 
-                                content={
-                                  <div className="space-y-1">
-                                    <div className="font-semibold">Missing items:</div>
-                                    {missingAttributes.map((item, idx) => (
-                                      <div key={idx} className="text-xs">• {item}</div>
-                                    ))}
-                                  </div>
-                                }
+                                content={`Missing items:\n${missingAttributes.map(item => `• ${item}`).join('\n')}`}
                               >
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                   {missingAttributes.length}

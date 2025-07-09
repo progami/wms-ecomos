@@ -58,7 +58,7 @@ export async function teardownTestDatabase(prisma: PrismaClient, databaseUrl: st
 }
 
 // Create test user
-export async function createTestUser(prisma: PrismaClient, role: 'ADMIN' | 'USER' | 'VIEWER' = 'USER') {
+export async function createTestUser(prisma: PrismaClient, role: 'admin' | 'staff' = 'staff') {
   const user = await prisma.user.create({
     data: {
       email: `test-${randomBytes(4).toString('hex')}@example.com`,

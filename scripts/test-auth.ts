@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
+import * as bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -28,7 +28,7 @@ async function testAuth() {
           username: 'admin',
           fullName: 'System Administrator',
           passwordHash: hashedPassword,
-          role: 'ADMIN',
+          role: 'admin',
           isActive: true,
           isDemo: false,
         }

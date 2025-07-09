@@ -117,7 +117,16 @@ export async function POST(req: NextRequest) {
     }
 
     const warehouse = await prisma.warehouse.create({
-      data: validatedData,
+      data: {
+        code: validatedData.code,
+        name: validatedData.name,
+        address: validatedData.address || null,
+        latitude: validatedData.latitude || null,
+        longitude: validatedData.longitude || null,
+        contactEmail: validatedData.contactEmail || null,
+        contactPhone: validatedData.contactPhone || null,
+        isActive: validatedData.isActive
+      },
       include: {
         _count: {
           select: {

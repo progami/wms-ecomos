@@ -43,7 +43,8 @@ export default function NotificationSettingsPage() {
   useEffect(() => {
     if (session?.user.role === 'admin') {
       fetchSettings()
-    } else if (session && session.user.role !== 'admin') {
+    } else if (session) {
+      // User is logged in but not an admin (must be 'staff')
       router.push('/auth/login')
     }
   }, [session, router])

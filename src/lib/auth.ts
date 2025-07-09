@@ -1,4 +1,4 @@
-import { NextAuthOptions, DefaultSession } from 'next-auth'
+import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
@@ -88,32 +88,4 @@ export const authOptions: NextAuthOptions = {
     signIn: `${basePath}/auth/login`,
     error: `${basePath}/auth/error`,
   },
-}
-
-// Type extensions
-declare module 'next-auth' {
-  interface User {
-    role: UserRole
-    warehouseId?: string | null
-    sessionId?: string
-    isDemo?: boolean
-  }
-  
-  interface Session {
-    user: {
-      id: string
-      role: UserRole
-      warehouseId?: string
-      isDemo?: boolean
-    } & DefaultSession['user']
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    role?: UserRole
-    warehouseId?: string | null
-    sessionId?: string
-    isDemo?: boolean
-  }
 }

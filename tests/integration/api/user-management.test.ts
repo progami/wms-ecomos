@@ -24,7 +24,7 @@ describe('User Management API Endpoints', () => {
 
     // Create test users
     adminUser = await createTestUser(prisma, 'ADMIN')
-    regularUser = await createTestUser(prisma, 'USER')
+    regularUser = await createTestUser(prisma, 'staff')
     
     // Create sessions
     adminSession = await createTestSession(adminUser.id)
@@ -42,7 +42,7 @@ describe('User Management API Endpoints', () => {
   describe('GET /api/admin/users', () => {
     it('should return list of users for admin', async () => {
       // Create additional test users
-      await createTestUser(prisma, 'USER')
+      await createTestUser(prisma, 'staff')
       await createTestUser(prisma, 'VIEWER')
       
       mockGetServerSession.mockResolvedValue(adminSession)
@@ -61,11 +61,11 @@ describe('User Management API Endpoints', () => {
       mockGetServerSession.mockResolvedValue(adminSession)
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
-        .get('/api/admin/users?role=ADMIN')
+        .get('/api/admin/users?role=admin')
         .set('Cookie', 'next-auth.session-token=test-token')
 
       expect(response.status).toBe(200)
-      expect(response.body.users.every((u: any) => u.role === 'ADMIN')).toBe(true)
+      expect(response.body.users.every((u: any) => u.role === 'admin')).toBe(true)
     })
 
     it('should filter users by active status', async () => {
@@ -88,13 +88,13 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should search users by name or email', async () => {
-      await createTestUser(prisma, 'USER')
+      await createTestUser(prisma, 'staff')
       const searchUser = await prisma.user.create({
         data: {
           email: 'searchtest@example.com',
           name: 'Searchable User',
           password: await bcrypt.hash('password123', 10),
-          role: 'USER',
+          role: 'staff',
           emailVerified: new Date(),
           isActive: true
         }
@@ -130,7 +130,7 @@ describe('User Management API Endpoints', () => {
         email: 'newuser@example.com',
         name: 'New User',
         password: 'SecurePassword123!',
-        role: 'USER'
+        role: 'staff'
       }
 
       const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
@@ -158,7 +158,7 @@ describe('User Management API Endpoints', () => {
           email: 'invalid-email',
           name: 'Test User',
           password: 'password123',
-          role: 'USER'
+          role: 'staff'
         })
 
       expect(response.status).toBe(400)
@@ -177,7 +177,7 @@ describe('User Management API Endpoints', () => {
           email: existingUser.email,
           name: 'Duplicate User',
           password: 'password123',
-          role: 'USER'
+          role: 'staff'
         })
 
       expect(response.status).toBe(400)
@@ -194,7 +194,7 @@ describe('User Management API Endpoints', () => {
           email: 'weakpassword@example.com',
           name: 'Test User',
           password: '123', // Too weak
-          role: 'USER'
+          role: 'staff'
         })
 
       expect(response.status).toBe(400)
@@ -284,7 +284,7 @@ describe('User Management API Endpoints', () => {
         .put(`/api/admin/users/${adminUser.id}`)
         .set('Cookie', 'next-auth.session-token=test-token')
         .send({
-          role: 'USER'
+          role: 'staff'
         })
 
       expect(response.status).toBe(400)
@@ -341,9 +341,9 @@ describe('User Management API Endpoints', () => {
       await prisma.user.updateMany({
         where: { 
           id: { not: adminUser.id },
-          role: 'ADMIN'
+          role: 'admin'
         },
-        data: { role: 'USER' }
+        data: { role: 'staff' }
       })
 
       mockGetServerSession.mockResolvedValue(adminSession)
@@ -364,7 +364,7 @@ describe('User Management API Endpoints', () => {
         data: {
           userId: adminUser.id,
           action: 'CREATE',
-          entityType: 'USER',
+          entityType: 'staff',
           entityId: 'test-user-id',
           details: { email: 'test@example.com' },
           timestamp: new Date()
@@ -412,7 +412,7 @@ describe('User Management API Endpoints', () => {
         .set('Cookie', 'next-auth.session-token=test-token')
 
       expect(response.status).toBe(200)
-      expect(response.body.logs.every((log: any) => log.entityType === 'USER')).toBe(true)
+      expect(response.body.logs.every((log: any) => log.entityType === 'staff')).toBe(true)
     })
 
     it('should filter audit logs by date range', async () => {

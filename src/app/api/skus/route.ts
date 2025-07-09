@@ -19,7 +19,6 @@ const createSkuSchema = z.object({
   cartonDimensionsCm: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   cartonWeightKg: z.number().positive().optional(),
   packagingType: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
-  notes: z.string().optional().transform(val => val ? sanitizeForDisplay(val) : val),
   isActive: z.boolean().default(true)
 })
 
@@ -100,7 +99,20 @@ export async function POST(request: NextRequest) {
     }
 
     const sku = await prisma.sku.create({
-      data: validatedData
+      data: {
+        skuCode: validatedData.skuCode,
+        asin: validatedData.asin || null,
+        description: validatedData.description,
+        packSize: validatedData.packSize,
+        material: validatedData.material || null,
+        unitDimensionsCm: validatedData.unitDimensionsCm || null,
+        unitWeightKg: validatedData.unitWeightKg || null,
+        unitsPerCarton: validatedData.unitsPerCarton,
+        cartonDimensionsCm: validatedData.cartonDimensionsCm || null,
+        cartonWeightKg: validatedData.cartonWeightKg || null,
+        packagingType: validatedData.packagingType || null,
+        isActive: validatedData.isActive
+      }
     })
 
     return NextResponse.json(sku, { status: 201 })

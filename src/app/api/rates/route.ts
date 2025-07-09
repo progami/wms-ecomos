@@ -13,15 +13,13 @@ const createRateSchema = z.object({
   costValue: z.number().positive(),
   unitOfMeasure: z.string().min(1),
   effectiveDate: z.string().datetime(),
-  endDate: z.string().datetime().optional(),
-  notes: z.string().optional()
+  endDate: z.string().datetime().optional()
 })
 
 const updateRateSchema = z.object({
   costValue: z.number().positive().optional(),
   unitOfMeasure: z.string().min(1).optional(),
-  endDate: z.string().datetime().optional().nullable(),
-  notes: z.string().optional()
+  endDate: z.string().datetime().optional().nullable()
 })
 
 // GET /api/rates - List cost rates
@@ -130,9 +128,13 @@ export async function POST(req: NextRequest) {
 
     const rate = await prisma.costRate.create({
       data: {
-        ...validatedData,
+        warehouseId: validatedData.warehouseId,
+        costCategory: validatedData.costCategory,
+        costName: validatedData.costName,
+        costValue: validatedData.costValue,
+        unitOfMeasure: validatedData.unitOfMeasure,
         effectiveDate: new Date(validatedData.effectiveDate),
-        endDate: validatedData.endDate ? new Date(validatedData.endDate) : undefined,
+        endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
         createdById: session.user.id
       },
       include: {
