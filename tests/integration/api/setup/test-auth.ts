@@ -1,6 +1,6 @@
 import request from 'supertest'
 import { PrismaClient } from '@prisma/client'
-import { createTestUser } from './fixtures'
+import { createTestUser } from './test-db'
 
 export interface TestAuthSession {
   cookies: string[]
@@ -35,7 +35,7 @@ export async function loginTestUser(
     }
     
     return {
-      cookies,
+      cookies: Array.isArray(cookies) ? cookies : [cookies],
       user: {
         id: '', // Will be filled from session
         email,

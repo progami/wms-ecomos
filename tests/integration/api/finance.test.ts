@@ -171,7 +171,6 @@ describe('Finance API Endpoints', () => {
           invoiceNumber: 'INV-DUP-001',
           warehouseId: warehouse.id,
           totalAmount: 1000.00,
-          currency: 'USD',
           invoiceDate: new Date().toISOString(),
           dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         })
@@ -304,9 +303,7 @@ describe('Finance API Endpoints', () => {
         costCategory: 'Storage',
         rate: 15.50,
         currency: 'USD',
-        uom: 'per_unit_per_month',
-        minQuantity: 0,
-        maxQuantity: 500,
+        unitOfMeasure: 'per_unit_per_month',
         effectiveFrom: new Date().toISOString(),
         effectiveTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
       }
@@ -329,9 +326,7 @@ describe('Finance API Endpoints', () => {
     it('should prevent overlapping rate ranges', async () => {
       const warehouse = await createTestWarehouse(prisma)
       await createTestCostRate(prisma, warehouse.id, adminUser.id, {
-        costCategory: 'Storage',
-        minQuantity: 0,
-        maxQuantity: 100
+        costCategory: 'Storage'
       })
 
       const response = await request
@@ -342,10 +337,7 @@ describe('Finance API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 20.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 50, // Overlaps with existing 0-100
-          maxQuantity: 150,
+          unitOfMeasure: 'per_unit_per_month',
           effectiveFrom: new Date().toISOString()
         })
 
@@ -370,9 +362,7 @@ describe('Finance API Endpoints', () => {
     it('should check for rate overlaps', async () => {
       const warehouse = await createTestWarehouse(prisma)
       await createTestCostRate(prisma, warehouse.id, adminUser.id, {
-        costCategory: 'Storage',
-        minQuantity: 0,
-        maxQuantity: 100
+        costCategory: 'Storage'
       })
 
       const response = await request
@@ -469,12 +459,9 @@ describe('Finance API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -505,12 +492,9 @@ describe('Finance API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Unit',
           costValue: 5.00,
-          currency: 'USD',
-          uom: 'per_unit',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -555,12 +539,9 @@ describe('Finance API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -591,12 +572,9 @@ describe('Finance API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 20.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -676,7 +654,7 @@ describe('Finance API Endpoints', () => {
       await createTestCostRate(prisma, warehouse.id, adminUser.id, {
         costCategory: 'Storage',
         rate: 10.00,
-        uom: 'per_unit_per_week'
+        unitOfMeasure: 'per_unit_per_week'
       })
 
       // Create inventory balance

@@ -48,7 +48,7 @@ describe('API Resilience Integration Tests', () => {
       })
 
       const startTime = Date.now()
-      const result = await withRetry(mockAPI, {
+      const result = await withRetry(() => mockAPI(), {
         maxAttempts: 3,
         initialDelay: 100,
         maxDelay: 1000,
@@ -68,7 +68,7 @@ describe('API Resilience Integration Tests', () => {
       )
 
       await expect(
-        withRetry(mockAPI, {
+        withRetry(() => mockAPI(), {
           maxAttempts: 3,
           shouldRetry: (error) => {
             return !error.message.includes('Invalid API key')
@@ -98,7 +98,7 @@ describe('API Resilience Integration Tests', () => {
       }) as any
 
       try {
-        await withRetry(mockAPI, {
+        await withRetry(() => mockAPI(), {
           maxAttempts: 5,
           initialDelay: 100,
           jitter: true,
@@ -127,7 +127,7 @@ describe('API Resilience Integration Tests', () => {
       })
 
       await expect(
-        withTimeout(mockSlowAPI, 1000)
+        withTimeout(() => mockSlowAPI(), 1000)
       ).rejects.toThrow('Operation timed out')
     })
 
@@ -151,7 +151,7 @@ describe('API Resilience Integration Tests', () => {
       const mockAPI = jest.fn(apiFunction)
 
       try {
-        await withTimeout(mockAPI, 500)
+        await withTimeout(() => mockAPI(), 500)
       } catch (error) {
         // Expected timeout
       }
@@ -178,7 +178,7 @@ describe('API Resilience Integration Tests', () => {
         throw new Error('Service error')
       })
 
-      const circuitBreaker = withCircuitBreaker(mockFailingAPI, {
+      const circuitBreaker = withCircuitBreaker(() => mockFailingAPI(), {
         failureThreshold: 3,
         resetTimeout: 1000,
         monitoringPeriod: 5000
@@ -217,7 +217,7 @@ describe('API Resilience Integration Tests', () => {
         return { data: 'success' }
       })
 
-      const circuitBreaker = withCircuitBreaker(mockAPI, {
+      const circuitBreaker = withCircuitBreaker(() => mockAPI(), {
         failureThreshold: 2,
         resetTimeout: 500,
         halfOpenRequests: 1
@@ -257,7 +257,7 @@ describe('API Resilience Integration Tests', () => {
         return { data: 'success' }
       })
 
-      const circuitBreaker = withCircuitBreaker(mockAPI, {
+      const circuitBreaker = withCircuitBreaker(() => mockAPI(), {
         failureThreshold: 3,
         resetTimeout: 300,
         halfOpenRequests: 1

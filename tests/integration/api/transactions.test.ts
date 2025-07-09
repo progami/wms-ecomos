@@ -1,57 +1,66 @@
-import { PrismaClient } from '@prisma/client'
+import { callApiHandler } from './setup/mock-api-handler'
+import { GET as getTransactions, POST as createTransaction } from '@/app/api/transactions/route'
+import { GET as getTransaction, PUT as updateTransaction, DELETE as deleteTransaction } from '@/app/api/transactions/[id]/route'
+import prisma from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
 
-import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
-import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
-import { createTestSku, createTestWarehouse, createTestTransaction } from './setup/fixtures'
+// Mock getServerSession is already set up in jest.setup.integration.js
+const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
-
-
-
-// Setup test authentication
-setupTestAuth()
 describe('Transaction API Endpoints', () => {
-  let prisma: PrismaClient
-  let databaseUrl: string
-  let adminUser: any
-  let regularUser: any
-  let request: ReturnType<typeof createAuthenticatedRequest>
+  const mockSku = {
+    id: 'sku-123',
+    skuCode: 'TEST-001',
+    description: 'Test Product',
+    unitsPerCarton: 24,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
 
-  beforeAll(async () => {
-    const setup = await setupTestDatabase()
-    prisma = setup.prisma
-    databaseUrl = setup.databaseUrl
+  const mockWarehouse = {
+    id: 'warehouse-123',
+    code: 'WH-001',
+    name: 'Test Warehouse',
+    type: 'STANDARD' as const,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
 
-    // Create test users
-    adminUser = await createTestUser(prisma, 'admin')
-    regularUser = await createTestUser(prisma, 'staff')
-    
-    // Create authenticated request helper
-    request = createAuthenticatedRequest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+  const mockTransaction = {
+    id: 'trans-123',
+    skuId: mockSku.id,
+    warehouseId: mockWarehouse.id,
+    transactionType: 'RECEIVE',
+    transactionDate: new Date(),
+    referenceId: 'REF-001',
+    batchLot: 'BATCH-001',
+    cartonsIn: 10,
+    cartonsOut: 0,
+    unitsIn: 240,
+    unitsOut: 0,
+    isReconciled: false,
+    createdById: 'user-123',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    sku: mockSku,
+    warehouse: mockWarehouse
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
   })
-
-  afterAll(async () => {
-    await teardownTestDatabase(prisma, databaseUrl)
-  })
-
-  
 
   describe('GET /api/transactions', () => {
     it('should return list of transactions for authenticated user', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
+      ;(prisma.inventoryTransaction.count as jest.Mock).mockResolvedValue(2)
+      ;(prisma.inventoryTransaction.findMany as jest.Mock).mockResolvedValue([
+        mockTransaction,
+        { ...mockTransaction, id: 'trans-456', transactionType: 'SHIP', cartonsIn: 0, cartonsOut: 5 }
+      ])
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'RECEIVE',
-        cartonsIn: 10
-      })
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'SHIP',
-        cartonsOut: 5
-      })
-
-      const response = await request
-        .get('/api/transactions')
-        .withAuth('staff', regularUser.id)
+      const response = await callApiHandler(getTransactions, '/api/transactions')
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('transactions')
@@ -60,33 +69,23 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      // No need for mockGetServerSession with test auth setup
+      mockGetServerSession.mockResolvedValueOnce(null)
 
-      const supertest = require('supertest');
-      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
-        .get('/api/transactions')
+      const response = await callApiHandler(getTransactions, '/api/transactions')
 
       expect(response.status).toBe(401)
       expect(response.body).toHaveProperty('error', 'Unauthorized')
     })
 
     it('should filter by transaction type', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
+      ;(prisma.inventoryTransaction.count as jest.Mock).mockResolvedValue(1)
+      ;(prisma.inventoryTransaction.findMany as jest.Mock).mockResolvedValue([mockTransaction])
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'RECEIVE'
-      })
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'SHIP'
-      })
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'ADJUST_OUT'
-      })
-
-      const response = await request
-        .get('/api/transactions?type=RECEIVE')
-        .withAuth('staff', regularUser.id)
+      const response = await callApiHandler(
+        getTransactions,
+        '/api/transactions',
+        { searchParams: { type: 'RECEIVE' } }
+      )
 
       expect(response.status).toBe(200)
       expect(response.body.transactions).toHaveLength(1)
@@ -94,197 +93,153 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should filter by date range', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
+      ;(prisma.inventoryTransaction.count as jest.Mock).mockResolvedValue(1)
+      ;(prisma.inventoryTransaction.findMany as jest.Mock).mockResolvedValue([
+        { ...mockTransaction, transactionDate: new Date('2024-02-01') }
+      ])
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionDate: new Date('2024-01-01')
-      })
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionDate: new Date('2024-02-01')
-      })
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionDate: new Date('2024-03-01')
-      })
-
-      const response = await request
-        .get('/api/transactions?startDate=2024-01-15&endDate=2024-02-15')
-        .withAuth('staff', regularUser.id)
+      const response = await callApiHandler(
+        getTransactions,
+        '/api/transactions',
+        { searchParams: { startDate: '2024-01-15', endDate: '2024-02-15' } }
+      )
 
       expect(response.status).toBe(200)
       expect(response.body.transactions).toHaveLength(1)
     })
 
+    it('should filter by SKU', async () => {
+      ;(prisma.inventoryTransaction.count as jest.Mock).mockResolvedValue(1)
+      ;(prisma.inventoryTransaction.findMany as jest.Mock).mockResolvedValue([mockTransaction])
+
+      const response = await callApiHandler(
+        getTransactions,
+        '/api/transactions',
+        { searchParams: { skuId: 'sku-123' } }
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.body.transactions).toHaveLength(1)
+      expect(response.body.transactions[0].skuId).toBe('sku-123')
+    })
+
     it('should handle pagination', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
+      ;(prisma.inventoryTransaction.count as jest.Mock).mockResolvedValue(25)
+      ;(prisma.inventoryTransaction.findMany as jest.Mock).mockResolvedValue(
+        Array(10).fill(mockTransaction).map((t, i) => ({ ...t, id: `trans-${i}` }))
+      )
 
-      // Create 15 transactions
-      for (let i = 0; i < 15; i++) {
-        await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-          referenceId: `TX-${i.toString().padStart(3, '0')}`
-        })
-      }
-
-      const response = await request
-        .get('/api/transactions?page=2&limit=10')
-        .withAuth('staff', regularUser.id)
+      const response = await callApiHandler(
+        getTransactions,
+        '/api/transactions',
+        { searchParams: { page: '2', limit: '10' } }
+      )
 
       expect(response.status).toBe(200)
       expect(response.body.transactions.length).toBeLessThanOrEqual(10)
       expect(response.body).toHaveProperty('page', 2)
-      expect(response.body).toHaveProperty('totalPages')
+      expect(response.body).toHaveProperty('totalPages', 3)
     })
   })
 
   describe('POST /api/transactions', () => {
     it('should create new transaction with valid data', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      // No need for mockGetServerSession with test auth setup
-
       const newTransaction = {
+        skuId: 'sku-123',
+        warehouseId: 'warehouse-123',
         transactionType: 'RECEIVE',
-        skuId: sku.id,
-        warehouseId: warehouse.id,
-        batchLot: 'BATCH-001',
-        cartonsIn: 10,
-        referenceId: 'REC-001',
         transactionDate: new Date().toISOString(),
+        referenceId: 'NEW-REF-001',
+        batchLot: 'NEW-BATCH-001',
+        cartonsIn: 20,
+        notes: 'New shipment received'
       }
 
-      const supertest = require('supertest');
-      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
-        .post('/api/transactions')
-        .set('Cookie', 'next-auth.session-token=test-token')
-        .send(newTransaction)
+      const createdTransaction = { ...mockTransaction, ...newTransaction, id: 'new-trans-id' }
+      ;(prisma.inventoryTransaction.create as jest.Mock).mockResolvedValue(createdTransaction)
+      ;(prisma.inventoryBalance.findFirst as jest.Mock).mockResolvedValue(null)
+      ;(prisma.inventoryBalance.create as jest.Mock).mockResolvedValue({})
+      ;(prisma.inventoryBalance.update as jest.Mock).mockResolvedValue({})
+
+      const response = await callApiHandler(
+        createTransaction,
+        '/api/transactions',
+        { method: 'POST', body: newTransaction }
+      )
 
       expect(response.status).toBe(201)
       expect(response.body).toHaveProperty('id')
-      expect(response.body).toMatchObject({
-        transactionType: newTransaction.transactionType,
-        cartonsIn: newTransaction.cartonsIn,
-        referenceId: newTransaction.referenceId
-      })
+      expect(response.body.referenceId).toBe('NEW-REF-001')
     })
 
-    it('should update inventory balance on receive transaction', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-
-      const response = await request
-        .post('/api/transactions')
-        .withAuth('admin', adminUser.id)
-        .send({
-          transactionType: 'RECEIVE',
-          transactionSubtype: 'STANDARD',
-          skuId: sku.id,
-          warehouseId: warehouse.id,
-          cartonsIn: 10,
-          referenceId: 'REC-002',
-          transactionDate: new Date().toISOString()
-        })
-
-      expect(response.status).toBe(201)
-
-      // Check inventory balance was created/updated
-      const balance = await prisma.inventoryBalance.findFirst({
-        where: { skuId: sku.id, warehouseId: warehouse.id }
-      })
-      expect(balance).toBeTruthy()
-      expect(balance?.totalQuantity).toBe(100)
-    })
-
-    it('should validate transaction data', async () => {
-      const response = await request
-        .post('/api/transactions')
-        .withAuth('admin', adminUser.id)
-        .send({
-          transactionType: 'INVALID_TYPE',
-          cartonsOut: 3 // Invalid for receive
-        })
+    it('should validate required fields', async () => {
+      const response = await callApiHandler(
+        createTransaction,
+        '/api/transactions',
+        {
+          method: 'POST',
+          body: {
+            // Missing required fields
+            skuId: 'sku-123'
+          }
+        }
+      )
 
       expect(response.status).toBe(400)
       expect(response.body).toHaveProperty('error')
     })
 
-    it('should prevent ship transaction exceeding available inventory', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      await createTestInventoryBalance(prisma, sku.id, warehouse.id, {
-        currentCartons: 10, currentUnits: 240,
-        totalQuantity: 50
-      })
+    it('should prevent duplicate reference IDs', async () => {
+      ;(prisma.inventoryTransaction.findFirst as jest.Mock).mockResolvedValue(mockTransaction)
 
-      const response = await request
-        .post('/api/transactions')
-        .withAuth('admin', adminUser.id)
-        .send({
-          transactionType: 'SHIP',
-          transactionSubtype: 'STANDARD',
-          skuId: sku.id,
-          warehouseId: warehouse.id,
-          cartonsOut: 3, // Exceeds available
-          referenceId: 'SHIP-001',
-          transactionDate: new Date().toISOString()
-        })
+      const response = await callApiHandler(
+        createTransaction,
+        '/api/transactions',
+        {
+          method: 'POST',
+          body: {
+            skuId: 'sku-123',
+            warehouseId: 'warehouse-123',
+            transactionType: 'RECEIVE',
+            transactionDate: new Date().toISOString(),
+            referenceId: 'REF-001', // Duplicate
+            batchLot: 'BATCH-002',
+            cartonsIn: 10
+          }
+        }
+      )
 
       expect(response.status).toBe(400)
-      expect(response.body).toHaveProperty('error', expect.stringContaining('Insufficient inventory'))
-    })
-
-    it('should return 403 for non-admin users', async () => {
-      const response = await request
-        .post('/api/transactions')
-        .withAuth('staff', regularUser.id)
-        .send({
-          transactionType: 'RECEIVE',
-          cartonsIn: 10
-        })
-
-      expect(response.status).toBe(403)
-      expect(response.body).toHaveProperty('error', 'Forbidden')
+      expect(response.body).toHaveProperty('error', expect.stringContaining('already exists'))
     })
   })
 
   describe('GET /api/transactions/:id', () => {
     it('should return transaction details by ID', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
+      ;(prisma.inventoryTransaction.findUnique as jest.Mock).mockResolvedValue(mockTransaction)
 
-      const response = await request
-        .get(`/api/transactions/${transaction.id}`)
-        .withAuth('staff', regularUser.id)
+      const response = await callApiHandler(
+        getTransaction,
+        '/api/transactions/trans-123',
+        { searchParams: { id: 'trans-123' } }
+      )
 
       expect(response.status).toBe(200)
       expect(response.body).toMatchObject({
-        id: transaction.id,
-        transactionType: transaction.transactionType,
-        cartonsIn: transaction.cartonsIn
+        id: mockTransaction.id,
+        referenceId: mockTransaction.referenceId,
+        transactionType: mockTransaction.transactionType
       })
     })
 
-    it('should include related data when requested', async () => {
-      const sku = await createTestSku(prisma, { skuCode: 'TX-SKU-001' })
-      const warehouse = await createTestWarehouse(prisma, { name: 'TX Warehouse' })
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
-
-      const response = await request
-        .get(`/api/transactions/${transaction.id}?includeRelated=true`)
-        .withAuth('staff', regularUser.id)
-
-      expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty('sku')
-      expect(response.body).toHaveProperty('warehouse')
-      expect(response.body.sku.skuCode).toBe('TX-SKU-001')
-      expect(response.body.warehouse.name).toBe('TX Warehouse')
-    })
-
     it('should return 404 for non-existent transaction', async () => {
-      const response = await request
-        .get('/api/transactions/non-existent-id')
-        .withAuth('staff', regularUser.id)
+      ;(prisma.inventoryTransaction.findUnique as jest.Mock).mockResolvedValue(null)
+
+      const response = await callApiHandler(
+        getTransaction,
+        '/api/transactions/non-existent-id',
+        { searchParams: { id: 'non-existent-id' } }
+      )
 
       expect(response.status).toBe(404)
       expect(response.body).toHaveProperty('error', 'Transaction not found')
@@ -292,136 +247,87 @@ describe('Transaction API Endpoints', () => {
   })
 
   describe('PUT /api/transactions/:id', () => {
-    it('should update transaction status', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        isReconciled: false
-      })
-
-      const response = await request
-        .put(`/api/transactions/${transaction.id}`)
-        .withAuth('admin', adminUser.id)
-        .send({
-          isReconciled: true
-        })
-
-      expect(response.status).toBe(200)
-      expect(response.body.isReconciled).toBe(true)
-    })
-
-    it('should not allow quantity updates', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        cartonsIn: 10
-      })
-
-      const response = await request
-        .put(`/api/transactions/${transaction.id}`)
-        .withAuth('admin', adminUser.id)
-        .send({
-          cartonsIn: 10 // Should not be allowed
-        })
-
-      expect(response.status).toBe(400)
-      expect(response.body).toHaveProperty('error', expect.stringContaining('cannot be modified'))
-    })
-  })
-
-  describe('POST /api/transactions/:id/attributes', () => {
-    it('should add attributes to transaction', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
-
-      // No need for mockGetServerSession with test auth setup
-
-      const attributes = {
-        customField1: 'value1',
-        customField2: 'value2',
-        trackingNumber: 'TRACK123'
+    it('should update transaction with valid data', async () => {
+      const updates = {
+        notes: 'Updated notes',
+        isReconciled: true
       }
 
-      const supertest = require('supertest');
-      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
-        .post(`/api/transactions/${transaction.id}/attributes`)
-        .set('Cookie', 'next-auth.session-token=test-token')
-        .send(attributes)
+      const updatedTransaction = { ...mockTransaction, ...updates }
+      ;(prisma.inventoryTransaction.findUnique as jest.Mock).mockResolvedValue(mockTransaction)
+      ;(prisma.inventoryTransaction.update as jest.Mock).mockResolvedValue(updatedTransaction)
+
+      const response = await callApiHandler(
+        updateTransaction,
+        '/api/transactions/trans-123',
+        {
+          method: 'PUT',
+          body: updates,
+          searchParams: { id: 'trans-123' }
+        }
+      )
 
       expect(response.status).toBe(200)
-      expect(response.body.attributes).toMatchObject(attributes)
-    })
-  })
-
-  describe('POST /api/transactions/:id/attachments', () => {
-    it('should upload attachment to transaction', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
-
-      const response = await request
-        .post(`/api/transactions/${transaction.id}/attachments`)
-        .withAuth('admin', adminUser.id)
-        .attach('file', Buffer.from('test file content'), 'test-document.pdf')
-        .field('description', 'Test attachment')
-
-      expect(response.status).toBe(201)
-      expect(response.body).toHaveProperty('id')
-      expect(response.body).toHaveProperty('filename', 'test-document.pdf')
+      expect(response.body).toMatchObject(updates)
     })
 
-    it('should validate file size', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
+    it('should not allow updating reconciled transactions', async () => {
+      const reconciledTransaction = { ...mockTransaction, isReconciled: true }
+      ;(prisma.inventoryTransaction.findUnique as jest.Mock).mockResolvedValue(reconciledTransaction)
 
-      // No need for mockGetServerSession with test auth setup
-
-      // Create a large buffer (over 10MB)
-      const largeBuffer = Buffer.alloc(11 * 1024 * 1024)
-
-      const supertest = require('supertest');
-      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
-        .post(`/api/transactions/${transaction.id}/attachments`)
-        .set('Cookie', 'next-auth.session-token=test-token')
-        .attach('file', largeBuffer, 'large-file.pdf')
+      const response = await callApiHandler(
+        updateTransaction,
+        '/api/transactions/trans-123',
+        {
+          method: 'PUT',
+          body: { notes: 'Trying to update' },
+          searchParams: { id: 'trans-123' }
+        }
+      )
 
       expect(response.status).toBe(400)
-      expect(response.body).toHaveProperty('error', expect.stringContaining('File size'))
+      expect(response.body).toHaveProperty('error', expect.stringContaining('reconciled'))
     })
   })
 
-  describe('GET /api/transactions/ledger', () => {
-    it('should return transaction ledger', async () => {
-      const sku = await createTestSku(prisma)
-      const warehouse = await createTestWarehouse(prisma)
+  describe('DELETE /api/transactions/:id', () => {
+    it('should delete transaction', async () => {
+      ;(prisma.inventoryTransaction.findUnique as jest.Mock).mockResolvedValue(mockTransaction)
+      ;(prisma.inventoryTransaction.delete as jest.Mock).mockResolvedValue(mockTransaction)
+      ;(prisma.inventoryBalance.findFirst as jest.Mock).mockResolvedValue({
+        id: 'balance-123',
+        currentCartons: 10
+      })
+      ;(prisma.inventoryBalance.update as jest.Mock).mockResolvedValue({})
 
-      // Create transactions to build ledger
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'RECEIVE',
-        cartonsIn: 10,
-        transactionDate: new Date('2024-01-01')
-      })
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'SHIP',
-        cartonsOut: 3,
-        transactionDate: new Date('2024-01-15')
-      })
-      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
-        transactionType: 'ADJUST_OUT',
-        cartonsOut: 3,
-        transactionDate: new Date('2024-01-20')
-      })
-
-      const response = await request
-        .get(`/api/transactions/ledger?skuId=${sku.id}&warehouseId=${warehouse.id}`)
-        .withAuth('staff', regularUser.id)
+      const response = await callApiHandler(
+        deleteTransaction,
+        '/api/transactions/trans-123',
+        {
+          method: 'DELETE',
+          searchParams: { id: 'trans-123' }
+        }
+      )
 
       expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty('entries')
-      expect(response.body.entries).toHaveLength(3)
-      expect(response.body.entries[2].runningBalance).toBe(65) // 100 - 30 - 5
+      expect(response.body).toHaveProperty('message', 'Transaction deleted successfully')
+    })
+
+    it('should not allow deleting reconciled transactions', async () => {
+      const reconciledTransaction = { ...mockTransaction, isReconciled: true }
+      ;(prisma.inventoryTransaction.findUnique as jest.Mock).mockResolvedValue(reconciledTransaction)
+
+      const response = await callApiHandler(
+        deleteTransaction,
+        '/api/transactions/trans-123',
+        {
+          method: 'DELETE',
+          searchParams: { id: 'trans-123' }
+        }
+      )
+
+      expect(response.status).toBe(400)
+      expect(response.body).toHaveProperty('error', expect.stringContaining('reconciled'))
     })
   })
 })

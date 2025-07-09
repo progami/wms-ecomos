@@ -85,7 +85,6 @@ describe('User Management API Endpoints', () => {
           fullName: 'Searchable User',
           passwordHash: await bcrypt.hash('password123', 10),
           role: 'staff',
-          emailVerified: new Date(),
           isActive: true
         }
       })
@@ -330,20 +329,20 @@ describe('User Management API Endpoints', () => {
         data: {
           userId: adminUser.id,
           action: 'CREATE',
-          entityType: 'USER',
-          entityId: 'test-user-id',
-          details: { email: 'test@example.com' },
-          timestamp: new Date()
+          tableName: 'User',
+          recordId: 'test-user-id',
+          changes: { email: 'test@example.com' },
+          createdAt: new Date()
         }
       })
       await prisma.auditLog.create({
         data: {
           userId: regularUser.id,
           action: 'UPDATE',
-          entityType: 'SKU',
-          entityId: 'test-sku-id',
-          details: { field: 'description', oldValue: 'old', newValue: 'new' },
-          timestamp: new Date()
+          tableName: 'Sku',
+          recordId: 'test-sku-id',
+          changes: { field: 'description', oldValue: 'old', newValue: 'new' },
+          createdAt: new Date()
         }
       })
 
@@ -380,9 +379,9 @@ describe('User Management API Endpoints', () => {
         data: {
           userId: adminUser.id,
           action: 'CREATE',
-          entityType: 'TEST',
-          entityId: 'old-log',
-          timestamp: new Date('2024-01-01')
+          tableName: 'Test',
+          recordId: 'old-log',
+          createdAt: new Date('2024-01-01')
         }
       })
 

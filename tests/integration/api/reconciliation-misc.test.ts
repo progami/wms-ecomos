@@ -117,12 +117,9 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -197,12 +194,9 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -277,12 +271,9 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })

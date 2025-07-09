@@ -78,7 +78,7 @@ describe('ConfirmDialog Component', () => {
     it('calls onConfirm and onClose when confirm button is clicked', () => {
       render(<ConfirmDialog {...defaultProps} />);
       
-      const confirmButton = screen.getByRole('button', { name: 'Confirm' });
+      const confirmButton = screen.getByRole('button', { name: 'Confirm' }) as HTMLButtonElement;
       fireEvent.click(confirmButton);
       
       expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
@@ -88,7 +88,7 @@ describe('ConfirmDialog Component', () => {
     it('calls only onClose when cancel button is clicked', () => {
       render(<ConfirmDialog {...defaultProps} />);
       
-      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+      const cancelButton = screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement;
       fireEvent.click(cancelButton);
       
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
@@ -99,8 +99,8 @@ describe('ConfirmDialog Component', () => {
       render(<ConfirmDialog {...defaultProps} />);
       
       // Find the backdrop element by its classes
-      const backdrop = document.querySelector('.bg-gray-500');
-      fireEvent.click(backdrop!);
+      const backdrop = document.querySelector('.bg-gray-500') as HTMLElement;
+      fireEvent.click(backdrop);
       
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
       expect(defaultProps.onConfirm).not.toHaveBeenCalled();

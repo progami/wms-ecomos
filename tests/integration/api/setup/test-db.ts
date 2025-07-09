@@ -1,80 +1,63 @@
-import { PrismaClient } from '@prisma/client'
-import { execSync } from 'child_process'
-import { randomBytes } from 'crypto'
+// Mock database setup for integration tests
+// Since we're mocking Prisma, we don't need real database connections
 
-// Generate a unique test database URL
-export function getTestDatabaseUrl(): string {
-  const dbName = `test_${randomBytes(4).toString('hex')}`
-  const baseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/wms_test'
-  
-  // Replace the database name in the URL
-  const url = new URL(baseUrl)
-  const pathParts = url.pathname.split('/')
-  pathParts[pathParts.length - 1] = dbName
-  url.pathname = pathParts.join('/')
-  
-  return url.toString()
+export interface MockPrismaClient {
+  $connect: jest.Mock
+  $disconnect: jest.Mock
+  $executeRawUnsafe: jest.Mock
+  user: any
+  inventoryBalance: any
+  inventoryTransaction: any
+  warehouse: any
+  sku: any
+  warehouseSkuConfig: any
 }
 
-// Setup test database
-export async function setupTestDatabase(): Promise<{ prisma: PrismaClient; databaseUrl: string }> {
+// Mock database URL for tests
+export function getTestDatabaseUrl(): string {
+  return 'postgresql://test:test@localhost:5432/test_db'
+}
+
+// Mock setup for test database
+export async function setupTestDatabase(): Promise<{ prisma: MockPrismaClient; databaseUrl: string }> {
   const databaseUrl = getTestDatabaseUrl()
   
-  // Set the DATABASE_URL for Prisma
-  process.env.DATABASE_URL = databaseUrl
-  
-  // Create the database
-  execSync(`npx prisma db push --skip-generate --schema=../prisma/schema.prisma`, {
-    env: { ...process.env, DATABASE_URL: databaseUrl },
-    cwd: process.cwd()
-  })
-  
-  // Create Prisma client
-  const prisma = new PrismaClient({
-    datasources: { db: { url: databaseUrl } }
-  })
-  
-  await prisma.$connect()
+  // Return mocked Prisma client (already set up in jest.setup.integration.js)
+  const prisma = require('@/lib/prisma').default as MockPrismaClient
   
   return { prisma, databaseUrl }
 }
 
-// Teardown test database
-export async function teardownTestDatabase(prisma: PrismaClient, databaseUrl: string): Promise<void> {
-  await prisma.$disconnect()
-  
-  // Extract database name from URL
-  const url = new URL(databaseUrl)
-  const dbName = url.pathname.split('/').pop()
-  
-  // Drop the test database
-  const adminUrl = databaseUrl.replace(`/${dbName}`, '/postgres')
-  const adminPrisma = new PrismaClient({
-    datasources: { db: { url: adminUrl } }
-  })
-  
-  await adminPrisma.$connect()
-  await adminPrisma.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${dbName}"`)
-  await adminPrisma.$disconnect()
+// Mock teardown for test database
+export async function teardownTestDatabase(prisma: MockPrismaClient, databaseUrl: string): Promise<void> {
+  // Clear all mocks
+  jest.clearAllMocks()
 }
 
-// Create test user
-export async function createTestUser(prisma: PrismaClient, role: 'admin' | 'staff' = 'staff') {
-  const user = await prisma.user.create({
-    data: {
-      email: `test-${randomBytes(4).toString('hex')}@example.com`,
-      fullName: 'Test User',
-      passwordHash: '$2a$10$VldXqq6urbAo54EIvz79N.qRZqpI6JRtSBFOXwsnkcCyY5ZAjdVUm', // password: "password123"
-      role,
-      isActive: true
-    }
-  })
+// Helper to create test user (returns mock data)
+export async function createTestUser(prisma: MockPrismaClient, role: 'admin' | 'staff' = 'staff') {
+  const mockUser = {
+    id: `user-${Math.random().toString(36).substr(2, 9)}`,
+    email: `test-${Math.random().toString(36).substr(2, 9)}@example.com`,
+    fullName: 'Test User',
+    passwordHash: '$2a$10$VldXqq6urbAo54EIvz79N.qRZqpI6JRtSBFOXwsnkcCyY5ZAjdVUm', // password: "password123"
+    role,
+    isActive: true,
+    isDemo: false,
+    warehouseId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastLoginAt: null
+  }
   
-  return user
+  // Mock the Prisma response
+  ;(prisma.user.create as jest.Mock).mockResolvedValueOnce(mockUser)
+  
+  return mockUser
 }
 
-// Create test session
-export async function createTestSession(userId: string, role: 'admin' | 'staff' = 'staff') {
+// Helper to create test session
+export function createTestSession(userId: string, role: 'admin' | 'staff' = 'staff') {
   return {
     user: {
       id: userId,
