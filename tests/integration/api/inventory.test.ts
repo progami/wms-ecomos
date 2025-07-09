@@ -47,6 +47,23 @@ describe('Inventory API Endpoints', () => {
     warehouse: mockWarehouse
   }
 
+  const mockTransaction = {
+    id: 'trans-123',
+    transactionType: 'RECEIVE' as const,
+    transactionNumber: 'RCV-001',
+    transactionDate: new Date(),
+    skuId: mockSku.id,
+    warehouseId: mockWarehouse.id,
+    batchLot: 'BATCH-001',
+    cartonsIn: 10,
+    cartonsOut: 0,
+    unitsPerCarton: 24,
+    totalUnits: 240,
+    isReconciled: false,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
   })

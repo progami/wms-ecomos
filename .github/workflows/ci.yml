@@ -237,7 +237,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
-        run: cd tests && playwright test e2e/ --project=${{ matrix.browser }}
+        run: cd tests && npx playwright test e2e/ --project=${{ matrix.browser }}
         
       - name: Upload test results
         if: always()
