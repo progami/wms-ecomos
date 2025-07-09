@@ -90,3 +90,51 @@ export async function createTestTransaction(
   
   return mockTransaction
 }
+
+export async function createTestInvoice(
+  prisma: MockPrismaClient,
+  warehouseId: string,
+  createdById: string,
+  approvedById: string,
+  overrides?: any
+) {
+  const mockInvoice = {
+    id: `invoice-${Math.random().toString(36).substr(2, 9)}`,
+    invoiceNumber: `INV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+    invoiceDate: new Date(),
+    warehouseId,
+    status: 'DRAFT' as const,
+    totalAmount: 1000.00,
+    createdById,
+    approvedById,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides
+  }
+  
+  ;(prisma.invoice.create as jest.Mock).mockResolvedValueOnce(mockInvoice)
+  
+  return mockInvoice
+}
+
+export async function createTestCostRate(
+  prisma: MockPrismaClient,
+  warehouseId: string,
+  overrides?: any
+) {
+  const mockCostRate = {
+    id: `cost-${Math.random().toString(36).substr(2, 9)}`,
+    warehouseId,
+    rateType: 'STORAGE' as const,
+    rateValue: 1.50,
+    unitOfMeasure: 'per_pallet_per_day' as const,
+    effectiveDate: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides
+  }
+  
+  ;(prisma.costRate.create as jest.Mock).mockResolvedValueOnce(mockCostRate)
+  
+  return mockCostRate
+}

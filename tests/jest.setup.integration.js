@@ -68,6 +68,21 @@ jest.mock('@/lib/prisma', () => ({
     warehouseSkuConfig: {
       findFirst: jest.fn(),
       create: jest.fn()
+    },
+    invoice: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn()
+    },
+    costRate: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
     }
   },
   prisma: {
@@ -107,3 +122,4 @@ process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test'
 process.env.NEXTAUTH_URL = 'http://localhost:3000'
 process.env.NEXTAUTH_SECRET = 'test-secret'
 process.env.USE_TEST_AUTH = 'true'
+process.env.AMAZON_MARKETPLACE_ID = 'TEST_MARKETPLACE_ID'
