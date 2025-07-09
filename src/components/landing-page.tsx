@@ -115,9 +115,9 @@ export default function LandingPage() {
             </div>
           </div>
           
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
             Modern Warehouse
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 pb-2">
               Management System
             </span>
           </h1>
