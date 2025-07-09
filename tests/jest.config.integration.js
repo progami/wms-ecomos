@@ -18,6 +18,6 @@ module.exports = {
   // Module name mapper for TypeScript paths
   moduleNameMapper: {
     ...baseConfig.moduleNameMapper,
-    '^@/(.*)$': '<rootDir>/../$1'
+    '^@/(.*)$': '<rootDir>/../src/$1'
   }
 };
