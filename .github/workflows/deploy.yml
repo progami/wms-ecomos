@@ -18,9 +18,24 @@ env:
   NODE_VERSION: '20'
 
 jobs:
+  wait-for-ci:
+    name: Wait for CI
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Wait for CI workflow
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'Comprehensive CI'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
   deploy:
     name: Deploy to Server
     runs-on: ubuntu-latest
+    needs: wait-for-ci
+    if: success()
     
     steps:
     - name: Checkout code

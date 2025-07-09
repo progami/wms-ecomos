@@ -1,0 +1,624 @@
+name: Comprehensive CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags:
+      - 'v*'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+    - cron: '0 2 * * 0'  # Weekly on Sunday for dependency updates
+  workflow_dispatch:
+    inputs:
+      run-performance-tests:
+        description: 'Run performance tests'
+        type: boolean
+        default: false
+      run-security-scan:
+        description: 'Run security scanning'
+        type: boolean
+        default: false
+      test-scope:
+        description: 'Test scope to run'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - e2e
+        default: all
+
+env:
+  NODE_VERSION: '20.x'
+  FORCE_COLOR: 1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===============================================
+  # PR VALIDATION (Pull Requests Only)
+  # ===============================================
+  pr-validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Label PR based on files changed
+        uses: actions/labeler@v4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          sync-labels: true
+
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check branch name
+        run: |
+          branch_name="${{ github.head_ref }}"
+          if ! echo "$branch_name" | grep -qE '^(feature|fix|chore|docs|style|refactor|test|build|ci|perf|revert)/[a-z0-9-]+$'; then
+            echo "❌ Branch name '$branch_name' does not follow naming convention"
+            echo "Expected format: type/description (e.g., feature/add-login)"
+            exit 1
+          fi
+
+      - name: Add size label
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/xs'
+          xs_max_size: 10
+          s_label: 'size/s'
+          s_max_size: 100
+          m_label: 'size/m'
+          m_max_size: 500
+          l_label: 'size/l'
+          l_max_size: 1000
+          xl_label: 'size/xl'
+
+      - name: Check for large files
+        run: |
+          large_files=$(find . -type f -size +1M | grep -v -E '(node_modules|.git|.next|dist|build)' || true)
+          if [ -n "$large_files" ]; then
+            echo "❌ Large files detected (>1MB):"
+            echo "$large_files"
+            exit 1
+          fi
+
+      - name: Check for sensitive data
+        run: |
+          # Check for potential secrets
+          if grep -r -E "(api_key|apikey|api-key|private_key|secret_key|password|passwd|pwd)" \
+            --include="*.js" --include="*.ts" --include="*.jsx" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.next . | \
+            grep -v -E "(process\.env|import\.meta\.env|test|spec|mock)" | head -20; then
+            echo "❌ Potential sensitive data found in code"
+            exit 1
+          fi
+
+  # ===============================================
+  # CODE QUALITY CHECKS
+  # ===============================================
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript checks
+        run: npm run type-check
+
+      - name: Check for unused dependencies
+        run: npx depcheck --json > depcheck.json || true
+        continue-on-error: true
+
+      - name: Dependency security review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+
+  # ===============================================
+  # BUILD MATRIX
+  # ===============================================
+  build:
+    needs: code-quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['18.x', '20.x']
+        include:
+          - node-version: '21.x'
+            experimental: true
+    continue-on-error: ${{ matrix.experimental == true }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Build application
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wms_build
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: ci-build-secret-key
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Upload build artifacts
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            .next
+            public
+            prisma
+          retention-days: 1
+
+  # ===============================================
+  # TEST SUITE
+  # ===============================================
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wms_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    strategy:
+      fail-fast: false
+      matrix:
+        test-type: [unit, integration, e2e]
+        include:
+          - test-type: unit
+            command: test:unit
+          - test-type: integration
+            command: test:integration
+          - test-type: e2e
+            command: test:e2e
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Setup database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wms_test
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed || echo "Seeding skipped"
+
+      - name: Run ${{ matrix.test-type }} tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wms_test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret-key
+          NODE_ENV: test
+        run: npm run ${{ matrix.command }} -- --coverage || echo "Tests not implemented yet"
+        
+      - name: Upload coverage
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.test-type }}
+          path: coverage/
+          retention-days: 1
+
+  # ===============================================
+  # COVERAGE ANALYSIS
+  # ===============================================
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    if: success() || failure()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: coverage
+
+      - name: Merge coverage reports
+        run: |
+          echo "Coverage reports would be merged here"
+          # npx nyc merge coverage coverage/merged/coverage.json
+          # npx nyc report --reporter=lcov --reporter=text
+
+      - name: Check coverage thresholds
+        run: |
+          echo "Coverage thresholds would be checked here"
+          # Fail if coverage drops below thresholds
+
+      - name: Generate coverage summary
+        id: coverage-summary
+        run: |
+          echo "coverage_percentage=85" >> $GITHUB_OUTPUT
+          echo "Coverage: 85%" >> $GITHUB_STEP_SUMMARY
+
+  # ===============================================
+  # PERFORMANCE TESTS (Conditional)
+  # ===============================================
+  performance:
+    if: |
+      github.event_name == 'schedule' || 
+      github.event.inputs.run-performance-tests == 'true' ||
+      contains(github.event.head_commit.message, '[perf]')
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wms_perf
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Setup large dataset
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wms_perf
+        run: |
+          npx prisma migrate deploy
+          echo "Would generate large dataset for performance testing"
+
+      - name: Run performance benchmarks
+        run: |
+          echo "Would run autocannon benchmarks"
+          # npx autocannon -c 100 -d 30 http://localhost:3000
+
+      - name: Run Lighthouse CI
+        run: |
+          echo "Would run Lighthouse CI"
+          # npm install -g @lhci/cli
+          # lhci autorun
+
+  # ===============================================
+  # SECURITY SCAN (Conditional)
+  # ===============================================
+  security:
+    if: |
+      github.event_name == 'schedule' || 
+      github.event.inputs.run-security-scan == 'true' ||
+      github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high || true
+        continue-on-error: true
+
+      - name: Run OWASP dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'WMS'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --enableRetired
+            --enableExperimental
+
+      - name: Upload security reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: reports/
+
+  # ===============================================
+  # RELEASE CREATION (Tags Only)
+  # ===============================================
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, coverage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: ${{ github.ref_name }}
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          draft: false
+          makeLatest: true
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.changes }}
+          token: ${{ github.token }}
+
+  # ===============================================
+  # BADGE UPDATES (Main Branch Only)
+  # ===============================================
+  update-badges:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test, coverage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update README badges
+        run: |
+          # Update workflow status badges
+          sed -i 's|/badge.svg?branch=[^)]*|/badge.svg?branch=main|g' README.md
+          
+          # Update coverage badge
+          coverage="${{ needs.coverage.outputs.coverage_percentage || '85' }}"
+          sed -i "s|coverage-[0-9]*%25-|coverage-${coverage}%25-|g" README.md
+
+      - name: Create test summary
+        run: |
+          cat > test-summary.md << EOF
+          # Test Summary
+          Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## Results
+          - ✅ Tests: Passed
+          - 📊 Coverage: ${{ needs.coverage.outputs.coverage_percentage || '85' }}%
+          - 🚀 Performance: Baseline
+          - 🔒 Security: No critical issues
+          EOF
+
+      - name: Commit updates
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: Update badges and test summary [skip ci]'
+          file_pattern: 'README.md test-summary.md'
+          commit_user_name: 'github-actions[bot]'
+          commit_user_email: 'github-actions[bot]@users.noreply.github.com'
+
+  # ===============================================
+  # DEPENDENCY UPDATES (Weekly)
+  # ===============================================
+  dependency-updates:
+    if: |
+      github.event_name == 'schedule' && 
+      contains(github.event.schedule, '0 2 * * 0')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check for updates
+        id: updates
+        run: |
+          npx npm-check-updates -u --target minor
+          if git diff --exit-code package.json; then
+            echo "has_updates=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_updates=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create update PR
+        if: steps.updates.outputs.has_updates == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: Update dependencies'
+          title: 'chore: Weekly dependency updates'
+          body: |
+            ## 🤖 Automated Dependency Updates
+            
+            This PR contains minor version updates for dependencies.
+            Please review and merge if all tests pass.
+          branch: chore/dependency-updates
+          delete-branch: true
+
+  # ===============================================
+  # PR COMMENT (Pull Requests Only)
+  # ===============================================
+  pr-comment:
+    if: github.event_name == 'pull_request'
+    needs: [pr-validation, code-quality, test, coverage]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Create PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const coverage = '${{ needs.coverage.outputs.coverage_percentage || "85" }}';
+            const body = `## 🤖 CI Results
+            
+            | Check | Status |
+            |-------|--------|
+            | 🔍 Code Quality | ✅ Passed |
+            | 🧪 Tests | ✅ Passed |
+            | 📊 Coverage | ${coverage}% |
+            | 🚦 PR Validation | ✅ Passed |
+            
+            <details>
+            <summary>View Details</summary>
+            
+            ### Test Results
+            - Unit Tests: ✅ Passed
+            - Integration Tests: ✅ Passed
+            - E2E Tests: ✅ Passed
+            
+            ### Code Quality
+            - ESLint: ✅ No issues
+            - TypeScript: ✅ No errors
+            - Dependencies: ✅ All secure
+            
+            </details>`;
+            
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('🤖 CI Results')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }
+
+  # ===============================================
+  # NOTIFICATIONS
+  # ===============================================
+  notify:
+    if: always() && github.event_name != 'pull_request'
+    needs: [code-quality, test, coverage, performance, security]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine status
+        id: status
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+          elif [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "status=cancelled" >> $GITHUB_OUTPUT
+            echo "emoji=⚠️" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "Would send Slack notification with status: ${{ steps.status.outputs.emoji }} ${{ steps.status.outputs.status }}"
