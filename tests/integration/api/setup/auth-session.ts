@@ -30,7 +30,7 @@ export async function createAuthenticatedSession(
   // Extract cookies from response
   const cookies = loginResponse.headers['set-cookie'] || []
   
-  return cookies
+  return Array.isArray(cookies) ? cookies : [cookies]
 }
 
 /**

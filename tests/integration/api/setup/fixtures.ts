@@ -151,16 +151,16 @@ export async function createTestAdminUser(prisma: PrismaClient) {
 }
 
 // Reconciliation fixtures
-export async function createTestReconciliation(prisma: PrismaClient, warehouseId: string, overrides = {}) {
+export async function createTestReconciliation(prisma: PrismaClient, invoiceId: string, overrides = {}) {
   return prisma.invoiceReconciliation.create({
     data: {
-      warehouseId,
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-      endDate: new Date(),
-      status: 'pending',
-      totalDiscrepancies: 0,
-      totalSkus: 0,
-      costCategory: 'Storage', // Add required field
+      invoiceId,
+      costCategory: 'Storage',
+      costName: 'Test Reconciliation',
+      expectedAmount: 1000.00,
+      invoicedAmount: 1000.00,
+      difference: 0,
+      status: 'match',
       ...overrides
     }
   })

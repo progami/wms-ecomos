@@ -8,7 +8,8 @@ import {
   createTestTransaction, 
   createTestInventoryBalance,
   createTestReconciliation,
-  createTestCostRate 
+  createTestCostRate,
+  createTestInvoice 
 } from './setup/fixtures'
 
 
@@ -106,7 +107,8 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     it('should return reconciliation details', async () => {
       const warehouse = await createTestWarehouse(prisma)
       const sku = await createTestSku(prisma)
-      const reconciliation = await createTestReconciliation(prisma, warehouse.id)
+      const invoice = await createTestInvoice(prisma, warehouse.id, adminUser.id, adminUser.id)
+      const reconciliation = await createTestReconciliation(prisma, invoice.id)
 
       // Create cost rate and calculated cost first
       const costRate = await prisma.costRate.create({
@@ -114,7 +116,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           costName: 'Test Rate',
           warehouseId: warehouse.id,
           costCategory: 'Storage',
-          rate: 10.00,
+          costValue: 10.00,
           currency: 'USD',
           uom: 'per_unit_per_month',
           minQuantity: 0,
@@ -185,7 +187,8 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     it('should resolve reconciliation discrepancy', async () => {
       const warehouse = await createTestWarehouse(prisma)
       const sku = await createTestSku(prisma)
-      const reconciliation = await createTestReconciliation(prisma, warehouse.id)
+      const invoice = await createTestInvoice(prisma, warehouse.id, adminUser.id, adminUser.id)
+      const reconciliation = await createTestReconciliation(prisma, invoice.id)
 
       // Create cost rate and calculated cost first
       const costRate2 = await prisma.costRate.create({
@@ -193,7 +196,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           costName: 'Test Rate 2',
           warehouseId: warehouse.id,
           costCategory: 'Storage',
-          rate: 10.00,
+          costValue: 10.00,
           currency: 'USD',
           uom: 'per_unit_per_month',
           minQuantity: 0,
@@ -264,7 +267,8 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
     it('should mark detail as resolved', async () => {
       const warehouse = await createTestWarehouse(prisma)
       const sku = await createTestSku(prisma)
-      const reconciliation = await createTestReconciliation(prisma, warehouse.id)
+      const invoice = await createTestInvoice(prisma, warehouse.id, adminUser.id, adminUser.id)
+      const reconciliation = await createTestReconciliation(prisma, invoice.id)
 
       // Create cost rate and calculated cost first
       const costRate3 = await prisma.costRate.create({
@@ -272,7 +276,7 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           costName: 'Test Rate 3',
           warehouseId: warehouse.id,
           costCategory: 'Storage',
-          rate: 10.00,
+          costValue: 10.00,
           currency: 'USD',
           uom: 'per_unit_per_month',
           minQuantity: 0,

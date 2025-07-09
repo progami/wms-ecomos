@@ -3,6 +3,7 @@ import request from 'supertest'
 
 // Set the USE_TEST_AUTH environment variable
 process.env.USE_TEST_AUTH = 'true'
+// @ts-ignore - Need to override NODE_ENV for tests
 process.env.NODE_ENV = 'test'
 
 export interface AuthenticatedRequest extends request.Test {
@@ -52,6 +53,7 @@ export function createAuthenticatedRequest(serverUrl: string): ExtendedRequest {
 export function setupTestAuth() {
   // Ensure test auth environment is set
   process.env.USE_TEST_AUTH = 'true'
+  // @ts-ignore - Need to override NODE_ENV for tests
   process.env.NODE_ENV = 'test'
   process.env.NEXTAUTH_URL = process.env.TEST_SERVER_URL || 'http://localhost:3000'
   process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'test-secret-key-for-testing-only'

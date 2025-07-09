@@ -55,8 +55,8 @@ async function cleanupDatabase() {
     console.log('Deleting inventory transactions...')
     await prisma.inventoryTransaction.deleteMany({})
     
-    console.log('Deleting inventory levels...')
-    await prisma.inventoryLevel.deleteMany({})
+    // console.log('Deleting inventory levels...')
+    // await prisma.inventoryLevel.deleteMany({}) // Model doesn't exist
     
     console.log('Deleting SKU versions...')
     await prisma.skuVersion.deleteMany({})
@@ -64,23 +64,23 @@ async function cleanupDatabase() {
     console.log('Deleting warehouse SKU configs...')
     await prisma.warehouseSkuConfig.deleteMany({})
     
-    console.log('Deleting inventory items...')
-    await prisma.inventoryItem.deleteMany({})
+    // console.log('Deleting inventory items...')
+    // await prisma.inventoryItem.deleteMany({}) // Model doesn't exist
     
     console.log('Deleting cost rates...')
     await prisma.costRate.deleteMany({})
     
-    console.log('Deleting product category assignments...')
-    await prisma.productCategoryAssignment.deleteMany({})
+    // console.log('Deleting product category assignments...')
+    // await prisma.productCategoryAssignment.deleteMany({}) // Model doesn't exist
     
-    console.log('Deleting product categories...')
-    await prisma.productCategory.deleteMany({})
+    // console.log('Deleting product categories...')
+    // await prisma.productCategory.deleteMany({}) // Model doesn't exist
     
-    console.log('Deleting products...')
-    await prisma.product.deleteMany({})
+    // console.log('Deleting products...')
+    // await prisma.product.deleteMany({}) // Model doesn't exist
     
-    console.log('Deleting customers...')
-    await prisma.customer.deleteMany({})
+    // console.log('Deleting customers...')
+    // await prisma.customer.deleteMany({}) // Model doesn't exist
     
     console.log('Deleting users...')
     await prisma.user.deleteMany({})
