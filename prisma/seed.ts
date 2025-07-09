@@ -3,12 +3,9 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Seeding database...')
-  
-  // Basic seed data - currently empty
-  // Add seed data here as needed
-  
-  console.log('✅ Database seeding completed')
+  console.log('🌱 Database seed script')
+  console.log('No demo data will be created.')
+  console.log('Use scripts/setup-users.ts to create production users.')
 }
 
 main()

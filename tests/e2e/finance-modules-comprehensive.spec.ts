@@ -1,3 +1,4 @@
+import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect, Page } from '@playwright/test'
 
 // Test configuration
@@ -17,7 +18,7 @@ async function loginAsAdmin(page: Page) {
 }
 
 async function navigateToFinance(page: Page, module: string) {
-  await page.click('a[href="/finance"]')
+  await page.click('a:has-text("Finance")')
   await page.waitForURL('**/finance')
   if (module) {
     await page.click(`a:has-text("${module}")`)

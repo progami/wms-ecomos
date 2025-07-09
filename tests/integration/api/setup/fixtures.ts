@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto'
 
 // SKU fixtures
 export async function createTestSku(prisma: PrismaClient, overrides = {}) {
-  return prisma.sKU.create({
+  return prisma.sku.create({
     data: {
       skuCode: `TEST-${randomBytes(4).toString('hex')}`,
       asin: `B0${randomBytes(4).toString('hex').toUpperCase()}`,
@@ -16,7 +16,6 @@ export async function createTestSku(prisma: PrismaClient, overrides = {}) {
       cartonDimensionsCm: '40x40x40',
       cartonWeightKg: 12.5,
       packagingType: 'Box',
-      notes: 'Test notes',
       isActive: true,
       ...overrides
     }
@@ -27,10 +26,11 @@ export async function createTestSku(prisma: PrismaClient, overrides = {}) {
 export async function createTestWarehouse(prisma: PrismaClient, overrides = {}) {
   return prisma.warehouse.create({
     data: {
-      warehouseId: `WH-${randomBytes(4).toString('hex')}`,
+      code: `WH-${randomBytes(4).toString('hex')}`,
       name: 'Test Warehouse',
-      type: 'FBA',
-      country: 'US',
+      address: 'Test Address',
+      contactEmail: 'test@warehouse.com',
+      contactPhone: '123-456-7890',
       isActive: true,
       ...overrides
     }
@@ -38,73 +38,85 @@ export async function createTestWarehouse(prisma: PrismaClient, overrides = {}) 
 }
 
 // Transaction fixtures
-export async function createTestTransaction(prisma: PrismaClient, skuId: string, warehouseId: string, overrides = {}) {
-  return prisma.transaction.create({
+export async function createTestTransaction(prisma: PrismaClient, skuId: string, warehouseId: string, createdById: string, overrides = {}) {
+  return prisma.inventoryTransaction.create({
     data: {
+      transactionId: `TXN-${randomBytes(4).toString('hex')}`,
       transactionType: 'RECEIVE',
-      transactionSubtype: 'STANDARD',
       skuId,
       warehouseId,
-      quantity: 100,
-      referenceNumber: `REF-${randomBytes(4).toString('hex')}`,
-      amazonShipmentId: `FBA${randomBytes(4).toString('hex').toUpperCase()}`,
+      batchLot: `BATCH-${randomBytes(4).toString('hex')}`,
+      cartonsIn: 10,
       transactionDate: new Date(),
-      status: 'COMPLETED',
+      createdById,
       ...overrides
     }
   })
 }
 
 // Invoice fixtures
-export async function createTestInvoice(prisma: PrismaClient, warehouseId: string, overrides = {}) {
+export async function createTestInvoice(prisma: PrismaClient, warehouseId: string, customerId: string, createdById: string, overrides = {}) {
+  const billingPeriodStart = new Date()
+  billingPeriodStart.setDate(1) // First day of month
+  const billingPeriodEnd = new Date()
+  billingPeriodEnd.setMonth(billingPeriodEnd.getMonth() + 1)
+  billingPeriodEnd.setDate(0) // Last day of month
+  
   return prisma.invoice.create({
     data: {
       invoiceNumber: `INV-${randomBytes(4).toString('hex')}`,
       warehouseId,
+      customerId,
+      billingPeriodStart,
+      billingPeriodEnd,
+      invoiceDate: new Date(),
+      issueDate: new Date(),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      subtotal: 1000.00,
+      taxAmount: 0,
       totalAmount: 1000.00,
       currency: 'USD',
-      invoiceDate: new Date(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      status: 'PENDING',
-      items: {
+      status: 'pending',
+      createdById,
+      lineItems: {
         create: [
           {
-            description: 'Storage Fee',
-            amount: 500.00,
+            costCategory: 'Storage',
+            costName: 'Storage Fee',
             quantity: 1,
-            unitPrice: 500.00
+            unitRate: 500.00,
+            amount: 500.00
           },
           {
-            description: 'Handling Fee',
-            amount: 500.00,
+            costCategory: 'Unit',
+            costName: 'Handling Fee',
             quantity: 1,
-            unitPrice: 500.00
+            unitRate: 500.00,
+            amount: 500.00
           }
         ]
       },
       ...overrides
     },
     include: {
-      items: true
+      lineItems: true
     }
   })
 }
 
 // Cost rate fixtures
-export async function createTestCostRate(prisma: PrismaClient, warehouseId: string, overrides = {}) {
+export async function createTestCostRate(prisma: PrismaClient, warehouseId: string, createdById: string, overrides = {}) {
   return prisma.costRate.create({
     data: {
-      rateName: 'Test Rate',
+      costName: 'Test Rate',
       warehouseId,
-      type: 'STORAGE',
-      rate: 10.00,
-      currency: 'USD',
-      uom: 'per_unit_per_month',
-      minQuantity: 0,
-      maxQuantity: 1000,
-      effectiveFrom: new Date(),
-      effectiveTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+      costCategory: 'Storage',
+      costValue: 10.00,
+      unitOfMeasure: 'per_unit_per_month',
+      effectiveDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
       isActive: true,
+      createdById,
       ...overrides
     }
   })
@@ -116,24 +128,10 @@ export async function createTestInventoryBalance(prisma: PrismaClient, skuId: st
     data: {
       skuId,
       warehouseId,
-      availableQuantity: 100,
-      totalQuantity: 100,
-      lastUpdated: new Date(),
-      ...overrides
-    }
-  })
-}
-
-// Batch fixtures
-export async function createTestBatch(prisma: PrismaClient, skuId: string, warehouseId: string, overrides = {}) {
-  return prisma.batch.create({
-    data: {
-      batchNumber: `BATCH-${randomBytes(4).toString('hex')}`,
-      skuId,
-      warehouseId,
-      quantity: 100,
-      receivedDate: new Date(),
-      status: 'ACTIVE',
+      batchLot: `BATCH-${randomBytes(4).toString('hex')}`,
+      currentCartons: 10,
+      currentPallets: 1,
+      currentUnits: 240, // 10 cartons * 24 units per carton
       ...overrides
     }
   })
@@ -144,10 +142,9 @@ export async function createTestAdminUser(prisma: PrismaClient) {
   return prisma.user.create({
     data: {
       email: `admin-${randomBytes(4).toString('hex')}@example.com`,
-      name: 'Test Admin',
-      password: '$2a$10$K7L1mrbVHC5SZxyoakG6wuqJPqm3WNmRuW9fhJz1w9TNJLXdJ1aJS', // password: "password123"
+      fullName: 'Test Admin',
+      passwordHash: '$2a$10$VldXqq6urbAo54EIvz79N.qRZqpI6JRtSBFOXwsnkcCyY5ZAjdVUm', // password: "password123"
       role: 'admin',
-      emailVerified: new Date(),
       isActive: true
     }
   })
@@ -155,14 +152,15 @@ export async function createTestAdminUser(prisma: PrismaClient) {
 
 // Reconciliation fixtures
 export async function createTestReconciliation(prisma: PrismaClient, warehouseId: string, overrides = {}) {
-  return prisma.reconciliation.create({
+  return prisma.invoiceReconciliation.create({
     data: {
       warehouseId,
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
       endDate: new Date(),
-      status: 'PENDING',
+      status: 'pending',
       totalDiscrepancies: 0,
       totalSkus: 0,
+      costCategory: 'Storage', // Add required field
       ...overrides
     }
   })

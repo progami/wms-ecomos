@@ -139,49 +139,64 @@ describe('ErrorBoundary Component', () => {
 
   describe('Reset functionality', () => {
     it('resets error state when Try Again is clicked', () => {
+      let shouldThrow = true;
+      
+      const TestComponent = () => {
+        if (shouldThrow) {
+          throw new Error('Test error message');
+        }
+        return <div>No error</div>;
+      };
+      
       const { rerender } = render(
         <ErrorBoundary>
-          <ThrowError shouldThrow={true} />
+          <TestComponent />
         </ErrorBoundary>
       );
       
       expect(screen.getByText('Something went wrong')).toBeInTheDocument();
       
+      // Change state so component won't throw
+      shouldThrow = false;
+      
       // Click Try Again
       fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
       
-      // Rerender with non-throwing component
-      rerender(
-        <ErrorBoundary>
-          <ThrowError shouldThrow={false} />
-        </ErrorBoundary>
-      );
-      
+      // After reset, the component should render normally
       expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
       expect(screen.getByText('No error')).toBeInTheDocument();
     });
 
     it('can catch new errors after reset', () => {
+      let shouldThrow = true;
+      
+      const TestComponent = () => {
+        if (shouldThrow) {
+          throw new Error('Test error message');
+        }
+        return <div>No error</div>;
+      };
+      
       const { rerender } = render(
         <ErrorBoundary>
-          <ThrowError shouldThrow={true} />
+          <TestComponent />
         </ErrorBoundary>
       );
       
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+      
+      // Change state and reset
+      shouldThrow = false;
       fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
       
-      rerender(
-        <ErrorBoundary>
-          <ThrowError shouldThrow={false} />
-        </ErrorBoundary>
-      );
-      
+      expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
       expect(screen.getByText('No error')).toBeInTheDocument();
       
       // Trigger error again
+      shouldThrow = true;
       rerender(
         <ErrorBoundary>
-          <ThrowError shouldThrow={true} />
+          <TestComponent />
         </ErrorBoundary>
       );
       

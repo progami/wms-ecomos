@@ -6,11 +6,8 @@ import * as RechartsComponents from '@/components/charts/RechartsComponents';
 jest.mock('next/dynamic', () => ({
   __esModule: true,
   default: (importFn: () => Promise<any>, options?: any) => {
-    // Return a mock component that simulates dynamic loading
+    // Return a component that renders the chart directly (simulating loaded state)
     const MockComponent = (props: any) => {
-      if (options?.loading) {
-        return <div data-testid="loading-placeholder">Loading...</div>;
-      }
       return <div data-testid="chart-component" {...props}>Chart Component</div>;
     };
     MockComponent.displayName = 'DynamicComponent';

@@ -7,7 +7,8 @@ export async function GET() {
     database: 'pending',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    version: process.env.npm_package_version || '1.0.0'
+    version: process.env.npm_package_version || '1.0.0',
+    testAuth: process.env.USE_TEST_AUTH === 'true'
   }
   
   // Check database connectivity

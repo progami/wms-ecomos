@@ -1,84 +1,94 @@
 import { defineConfig, devices } from '@playwright/test';
 
-/**
- * Playwright configuration specifically for performance tests
- */
 export default defineConfig({
   testDir: './performance',
-  /* Use a longer timeout for performance tests */
-  timeout: 60 * 1000,
-  /* Run tests in files in parallel */
-  fullyParallel: false, // Performance tests should run sequentially
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  testMatch: '**/*.spec.ts',
+  fullyParallel: false, // Performance tests should run sequentially for accurate measurements
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
-  /* Single worker for performance consistency */
-  workers: 1,
-  /* Reporter to use */
+  retries: process.env.CI ? 1 : 0, // Minimal retries for performance tests
+  workers: 1, // Single worker for consistent performance measurements
   reporter: [
-    ['html', { outputFolder: 'performance-report' }],
-    ['json', { outputFile: 'performance-results.json' }],
+    ['html', { outputFolder: 'playwright-report/performance' }],
+    ['junit', { outputFile: 'performance-results.xml' }],
     ['list']
   ],
-  /* Shared settings for all the projects below */
+  
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:3002',
-
-    /* Collect trace for performance analysis */
-    trace: 'on',
-    
-    /* Take screenshot on failure */
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    actionTimeout: 30000, // Longer timeout for performance tests
+    navigationTimeout: 60000, // Longer navigation timeout
     
-    /* Video for performance analysis */
-    video: 'on',
+    // Performance-specific settings
+    launchOptions: {
+      // Enable performance metrics collection
+      args: [
+        '--enable-precise-memory-info',
+        '--disable-dev-shm-usage',
+        '--no-sandbox'
+      ]
+    },
     
-    /* Network conditions for performance testing */
-    // Can be customized for different network speeds
+    // Viewport settings for consistent measurements
+    viewport: { width: 1280, height: 720 },
+    
+    // Disable animations for consistent timing
+    reducedMotion: 'reduce',
+    
+    // Network conditions (comment out for real network testing)
     // offline: false,
-    // downloadThroughput: 50 * 1024, // 50kb/s
-    // uploadThroughput: 20 * 1024, // 20kb/s
-    // latency: 500,
+    // httpCredentials: undefined,
   },
 
-  /* Configure projects for performance testing */
   projects: [
     {
-      name: 'Desktop Performance',
+      name: 'chromium-performance',
       use: { 
         ...devices['Desktop Chrome'],
-        /* Enable performance metrics */
-        launchOptions: {
-          args: [
-            '--enable-precise-memory-info',
-            '--disable-dev-shm-usage',
-          ]
+        // Enable Chrome DevTools Protocol for performance metrics
+        contextOptions: {
+          // Enable performance timeline recording
+          recordHar: {
+            path: 'performance-har',
+            mode: 'minimal'
+          }
         }
       },
     },
+    // Optionally test on other browsers
     {
-      name: 'Mobile Performance',
-      use: { 
-        ...devices['Pixel 5'],
-        /* Mobile performance testing with throttling */
-        launchOptions: {
-          args: [
-            '--enable-precise-memory-info',
-            '--disable-dev-shm-usage',
-          ]
-        }
-      },
+      name: 'firefox-performance',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit-performance',
+      use: { ...devices['Desktop Safari'] },
     },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev -- --port 3002',
-    port: 3002,
-    reuseExistingServer: !process.env.CI,
-    cwd: '..',
-    timeout: 120 * 1000,
+  // Timeout configuration for performance tests
+  timeout: 120000, // 2 minutes per test
+  expect: {
+    timeout: 10000, // 10 seconds for assertions
   },
+
+  // Web server configuration
+  webServer: {
+    command: process.env.CI ? 'npm run start' : 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 180 * 1000, // 3 minutes to start
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
+
+  
+  // Global setup/teardown for performance testing
+  globalSetup: undefined,
+  globalTeardown: undefined,
+  
+  // Output directory for test artifacts
+  outputDir: 'test-results/performance',
 });

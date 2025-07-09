@@ -138,7 +138,7 @@ describe('File System Error Scenarios', () => {
         error.code = 'ENOSPC';
         throw error;
       }
-      return originalWriteFile(path as any, data);
+      return originalWriteFile(path as any, data as any);
     });
 
     // Attempt to save files

@@ -1,151 +1,191 @@
+import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect } from '@playwright/test'
+
+const BASE_URL = 'http://localhost:3000'
 
 test.describe('📊 Dashboard Runtime Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Setup demo environment and login
-    await page.goto('/')
+    await page.goto(BASE_URL)
     await page.click('button:has-text("Try Demo")')
     await page.waitForURL('**/dashboard', { timeout: 15000 })
   })
 
   test('Dashboard loads with all key components', async ({ page }) => {
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
+    }
+    
     // Check main heading
     await expect(page.locator('h1')).toContainText('Dashboard')
     
-    // Check KPI cards are visible
-    await expect(page.locator('text=Total SKUs')).toBeVisible()
-    await expect(page.locator('text=Active Warehouses')).toBeVisible()
-    await expect(page.locator('text=Low Stock Items')).toBeVisible()
-    await expect(page.locator('text=Pending Shipments')).toBeVisible()
+    // Check Market section is visible
+    await expect(page.locator('h2:has-text("Market")')).toBeVisible()
     
     // Check charts are rendered
-    await expect(page.locator('canvas').first()).toBeVisible() // Chart canvas
+    await expect(page.locator('text="Inventory Levels Trend"')).toBeVisible()
+    await expect(page.locator('.recharts-responsive-container').first()).toBeVisible()
     
-    // Check recent activity section
-    await expect(page.locator('text=Recent Activity')).toBeVisible()
+    // Check quick action buttons
+    await expect(page.locator('button:has-text("Create Shipment")')).toBeVisible()
+    await expect(page.locator('button:has-text("Manage Inventory")')).toBeVisible()
   })
 
   test('Dashboard data updates and displays correctly', async ({ page }) => {
-    // Wait for data to load
-    await page.waitForSelector('text=Total SKUs', { timeout: 10000 })
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
+    }
     
-    // Check that KPI values are not empty
-    const totalSKUs = await page.locator('text=Total SKUs').locator('..').locator('text=/\\d+/')
-    await expect(totalSKUs).toBeVisible()
+    // Wait for charts to load
+    await page.waitForSelector('.recharts-responsive-container', { timeout: 10000 })
     
-    const activeWarehouses = await page.locator('text=Active Warehouses').locator('..').locator('text=/\\d+/')
-    await expect(activeWarehouses).toBeVisible()
+    // Check that charts have rendered
+    const charts = page.locator('.recharts-responsive-container')
+    const chartCount = await charts.count()
+    expect(chartCount).toBeGreaterThan(0)
   })
 
-  test('Quick Start Guide interaction', async ({ page }) => {
-    // Check if Quick Start Guide is visible
-    const quickStartGuide = page.locator('text=Quick Start Guide')
+  test('Welcome modal interaction', async ({ page }) => {
+    // Reload page to see welcome modal again
+    await page.reload()
+    await page.waitForURL('**/dashboard', { timeout: 15000 })
     
-    if (await quickStartGuide.isVisible()) {
-      // Test expand/collapse
-      await quickStartGuide.click()
+    // Check if welcome modal is visible
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    
+    if (await welcomeModal.isVisible({ timeout: 5000 })) {
+      // Check modal content
+      await expect(page.locator('text="Demo Data Loaded"')).toBeVisible()
+      await expect(page.locator('text="Full inventory management system"')).toBeVisible()
       
-      // Check guide content
-      await expect(page.locator('text=Welcome to your Warehouse Management System')).toBeVisible()
-      
-      // Test dismiss button
-      const dismissButton = page.locator('button:has-text("Dismiss")')
-      if (await dismissButton.isVisible()) {
-        await dismissButton.click()
-        await expect(quickStartGuide).not.toBeVisible()
-      }
+      // Test close button
+      await page.click('button:has-text("Start Exploring")')
+      await expect(welcomeModal).not.toBeVisible()
     }
   })
 
   test('Navigation from dashboard works', async ({ page }) => {
-    // Test SKU navigation
-    await page.click('a:has-text("Manage SKUs")')
-    await page.waitForURL('**/skus')
-    await expect(page.locator('h1')).toContainText('SKU Management')
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
+    }
+    
+    // Test Manage Inventory button
+    await page.click('button:has-text("Manage Inventory")')
+    await page.waitForURL('**/operations/inventory')
     
     // Go back to dashboard
-    await page.click('a:has-text("Dashboard")')
+    await page.click('a[href="/admin/dashboard"]')
     await page.waitForURL('**/dashboard')
     
-    // Test Inventory navigation
-    await page.click('a:has-text("View Inventory")')
-    await page.waitForURL('**/operations/inventory')
-    await expect(page.locator('h1')).toContainText('Inventory')
+    // Test Create Shipment button
+    await page.click('button:has-text("Create Shipment")')
+    await page.waitForURL('**/operations/ship')
   })
 
   test('Dashboard refresh functionality', async ({ page }) => {
-    // Get initial KPI value
-    const initialValue = await page.locator('text=Total SKUs').locator('..').locator('p.text-2xl').textContent()
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
+    }
+    
+    // Wait for initial load
+    await page.waitForSelector('.recharts-responsive-container', { timeout: 10000 })
     
     // Refresh page
     await page.reload()
     
-    // Wait for dashboard to reload
-    await page.waitForSelector('text=Total SKUs', { timeout: 10000 })
+    // Close welcome modal again if it appears
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
+    }
     
-    // Verify data loads again
-    const refreshedValue = await page.locator('text=Total SKUs').locator('..').locator('p.text-2xl').textContent()
-    expect(refreshedValue).toBeTruthy()
+    // Verify dashboard loads again
+    await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible()
+    await expect(page.locator('.recharts-responsive-container').first()).toBeVisible()
   })
 
-  test('Recent activity displays correctly', async ({ page }) => {
-    // Wait for recent activity section
-    await page.waitForSelector('text=Recent Activity')
-    
-    // Check if activity items are displayed
-    const activityItems = page.locator('[role="list"] > div')
-    const count = await activityItems.count()
-    
-    if (count > 0) {
-      // Check first activity item has required elements
-      const firstItem = activityItems.first()
-      await expect(firstItem).toBeVisible()
-      
-      // Activity should have timestamp
-      await expect(firstItem.locator('text=/ago|minutes|hours|days/')).toBeVisible()
+  test('Chart interactions work correctly', async ({ page }) => {
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
     }
+    
+    // Wait for charts to render
+    await page.waitForSelector('.recharts-responsive-container', { timeout: 10000 })
+    
+    // Check if inventory trend chart is displayed
+    await expect(page.locator('text="Inventory Levels Trend"')).toBeVisible()
+    
+    // Check date range selector
+    const dateRangeButton = page.locator('button:has-text("Year to Date")')
+    await expect(dateRangeButton).toBeVisible()
   })
 
   test('Dashboard responsiveness', async ({ page }) => {
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
+    }
+    
     // Test tablet view
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.waitForTimeout(500)
     
     // Check layout adjusts
     await expect(page.locator('h1')).toBeVisible()
-    await expect(page.locator('text=Total SKUs')).toBeVisible()
+    await expect(page.locator('h2:has-text("Market")')).toBeVisible()
     
     // Test mobile view
     await page.setViewportSize({ width: 375, height: 667 })
     await page.waitForTimeout(500)
     
-    // Navigation should be in mobile menu
-    const menuButton = page.locator('button[aria-label="Toggle navigation"]')
-    if (await menuButton.isVisible()) {
-      await menuButton.click()
-      await expect(page.locator('nav')).toBeVisible()
-    }
+    // Check mobile layout
+    await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible()
     
-    // KPI cards should stack vertically
-    await expect(page.locator('text=Total SKUs')).toBeVisible()
+    // Action buttons should still be visible
+    await expect(page.locator('button:has-text("Create Shipment")')).toBeVisible()
   })
 
-  test('Chart interactions', async ({ page }) => {
-    // Wait for charts to render
-    await page.waitForSelector('canvas', { timeout: 10000 })
+  test('Dashboard sections are properly structured', async ({ page }) => {
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
+    }
     
-    // Hover over chart to check tooltips
-    const chart = page.locator('canvas').first()
-    await chart.hover({ position: { x: 100, y: 100 } })
+    // Check breadcrumb navigation
+    await expect(page.locator('nav').first()).toBeVisible()
+    await expect(page.locator('svg.lucide-home')).toBeVisible()
     
-    // Some charts might show tooltips on hover
-    // This depends on the chart library implementation
-    await page.waitForTimeout(500)
+    // Check main dashboard structure
+    await expect(page.locator('text="Welcome back, Demo Administrator"')).toBeVisible()
+    
+    // Check Market section structure
+    const marketSection = page.locator('div:has(h2:has-text("Market"))')
+    await expect(marketSection).toBeVisible()
+    await expect(marketSection.locator('text="Order planning, shipments, and marketplace integrations"')).toBeVisible()
   })
 
   test('Error states handling', async ({ page }) => {
     // Intercept API calls to simulate error
-    await page.route('**/api/dashboard', route => {
+    await page.route('**/api/**', route => {
       route.fulfill({
         status: 500,
         body: JSON.stringify({ error: 'Server error' })
@@ -155,24 +195,34 @@ test.describe('📊 Dashboard Runtime Tests', () => {
     // Reload to trigger error
     await page.reload()
     
-    // Check for error message or fallback UI
-    const errorMessage = page.locator('text=/Error|Failed|Unable to load/')
-    const hasError = await errorMessage.isVisible({ timeout: 5000 }).catch(() => false)
-    
-    if (hasError) {
-      await expect(errorMessage).toBeVisible()
+    // Close welcome modal if it still appears
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+      await page.waitForTimeout(500)
     }
+    
+    // Dashboard should still render with basic structure
+    await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible()
   })
 
   test('Performance - Dashboard loads quickly', async ({ page }) => {
     const startTime = Date.now()
     
     // Navigate to dashboard
-    await page.goto('/dashboard')
+    await page.goto(`${BASE_URL}/dashboard`)
     
     // Wait for main content
     await page.waitForSelector('h1:has-text("Dashboard")', { timeout: 5000 })
-    await page.waitForSelector('text=Total SKUs', { timeout: 5000 })
+    
+    // Close welcome modal if present
+    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
+    if (await welcomeModal.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Start Exploring")')
+    }
+    
+    // Wait for charts to load
+    await page.waitForSelector('.recharts-responsive-container', { timeout: 5000 })
     
     const loadTime = Date.now() - startTime
     

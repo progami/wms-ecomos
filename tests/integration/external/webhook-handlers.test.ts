@@ -114,8 +114,8 @@ describe('Webhook Handlers Integration Tests', () => {
             trackingNumber: 'FBA15DJ8K123',
             carrier: 'UPS',
             items: [
-              { sku: 'TEST-SKU-001', quantity: 100 },
-              { sku: 'TEST-SKU-002', quantity: 50 }
+              { sku: 'TEST-SKU-001', cartonsIn: 10 },
+              { sku: 'TEST-SKU-002', cartonsIn: 10 }
             ],
             estimatedDelivery: '2024-01-30'
           }
@@ -388,8 +388,8 @@ describe('Webhook Handlers Integration Tests', () => {
           timestamp: new Date().toISOString(),
           data: {
             updates: [
-              { sku: 'TEST-SKU-001', quantity: 200, warehouse: 'EXT-WH-01' },
-              { sku: 'TEST-SKU-002', quantity: 150, warehouse: 'EXT-WH-01' }
+              { sku: 'TEST-SKU-001', cartonsIn: 10, warehouse: 'EXT-WH-01' },
+              { sku: 'TEST-SKU-002', cartonsIn: 10, warehouse: 'EXT-WH-01' }
             ]
           }
         }
@@ -456,7 +456,7 @@ describe('Webhook Handlers Integration Tests', () => {
   describe('Data Transformation', () => {
     test('should transform webhook payload to internal format', async () => {
       const externalFormat = {
-        event_type: 'INVENTORY_UPDATE',
+        event_costCategory: 'INVENTORY_UPDATE',
         event_id: '12345',
         timestamp: '2024-01-25T10:30:00Z',
         payload: {
@@ -473,7 +473,7 @@ describe('Webhook Handlers Integration Tests', () => {
         timestamp: externalFormat.timestamp,
         data: {
           sku: externalFormat.payload.item_code,
-          quantity: externalFormat.payload.quantity_available,
+          cartonsIn: externalFormat.payload.quantity_available,
           warehouseId: externalFormat.payload.location_id
         }
       }
@@ -500,7 +500,7 @@ describe('Webhook Handlers Integration Tests', () => {
             items: [
               {
                 sku: 'TEST-SKU-001',
-                quantity: 5,
+                cartonsIn: 10,
                 price: { amount: 10.99, currency: 'GBP' }
               }
             ]
@@ -543,9 +543,9 @@ describe('Webhook Handlers Integration Tests', () => {
         event: 'inventory.batch_update',
         data: {
           updates: [
-            { sku: 'TEST-SKU-001', quantity: 100 }, // Will succeed
-            { sku: 'INVALID-SKU', quantity: 50 },   // Will fail
-            { sku: 'TEST-SKU-003', quantity: 75 }   // Will succeed
+            { sku: 'TEST-SKU-001', cartonsIn: 10 }, // Will succeed
+            { sku: 'INVALID-SKU', cartonsIn: 10 },   // Will fail
+            { sku: 'TEST-SKU-003', cartonsIn: 10 }   // Will succeed
           ]
         }
       }

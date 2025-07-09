@@ -466,7 +466,7 @@ describe('API Resilience Integration Tests', () => {
     test('should handle bulk inventory sync with rate limiting', async () => {
       const inventoryUpdates = Array(100).fill(null).map((_, i) => ({
         sku: `TEST-SKU-${i}`,
-        quantity: Math.floor(Math.random() * 100)
+        cartonsIn: 10 + Math.floor(Math.random() * 100)
       }))
 
       mockExternalAPIs.inventoryAPI.syncInventory.mockResolvedValue({

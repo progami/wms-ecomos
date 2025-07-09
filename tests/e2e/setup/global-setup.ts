@@ -15,7 +15,7 @@ async function globalSetup() {
     
     // Seed the database
     console.log('🌱 Seeding database with test data...');
-    execSync('npm run db:seed', { stdio: 'inherit' });
+    execSync('npx prisma db seed', { stdio: 'inherit' });
     
     console.log('✅ E2E test setup complete!');
   } catch (error) {

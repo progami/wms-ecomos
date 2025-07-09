@@ -148,7 +148,7 @@ describe('Third-Party Services Integration Tests', () => {
     test('should upload documents successfully', async () => {
       const mockFile = {
         buffer: Buffer.from('test file content'),
-        mimetype: 'application/pdf',
+        mimecostCategory: 'application/pdf',
         originalname: 'invoice-001.pdf',
         size: 1024
       }
@@ -188,7 +188,7 @@ describe('Third-Party Services Integration Tests', () => {
     test('should handle large file uploads with multipart', async () => {
       const largeFile = {
         buffer: Buffer.alloc(100 * 1024 * 1024), // 100MB
-        mimetype: 'video/mp4',
+        mimecostCategory: 'video/mp4',
         originalname: 'warehouse-tour.mp4',
         size: 100 * 1024 * 1024
       }
@@ -365,7 +365,7 @@ describe('Third-Party Services Integration Tests', () => {
       mockServices.tax.calculateTax.mockResolvedValueOnce({
         totalTax: 20.00,
         taxBreakdown: [
-          { type: 'VAT', rate: 0.20, amount: 20.00 }
+          { costCategory: 'VAT', rate: 0.20, amount: 20.00 }
         ],
         taxableAmount: 100.00,
         totalAmount: 120.00

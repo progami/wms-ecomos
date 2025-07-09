@@ -58,7 +58,6 @@ describe('Email Service Integration Tests', () => {
         ],
         totalCartons: 10,
         totalPallets: 2,
-        notes: 'Handle with care'
       }
 
       const request = new NextRequest('http://localhost:3000/api/inventory/shipments/email', {
@@ -108,7 +107,6 @@ describe('Email Service Integration Tests', () => {
         ],
         totalCartons: 13,
         totalPallets: 3,
-        notes: null
       }
 
       const request = new NextRequest('http://localhost:3000/api/inventory/shipments/email', {
@@ -308,7 +306,6 @@ describe('Email Service Integration Tests', () => {
         }],
         totalCartons: 5,
         totalPallets: 1,
-        notes: 'Note with\nnewline'
       }
 
       const request = new NextRequest('http://localhost:3000/api/inventory/shipments/email', {

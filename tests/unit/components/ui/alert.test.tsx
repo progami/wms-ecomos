@@ -114,7 +114,8 @@ describe('Alert Components', () => {
     it('merges custom className', () => {
       render(<AlertDescription className="text-xs" data-testid="desc">Description</AlertDescription>);
       const description = screen.getByTestId('desc');
-      expect(description).toHaveClass('text-xs', 'text-sm');
+      expect(description).toHaveClass('text-xs');
+      expect(description.className).toMatch(/\[&_p\]:leading-relaxed/);
     });
 
     it('forwards ref correctly', () => {

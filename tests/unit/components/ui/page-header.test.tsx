@@ -91,8 +91,8 @@ describe('PageHeader Component', () => {
         />
       );
       
-      const descriptionBox = screen.getByText('About This Page:').parentElement?.parentElement;
-      expect(descriptionBox).toHaveClass('bg-blue-50', 'border-blue-200');
+      const descriptionBox = screen.getByText('About This Page:').closest('.bg-blue-50');
+      expect(descriptionBox).toHaveClass('bg-blue-50', 'border', 'border-blue-200', 'rounded-lg', 'p-4');
       
       const icon = document.querySelector('svg');
       expect(icon).toHaveClass('text-blue-600');
@@ -114,8 +114,8 @@ describe('PageHeader Component', () => {
         />
       );
       
-      const descriptionBox = screen.getByText('About This Page:').parentElement?.parentElement;
-      expect(descriptionBox).toHaveClass('bg-red-50', 'border-red-200');
+      const descriptionBox = screen.getByText('About This Page:').closest('.bg-red-50');
+      expect(descriptionBox).toHaveClass('bg-red-50', 'border', 'border-red-200', 'rounded-lg', 'p-4');
       
       const icon = document.querySelector('svg');
       expect(icon).toHaveClass('text-red-600');
@@ -203,8 +203,8 @@ describe('HelpfulTips Component', () => {
     it('applies default colors', () => {
       render(<HelpfulTips tips={defaultTips} icon={Info} />);
       
-      const container = screen.getByText('Helpful Tips:').parentElement?.parentElement;
-      expect(container).toHaveClass('bg-blue-50', 'border-blue-200');
+      const container = screen.getByText('Helpful Tips:').closest('.bg-blue-50');
+      expect(container).toHaveClass('bg-blue-50', 'border', 'border-blue-200', 'rounded-lg', 'p-4');
       
       const icon = document.querySelector('svg');
       expect(icon).toHaveClass('text-blue-600');
@@ -225,8 +225,8 @@ describe('HelpfulTips Component', () => {
         />
       );
       
-      const container = screen.getByText('Helpful Tips:').parentElement?.parentElement;
-      expect(container).toHaveClass('bg-yellow-50', 'border-yellow-200');
+      const container = screen.getByText('Helpful Tips:').closest('.bg-yellow-50');
+      expect(container).toHaveClass('bg-yellow-50', 'border', 'border-yellow-200', 'rounded-lg', 'p-4');
       
       const icon = document.querySelector('svg');
       expect(icon).toHaveClass('text-yellow-600');

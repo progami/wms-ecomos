@@ -2,10 +2,35 @@ import { Page, expect } from '@playwright/test';
 
 export async function login(page: Page, email = 'admin@warehouse.com', password = 'SecureWarehouse2024!') {
   await page.goto('/auth/login');
+  
+  // Wait for page to be ready
+  await page.waitForLoadState('networkidle');
+  
+  // Fill credentials
   await page.fill('#emailOrUsername', email);
   await page.fill('#password', password);
-  await page.click('button[type="submit"]');
-  await page.waitForURL('**/dashboard');
+  
+  // Click submit and wait for either success or error
+  await Promise.all([
+    page.waitForResponse(response => 
+      response.url().includes('/api/auth/callback/credentials') || 
+      response.url().includes('/api/auth/signin'),
+      { timeout: 10000 }
+    ),
+    page.click('button[type="submit"]')
+  ]);
+  
+  // Wait a moment for any redirects
+  await page.waitForTimeout(1000);
+  
+  // Check if we got an error
+  const errorVisible = await page.locator('text=Invalid').isVisible();
+  if (errorVisible) {
+    throw new Error('Login failed - Invalid credentials');
+  }
+  
+  // Wait for dashboard
+  await page.waitForURL('**/dashboard', { timeout: 10000 });
 }
 
 export async function waitForToast(page: Page, message: string) {

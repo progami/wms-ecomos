@@ -1,5 +1,8 @@
+/**
+ * @jest-environment jsdom
+ */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ImportButton } from '@/components/ui/import-button';
 import { toast } from 'react-hot-toast';
@@ -9,10 +12,25 @@ import * as importConfig from '@/lib/import-config';
 jest.mock('react-hot-toast');
 jest.mock('@/lib/import-config');
 
+// Mock the Button component to avoid any Radix UI issues
+jest.mock('@/components/ui/button', () => {
+  const React = require('react');
+  return {
+    Button: React.forwardRef(({ children, ...props }: any, ref: any) => 
+      React.createElement('button', { ref, ...props }, children)
+    )
+  };
+});
+
 // Mock fetch
 global.fetch = jest.fn();
 global.URL.createObjectURL = jest.fn(() => 'blob:test-url');
 global.URL.revokeObjectURL = jest.fn();
+
+// Helper to simulate file upload since userEvent.upload is causing issues
+const simulateFileUpload = (input: HTMLElement, file: File) => {
+  fireEvent.change(input, { target: { files: [file] } });
+};
 
 describe('ImportButton Component', () => {
   const mockConfig = {
@@ -72,8 +90,9 @@ describe('ImportButton Component', () => {
       const button = screen.getByRole('button', { name: /Import Products/i });
       fireEvent.click(button);
       
-      expect(screen.getByText('Import Products')).toBeInTheDocument();
+      // Check for modal-specific content
       expect(screen.getByText('Import Instructions:')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Import Products' })).toBeInTheDocument();
     });
 
     it('closes modal when close button is clicked', () => {
@@ -81,8 +100,9 @@ describe('ImportButton Component', () => {
       
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
-      const closeButton = screen.getByRole('button', { name: '' }); // X button
-      fireEvent.click(closeButton);
+      const closeButton = screen.getAllByRole('button').find(btn => btn.querySelector('.lucide-x')); // X button
+      expect(closeButton).toBeInTheDocument();
+      fireEvent.click(closeButton!);
       
       expect(screen.queryByText('Import Instructions:')).not.toBeInTheDocument();
     });
@@ -136,9 +156,20 @@ describe('ImportButton Component', () => {
 
   describe('Template download', () => {
     it('downloads template when button is clicked', async () => {
-      const mockCreateElement = jest.spyOn(document, 'createElement');
       const mockClick = jest.fn();
-      mockCreateElement.mockReturnValue({ click: mockClick } as any);
+      const mockAnchor = {
+        href: '',
+        download: '',
+        click: mockClick,
+      };
+      const originalCreateElement = document.createElement.bind(document);
+      const mockCreateElement = jest.spyOn(document, 'createElement');
+      mockCreateElement.mockImplementation((tagName: string) => {
+        if (tagName === 'a') {
+          return mockAnchor as any;
+        }
+        return originalCreateElement(tagName);
+      });
       
       render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
@@ -171,60 +202,60 @@ describe('ImportButton Component', () => {
 
   describe('File selection', () => {
     it('accepts Excel files', async () => {
-      const user = userEvent.setup();
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
       expect(screen.getByText(/Selected: test.xlsx/)).toBeInTheDocument();
     });
 
     it('shows file size', async () => {
-      const user = userEvent.setup();
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['x'.repeat(1024 * 1024)], 'large.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
       expect(screen.getByText(/1.00 MB/)).toBeInTheDocument();
     });
 
     it('rejects non-Excel files', async () => {
-      const user = userEvent.setup();
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
       expect(toast.error).toHaveBeenCalledWith('Please select a valid Excel file');
       expect(screen.queryByText(/Selected:/)).not.toBeInTheDocument();
     });
 
     it('accepts .xls files', async () => {
-      const user = userEvent.setup();
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xls', {
         type: 'application/vnd.ms-excel'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
       expect(screen.getByText(/Selected: test.xls/)).toBeInTheDocument();
     });
@@ -232,18 +263,18 @@ describe('ImportButton Component', () => {
 
   describe('Import process', () => {
     it('imports file successfully', async () => {
-      const user = userEvent.setup();
       const onImportComplete = jest.fn();
       
-      render(<ImportButton entityName="products" onImportComplete={onImportComplete} />);
+      const { container } = render(<ImportButton entityName="products" onImportComplete={onImportComplete} />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
       const importButton = screen.getByRole('button', { name: 'Import' });
       fireEvent.click(importButton);
@@ -254,51 +285,72 @@ describe('ImportButton Component', () => {
       });
     });
 
-    it('shows error when no file is selected', () => {
-      render(<ImportButton entityName="products" />);
+    it('disables import button when no file is selected', () => {
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
-      const importButton = screen.getByRole('button', { name: 'Import' });
-      fireEvent.click(importButton);
-      
-      expect(toast.error).toHaveBeenCalledWith('Please select a file to import');
+      // The Import button should be disabled when no file is selected
+      const modalButtons = screen.getAllByRole('button');
+      const importButton = modalButtons.find(btn => btn.textContent?.includes('Import') && btn.textContent !== 'Import Products');
+      expect(importButton).toBeInTheDocument();
+      expect(importButton).toBeDisabled();
     });
 
     it('shows importing state', async () => {
-      const user = userEvent.setup();
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
-      const importButton = screen.getByRole('button', { name: 'Import' });
-      fireEvent.click(importButton);
+      // Find the Import button (not the main Import Products button)
+      const modalButtons = screen.getAllByRole('button');
+      const importButton = modalButtons.find(btn => btn.textContent === 'Import');
+      expect(importButton).toBeInTheDocument();
       
-      expect(screen.getByText('Importing...')).toBeInTheDocument();
-      expect(importButton).toBeDisabled();
+      // Mock a delayed response to see the importing state
+      let resolvePromise: any;
+      (global.fetch as jest.Mock).mockImplementationOnce(() => 
+        new Promise(resolve => { resolvePromise = resolve; })
+      );
+      
+      fireEvent.click(importButton!);
+      
+      // Check for importing state
+      await waitFor(() => {
+        const importingButton = screen.getByRole('button', { name: /Importing/i });
+        expect(importingButton).toBeInTheDocument();
+        expect(importingButton).toBeDisabled();
+      });
+      
+      // Resolve the promise to complete the test
+      resolvePromise({
+        ok: true,
+        json: async () => ({ result: { imported: 10, skipped: 2, errors: [] } })
+      });
     });
 
     it('handles import errors', async () => {
-      const user = userEvent.setup();
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         json: async () => ({ error: 'Import failed due to invalid data' }),
       });
       
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
       const importButton = screen.getByRole('button', { name: 'Import' });
       fireEvent.click(importButton);
@@ -311,19 +363,23 @@ describe('ImportButton Component', () => {
 
   describe('Import results', () => {
     it('displays successful import results', async () => {
-      const user = userEvent.setup();
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
-      const importButton = screen.getByRole('button', { name: 'Import' });
-      fireEvent.click(importButton);
+      // Find the Import button
+      const modalButtons = screen.getAllByRole('button');
+      const importButton = modalButtons.find(btn => btn.textContent === 'Import');
+      expect(importButton).toBeInTheDocument();
+      
+      fireEvent.click(importButton!);
       
       await waitFor(() => {
         expect(screen.getByText('Import Results')).toBeInTheDocument();
@@ -334,7 +390,6 @@ describe('ImportButton Component', () => {
     });
 
     it('displays partial success with errors', async () => {
-      const user = userEvent.setup();
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -346,28 +401,34 @@ describe('ImportButton Component', () => {
         }),
       });
       
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
-      const importButton = screen.getByRole('button', { name: 'Import' });
-      fireEvent.click(importButton);
+      // Find the Import button
+      const modalButtons = screen.getAllByRole('button');
+      const importButton = modalButtons.find(btn => btn.textContent === 'Import');
+      expect(importButton).toBeInTheDocument();
+      
+      fireEvent.click(importButton!);
       
       await waitFor(() => {
+        expect(screen.getByText('Import Results')).toBeInTheDocument();
         expect(screen.getByText('Partial Success')).toBeInTheDocument();
-        expect(screen.getByText('Row 3: Invalid SKU')).toBeInTheDocument();
-        expect(screen.getByText('Row 5: Missing name')).toBeInTheDocument();
+        // Errors are displayed with bullet points
+        expect(screen.getByText(/• Row 3: Invalid SKU/)).toBeInTheDocument();
+        expect(screen.getByText(/• Row 5: Missing name/)).toBeInTheDocument();
       });
     });
 
     it('truncates long error lists', async () => {
-      const user = userEvent.setup();
       const errors = Array(10).fill(null).map((_, i) => `Row ${i + 1}: Error`);
       
       (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -377,29 +438,34 @@ describe('ImportButton Component', () => {
         }),
       });
       
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
       
       const file = new File(['test'], 'test.xlsx', {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
-      const importButton = screen.getByRole('button', { name: 'Import' });
-      fireEvent.click(importButton);
+      // Find the Import button
+      const modalButtons = screen.getAllByRole('button');
+      const importButton = modalButtons.find(btn => btn.textContent === 'Import');
+      expect(importButton).toBeInTheDocument();
+      
+      fireEvent.click(importButton!);
       
       await waitFor(() => {
-        expect(screen.getByText('...and 5 more errors')).toBeInTheDocument();
+        expect(screen.getByText('Import Results')).toBeInTheDocument();
+        expect(screen.getByText(/• \.\.\.and 5 more errors/)).toBeInTheDocument();
       });
     });
   });
 
   describe('State management', () => {
     it('resets state when modal is closed and reopened', async () => {
-      const user = userEvent.setup();
-      render(<ImportButton entityName="products" />);
+      const { container } = render(<ImportButton entityName="products" />);
       
       // Open modal and select file
       fireEvent.click(screen.getByRole('button', { name: /Import Products/i }));
@@ -408,8 +474,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = screen.getByLabelText(/Select Excel file/i);
-      await user.upload(input, file);
+      const input = container.querySelector('input[type="file"]');
+      expect(input).toBeInTheDocument();
+      simulateFileUpload(input!, file);
       
       expect(screen.getByText(/Selected: test.xlsx/)).toBeInTheDocument();
       

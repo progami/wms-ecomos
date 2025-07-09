@@ -1,3 +1,6 @@
+// Import jest-dom matchers
+import '@testing-library/jest-dom';
+
 // Polyfill for Response in jsdom
 if (typeof Response === 'undefined') {
   global.Response = class Response {

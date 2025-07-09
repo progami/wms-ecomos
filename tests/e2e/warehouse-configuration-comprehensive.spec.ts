@@ -1,3 +1,4 @@
+import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect, Page } from '@playwright/test'
 
 // Test configuration
@@ -64,7 +65,7 @@ test.describe('Warehouse Configuration - Warehouse Management', () => {
     await expect(page.locator('[data-testid="warehouse-list"]')).toBeVisible()
     
     // Check action buttons
-    await expect(page.locator('button:has-text("Add Warehouse")')).toBeVisible()
+    await expect(page.locator('button:has-text("Add Location")')).toBeVisible()
     await expect(page.locator('button:has-text("Import")')).toBeVisible()
     await expect(page.locator('button:has-text("Export")')).toBeVisible()
     
@@ -84,7 +85,7 @@ test.describe('Warehouse Configuration - Warehouse Management', () => {
   })
 
   test('Add new warehouse', async ({ page }) => {
-    await page.click('button:has-text("Add Warehouse")')
+    await page.click('button:has-text("Add Location")')
     
     // Check modal opens
     await expect(page.locator('h2:has-text("Add New Warehouse")')).toBeVisible()

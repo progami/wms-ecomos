@@ -110,9 +110,18 @@ describe('useToast Hook and ToastProvider', () => {
 
       act(() => {
         result.current.toast({ title: 'Toast 1' });
+      });
+      
+      // Advance time slightly to ensure different IDs
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      
+      act(() => {
         result.current.toast({ title: 'Toast 2' });
       });
 
+      expect(result.current.toasts).toHaveLength(2);
       const toastId = result.current.toasts[0].id;
 
       act(() => {
@@ -181,6 +190,14 @@ describe('useToast Hook and ToastProvider', () => {
 
       act(() => {
         result.current.toast({ title: 'Toast 1' });
+      });
+      
+      // Advance time slightly to ensure different IDs
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      
+      act(() => {
         result.current.toast({ title: 'Toast 2' });
       });
 

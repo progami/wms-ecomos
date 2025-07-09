@@ -1,21 +1,20 @@
 import { PrismaClient } from '@prisma/client'
-import request from 'supertest'
-import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
+
+import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
+import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
 import * as bcrypt from 'bcryptjs'
 
-// Mock next-auth at module level
-const mockGetServerSession = jest.fn()
-jest.mock('next-auth', () => ({
-  getServerSession: mockGetServerSession
-}))
 
+
+
+// Setup test authentication
+setupTestAuth()
 describe('User Management API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
   let adminUser: any
   let regularUser: any
-  let adminSession: any
-  let userSession: any
+  let request: ReturnType<typeof createAuthenticatedRequest>
 
   beforeAll(async () => {
     const setup = await setupTestDatabase()
@@ -23,33 +22,28 @@ describe('User Management API Endpoints', () => {
     databaseUrl = setup.databaseUrl
 
     // Create test users
-    adminUser = await createTestUser(prisma, 'ADMIN')
+    adminUser = await createTestUser(prisma, 'admin')
     regularUser = await createTestUser(prisma, 'staff')
     
-    // Create sessions
-    adminSession = await createTestSession(adminUser.id)
-    userSession = await createTestSession(regularUser.id)
+    // Create authenticated request helper
+    request = createAuthenticatedRequest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
   })
 
   afterAll(async () => {
     await teardownTestDatabase(prisma, databaseUrl)
   })
 
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
+  
 
   describe('GET /api/admin/users', () => {
     it('should return list of users for admin', async () => {
       // Create additional test users
       await createTestUser(prisma, 'staff')
-      await createTestUser(prisma, 'VIEWER')
+      await createTestUser(prisma, 'staff')
       
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/admin/users')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('users')
@@ -58,11 +52,9 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should filter users by role', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/admin/users?role=admin')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.users.every((u: any) => u.role === 'admin')).toBe(true)
@@ -76,11 +68,9 @@ describe('User Management API Endpoints', () => {
         data: { isActive: false }
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/admin/users?isActive=false')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.users.some((u: any) => u.id === inactiveUser.id)).toBe(true)
@@ -92,30 +82,26 @@ describe('User Management API Endpoints', () => {
       const searchUser = await prisma.user.create({
         data: {
           email: 'searchtest@example.com',
-          name: 'Searchable User',
-          password: await bcrypt.hash('password123', 10),
+          fullName: 'Searchable User',
+          passwordHash: await bcrypt.hash('password123', 10),
           role: 'staff',
           emailVerified: new Date(),
           isActive: true
         }
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/admin/users?search=searchable')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.users.some((u: any) => u.id === searchUser.id)).toBe(true)
     })
 
     it('should return 403 for non-admin users', async () => {
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/admin/users')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(403)
       expect(response.body).toHaveProperty('error', 'Forbidden')
@@ -124,16 +110,17 @@ describe('User Management API Endpoints', () => {
 
   describe('POST /api/admin/users', () => {
     it('should create new user with valid data', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
+      // No need for mockGetServerSession with test auth setup
 
       const newUser = {
         email: 'newuser@example.com',
-        name: 'New User',
+        fullName: 'New User',
         password: 'SecurePassword123!',
         role: 'staff'
       }
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/admin/users')
         .set('Cookie', 'next-auth.session-token=test-token')
         .send(newUser)
@@ -142,21 +129,19 @@ describe('User Management API Endpoints', () => {
       expect(response.body).toHaveProperty('id')
       expect(response.body).toMatchObject({
         email: newUser.email,
-        name: newUser.name,
+        fullName: newUser.fullName,
         role: newUser.role
       })
       expect(response.body).not.toHaveProperty('password')
     })
 
     it('should validate email format', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/admin/users')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           email: 'invalid-email',
-          name: 'Test User',
+          fullName: 'Test User',
           password: 'password123',
           role: 'staff'
         })
@@ -168,14 +153,12 @@ describe('User Management API Endpoints', () => {
     it('should prevent duplicate emails', async () => {
       const existingUser = await createTestUser(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/admin/users')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           email: existingUser.email,
-          name: 'Duplicate User',
+          fullName: 'Duplicate User',
           password: 'password123',
           role: 'staff'
         })
@@ -185,14 +168,12 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should validate password strength', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/admin/users')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           email: 'weakpassword@example.com',
-          name: 'Test User',
+          fullName: 'Test User',
           password: '123', // Too weak
           role: 'staff'
         })
@@ -202,14 +183,12 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should validate role', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/admin/users')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           email: 'invalidrole@example.com',
-          name: 'Test User',
+          fullName: 'Test User',
           password: 'password123',
           role: 'SUPERADMIN' // Invalid role
         })
@@ -223,14 +202,15 @@ describe('User Management API Endpoints', () => {
     it('should update user details', async () => {
       const userToUpdate = await createTestUser(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
+      // No need for mockGetServerSession with test auth setup
 
       const updates = {
-        name: 'Updated Name',
-        role: 'VIEWER'
+        fullName: 'Updated Name',
+        role: 'staff'
       }
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .put(`/api/admin/users/${userToUpdate.id}`)
         .set('Cookie', 'next-auth.session-token=test-token')
         .send(updates)
@@ -242,11 +222,9 @@ describe('User Management API Endpoints', () => {
     it('should update user password', async () => {
       const userToUpdate = await createTestUser(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put(`/api/admin/users/${userToUpdate.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           password: 'NewSecurePassword123!'
         })
@@ -257,18 +235,16 @@ describe('User Management API Endpoints', () => {
       const updatedUser = await prisma.user.findUnique({
         where: { id: userToUpdate.id }
       })
-      const passwordValid = await bcrypt.compare('NewSecurePassword123!', updatedUser!.password)
+      const passwordValid = await bcrypt.compare('NewSecurePassword123!', updatedUser!.passwordHash)
       expect(passwordValid).toBe(true)
     })
 
     it('should deactivate user', async () => {
       const userToDeactivate = await createTestUser(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put(`/api/admin/users/${userToDeactivate.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           isActive: false
         })
@@ -278,11 +254,9 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should not allow updating own admin role', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           role: 'staff'
         })
@@ -292,13 +266,11 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should return 404 for non-existent user', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put('/api/admin/users/non-existent-id')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
-          name: 'Updated Name'
+          fullName: 'Updated Name'
         })
 
       expect(response.status).toBe(404)
@@ -310,11 +282,9 @@ describe('User Management API Endpoints', () => {
     it('should soft delete user (deactivate)', async () => {
       const userToDelete = await createTestUser(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .delete(`/api/admin/users/${userToDelete.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       
@@ -326,11 +296,9 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should not allow deleting own account', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .delete(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(400)
       expect(response.body).toHaveProperty('error', expect.stringContaining('Cannot delete your own account'))
@@ -346,11 +314,9 @@ describe('User Management API Endpoints', () => {
         data: { role: 'staff' }
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .delete(`/api/admin/users/${adminUser.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(400)
       expect(response.body).toHaveProperty('error', expect.stringContaining('last admin'))
@@ -364,7 +330,7 @@ describe('User Management API Endpoints', () => {
         data: {
           userId: adminUser.id,
           action: 'CREATE',
-          entityType: 'staff',
+          entityType: 'USER',
           entityId: 'test-user-id',
           details: { email: 'test@example.com' },
           timestamp: new Date()
@@ -381,11 +347,9 @@ describe('User Management API Endpoints', () => {
         }
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/audit-logs')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('logs')
@@ -394,25 +358,21 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should filter audit logs by user', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/audit-logs?userId=${adminUser.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.logs.every((log: any) => log.userId === adminUser.id)).toBe(true)
     })
 
     it('should filter audit logs by entity type', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/audit-logs?entityType=USER')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
-      expect(response.body.logs.every((log: any) => log.entityType === 'staff')).toBe(true)
+      expect(response.body.logs.every((log: any) => log.entityType === 'USER')).toBe(true)
     })
 
     it('should filter audit logs by date range', async () => {
@@ -426,11 +386,9 @@ describe('User Management API Endpoints', () => {
         }
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/audit-logs?startDate=2024-02-01')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.logs.every((log: any) => 
@@ -439,11 +397,9 @@ describe('User Management API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/audit-logs')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(403)
       expect(response.body).toHaveProperty('error', 'Forbidden')

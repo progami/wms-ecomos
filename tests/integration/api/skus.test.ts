@@ -1,21 +1,18 @@
 import { PrismaClient } from '@prisma/client'
-import request from 'supertest'
-import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
-import { createTestSku } from './setup/fixtures'
 
-// Mock next-auth at module level
-const mockGetServerSession = jest.fn()
-jest.mock('next-auth', () => ({
-  getServerSession: mockGetServerSession
-}))
+import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
+import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
+import { createTestSku, createTestWarehouse, createTestTransaction } from './setup/fixtures'
 
+
+// Setup test authentication
+setupTestAuth()
 describe('SKU API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
   let adminUser: any
   let regularUser: any
-  let adminSession: any
-  let userSession: any
+  let request: ReturnType<typeof createAuthenticatedRequest>
 
   beforeAll(async () => {
     const setup = await setupTestDatabase()
@@ -23,20 +20,15 @@ describe('SKU API Endpoints', () => {
     databaseUrl = setup.databaseUrl
 
     // Create test users
-    adminUser = await createTestUser(prisma, 'ADMIN')
-    regularUser = await createTestUser(prisma, 'USER')
+    adminUser = await createTestUser(prisma, 'admin')
+    regularUser = await createTestUser(prisma, 'staff')
     
-    // Create sessions
-    adminSession = await createTestSession(adminUser.id)
-    userSession = await createTestSession(regularUser.id)
+    // Create authenticated request helper
+    request = createAuthenticatedRequest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
   })
 
   afterAll(async () => {
     await teardownTestDatabase(prisma, databaseUrl)
-  })
-
-  beforeEach(() => {
-    jest.clearAllMocks()
   })
 
   describe('GET /api/skus', () => {
@@ -46,11 +38,9 @@ describe('SKU API Endpoints', () => {
       await createTestSku(prisma, { skuCode: 'TEST-002' })
       await createTestSku(prisma, { skuCode: 'TEST-003', isActive: false })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/skus')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('skus')
@@ -59,9 +49,7 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      mockGetServerSession.mockResolvedValue(null)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request(serverUrl)
         .get('/api/skus')
 
       expect(response.status).toBe(401)
@@ -72,11 +60,13 @@ describe('SKU API Endpoints', () => {
       await createTestSku(prisma, { skuCode: 'WIDGET-001', description: 'Blue Widget' })
       await createTestSku(prisma, { skuCode: 'GADGET-001', description: 'Red Gadget' })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await createAuthenticatedRequest(serverUrl, {
+        id: regularUser.id,
+        email: regularUser.email,
+        name: regularUser.fullName,
+        role: regularUser.role
+      })
         .get('/api/skus?search=widget')
-        .set('Cookie', 'next-auth.session-token=test-token')
 
       expect(response.status).toBe(200)
       expect(response.body.skus).toHaveLength(1)
@@ -87,11 +77,9 @@ describe('SKU API Endpoints', () => {
       await createTestSku(prisma, { isActive: true })
       await createTestSku(prisma, { isActive: false })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/skus?includeInactive=true')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.skus.length).toBeGreaterThanOrEqual(2)
@@ -103,11 +91,9 @@ describe('SKU API Endpoints', () => {
         await createTestSku(prisma, { skuCode: `BULK-${i.toString().padStart(3, '0')}` })
       }
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/skus?page=2&limit=10')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.skus.length).toBeLessThanOrEqual(10)
@@ -118,8 +104,6 @@ describe('SKU API Endpoints', () => {
 
   describe('POST /api/skus', () => {
     it('should create new SKU with valid data', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
       const newSku = {
         skuCode: 'NEW-SKU-001',
         asin: 'B0123456789',
@@ -132,13 +116,12 @@ describe('SKU API Endpoints', () => {
         cartonDimensionsCm: '50x50x50',
         cartonWeightKg: 15.5,
         packagingType: 'Carton',
-        notes: 'Test SKU creation',
         isActive: true
       }
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/skus')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send(newSku)
 
       expect(response.status).toBe(201)
@@ -151,11 +134,9 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/skus')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
         .send({
           skuCode: 'FORBIDDEN-SKU',
           description: 'Should not be created',
@@ -168,11 +149,9 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should validate required fields', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/skus')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           // Missing required fields
           description: 'Incomplete SKU'
@@ -185,11 +164,9 @@ describe('SKU API Endpoints', () => {
     it('should prevent duplicate SKU codes', async () => {
       const existingSku = await createTestSku(prisma, { skuCode: 'DUPLICATE-001' })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/skus')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           skuCode: 'DUPLICATE-001',
           description: 'Duplicate SKU',
@@ -202,11 +179,9 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should sanitize input data', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/skus')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           skuCode: '<script>alert("XSS")</script>',
           description: 'Test <b>Product</b>',
@@ -224,11 +199,9 @@ describe('SKU API Endpoints', () => {
     it('should return SKU details by ID', async () => {
       const sku = await createTestSku(prisma)
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/skus/${sku.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toMatchObject({
@@ -239,11 +212,9 @@ describe('SKU API Endpoints', () => {
     })
 
     it('should return 404 for non-existent SKU', async () => {
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/skus/non-existent-id')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(404)
       expect(response.body).toHaveProperty('error', 'SKU not found')
@@ -254,17 +225,14 @@ describe('SKU API Endpoints', () => {
     it('should update SKU with valid data', async () => {
       const sku = await createTestSku(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
       const updates = {
         description: 'Updated Description',
         packSize: 20,
-        notes: 'Updated notes'
       }
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put(`/api/skus/${sku.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send(updates)
 
       expect(response.status).toBe(200)
@@ -274,11 +242,9 @@ describe('SKU API Endpoints', () => {
     it('should validate update data', async () => {
       const sku = await createTestSku(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put(`/api/skus/${sku.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           packSize: -5 // Invalid negative value
         })
@@ -292,16 +258,14 @@ describe('SKU API Endpoints', () => {
     it('should soft delete SKU (set inactive)', async () => {
       const sku = await createTestSku(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .delete(`/api/skus/${sku.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
 
       expect(response.status).toBe(200)
       
       // Verify SKU is inactive
-      const deletedSku = await prisma.sKU.findUnique({
+      const deletedSku = await prisma.sku.findUnique({
         where: { id: sku.id }
       })
       expect(deletedSku?.isActive).toBe(false)
@@ -310,11 +274,9 @@ describe('SKU API Endpoints', () => {
     it('should return 403 for non-admin users', async () => {
       const sku = await createTestSku(prisma)
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .delete(`/api/skus/${sku.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(403)
     })
@@ -323,38 +285,29 @@ describe('SKU API Endpoints', () => {
   describe('GET /api/skus/:id/next-batch', () => {
     it('should return next available batch for SKU', async () => {
       const sku = await createTestSku(prisma)
+      const warehouse = await createTestWarehouse(prisma)
       
-      // Create batches with different quantities
-      await prisma.batch.create({
-        data: {
-          batchNumber: 'BATCH-001',
-          skuId: sku.id,
-          warehouseId: 'WH-001',
-          quantity: 50,
-          receivedDate: new Date('2024-01-01'),
-          status: 'ACTIVE'
-        }
+      // Create transactions with batch info
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        batchLot: 'BATCH-001',
+        transactionType: 'RECEIVE',
+        cartonsIn: 10,
+        transactionDate: new Date('2024-01-01')
       })
 
-      await prisma.batch.create({
-        data: {
-          batchNumber: 'BATCH-002',
-          skuId: sku.id,
-          warehouseId: 'WH-001',
-          quantity: 100,
-          receivedDate: new Date('2024-01-15'),
-          status: 'ACTIVE'
-        }
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        batchLot: 'BATCH-002',
+        transactionType: 'RECEIVE',
+        cartonsIn: 10,
+        transactionDate: new Date('2024-01-15')
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/skus/${sku.id}/next-batch`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty('batchNumber', 'BATCH-001') // FIFO - oldest first
+      expect(response.body).toHaveProperty('batchLot', 'BATCH-001') // FIFO - oldest first
     })
   })
 })

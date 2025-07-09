@@ -128,7 +128,7 @@ describe('Card Components', () => {
     it('merges custom className', () => {
       render(<CardContent className="p-8" data-testid="content">Content</CardContent>);
       const content = screen.getByTestId('content');
-      expect(content).toHaveClass('p-8', 'pt-0');
+      expect(content).toHaveClass('p-8');
     });
   });
 

@@ -1,21 +1,17 @@
 import { PrismaClient } from '@prisma/client'
-import request from 'supertest'
-import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
+import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
 import { createTestSku, createTestWarehouse, createTestInventoryBalance, createTestTransaction } from './setup/fixtures'
+import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
 
-// Mock next-auth at module level
-const mockGetServerSession = jest.fn()
-jest.mock('next-auth', () => ({
-  getServerSession: mockGetServerSession
-}))
+// Setup test authentication
+setupTestAuth()
 
 describe('Inventory API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
   let adminUser: any
   let regularUser: any
-  let adminSession: any
-  let userSession: any
+  let request: ReturnType<typeof createAuthenticatedRequest>
 
   beforeAll(async () => {
     const setup = await setupTestDatabase()
@@ -23,36 +19,29 @@ describe('Inventory API Endpoints', () => {
     databaseUrl = setup.databaseUrl
 
     // Create test users
-    adminUser = await createTestUser(prisma, 'ADMIN')
-    regularUser = await createTestUser(prisma, 'USER')
+    adminUser = await createTestUser(prisma, 'admin')
+    regularUser = await createTestUser(prisma, 'staff')
     
-    // Create sessions
-    adminSession = await createTestSession(adminUser.id)
-    userSession = await createTestSession(regularUser.id)
+    // Create authenticated request helper
+    request = createAuthenticatedRequest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
   })
 
   afterAll(async () => {
     await teardownTestDatabase(prisma, databaseUrl)
   })
 
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
-
   describe('GET /api/inventory/balances', () => {
     it('should return inventory balances for authenticated user', async () => {
       const sku1 = await createTestSku(prisma, { skuCode: 'INV-001' })
       const sku2 = await createTestSku(prisma, { skuCode: 'INV-002' })
-      const warehouse = await createTestWarehouse(prisma, { warehouseId: 'WH-INV-001' })
+      const warehouse = await createTestWarehouse(prisma, { code: 'WH-INV-001' })
 
-      await createTestInventoryBalance(prisma, sku1.id, warehouse.id, { availableQuantity: 100 })
-      await createTestInventoryBalance(prisma, sku2.id, warehouse.id, { availableQuantity: 200 })
+      await createTestInventoryBalance(prisma, sku1.id, warehouse.id, { currentCartons: 10, currentUnits: 240 })
+      await createTestInventoryBalance(prisma, sku2.id, warehouse.id, { currentCartons: 20, currentUnits: 480 })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/inventory/balances')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('balances')
@@ -62,17 +51,15 @@ describe('Inventory API Endpoints', () => {
 
     it('should filter by warehouse', async () => {
       const sku = await createTestSku(prisma)
-      const warehouse1 = await createTestWarehouse(prisma, { warehouseId: 'WH-001' })
-      const warehouse2 = await createTestWarehouse(prisma, { warehouseId: 'WH-002' })
+      const warehouse1 = await createTestWarehouse(prisma, { code: 'WH-001' })
+      const warehouse2 = await createTestWarehouse(prisma, { code: 'WH-002' })
 
       await createTestInventoryBalance(prisma, sku.id, warehouse1.id)
       await createTestInventoryBalance(prisma, sku.id, warehouse2.id)
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/inventory/balances?warehouseId=${warehouse1.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.balances).toHaveLength(1)
@@ -87,11 +74,9 @@ describe('Inventory API Endpoints', () => {
       await createTestInventoryBalance(prisma, sku1.id, warehouse.id)
       await createTestInventoryBalance(prisma, sku2.id, warehouse.id)
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/inventory/balances?skuId=${sku1.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.balances).toHaveLength(1)
@@ -103,9 +88,10 @@ describe('Inventory API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma, { name: 'Detail Warehouse' })
       await createTestInventoryBalance(prisma, sku.id, warehouse.id)
 
-      mockGetServerSession.mockResolvedValue(userSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/balances?includeDetails=true')
         .set('Cookie', 'next-auth.session-token=test-token')
 
@@ -117,9 +103,10 @@ describe('Inventory API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      mockGetServerSession.mockResolvedValue(null)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/balances')
 
       expect(response.status).toBe(401)
@@ -132,18 +119,19 @@ describe('Inventory API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'RECEIVE',
-        quantity: 100
+        cartonsIn: 10
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'SHIP',
-        quantity: -50
+        cartonsOut: 5
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions')
         .set('Cookie', 'next-auth.session-token=test-token')
 
@@ -156,19 +144,20 @@ describe('Inventory API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionDate: new Date('2024-01-01')
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionDate: new Date('2024-02-01')
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionDate: new Date('2024-03-01')
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions?startDate=2024-01-15&endDate=2024-02-15')
         .set('Cookie', 'next-auth.session-token=test-token')
 
@@ -180,19 +169,20 @@ describe('Inventory API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'RECEIVE'
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'SHIP'
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
-        transactionType: 'ADJUST'
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        transactionType: 'ADJUST_OUT'
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions?type=RECEIVE')
         .set('Cookie', 'next-auth.session-token=test-token')
 
@@ -207,14 +197,15 @@ describe('Inventory API Endpoints', () => {
 
       // Create 15 transactions
       for (let i = 0; i < 15; i++) {
-        await createTestTransaction(prisma, sku.id, warehouse.id, {
-          referenceNumber: `REF-${i.toString().padStart(3, '0')}`
+        await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+          referenceId: `REF-${i.toString().padStart(3, '0')}`
         })
       }
 
-      mockGetServerSession.mockResolvedValue(userSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/transactions?page=2&limit=10')
         .set('Cookie', 'next-auth.session-token=test-token')
 
@@ -227,18 +218,19 @@ describe('Inventory API Endpoints', () => {
 
   describe('POST /api/inventory/shipments/email', () => {
     it('should send shipment email notification', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
+      // No need for mockGetServerSession with test auth setup
 
       const emailData = {
         to: 'customer@example.com',
         shipmentId: 'SHIP-001',
         trackingNumber: '1234567890',
         items: [
-          { sku: 'TEST-001', description: 'Test Product', quantity: 5 }
+          { sku: 'TEST-001', description: 'Test Product', cartonsIn: 10 }
         ]
       }
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/inventory/shipments/email')
         .set('Cookie', 'next-auth.session-token=test-token')
         .send(emailData)
@@ -248,9 +240,10 @@ describe('Inventory API Endpoints', () => {
     })
 
     it('should validate email data', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/inventory/shipments/email')
         .set('Cookie', 'next-auth.session-token=test-token')
         .send({
@@ -268,47 +261,49 @@ describe('Inventory API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
-        status: 'PENDING'
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        isReconciled: false
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
-        status: 'IN_PROGRESS'
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        isReconciled: false
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
-        status: 'COMPLETED'
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        isReconciled: true
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/incomplete')
         .set('Cookie', 'next-auth.session-token=test-token')
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('transactions')
       expect(response.body.transactions).toHaveLength(2)
-      expect(response.body.transactions.every((t: any) => t.status !== 'COMPLETED')).toBe(true)
+      expect(response.body.transactions.every((t: any) => !t.isReconciled)).toBe(true)
     })
 
     it('should include transaction details', async () => {
       const sku = await createTestSku(prisma, { skuCode: 'INCOMPLETE-001' })
       const warehouse = await createTestWarehouse(prisma, { name: 'Incomplete Warehouse' })
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
-        status: 'PENDING',
-        referenceNumber: 'INC-REF-001'
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        isReconciled: false,
+        referenceId: 'INC-REF-001'
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/inventory/incomplete')
         .set('Cookie', 'next-auth.session-token=test-token')
 
       expect(response.status).toBe(200)
       expect(response.body.transactions[0]).toHaveProperty('sku')
       expect(response.body.transactions[0]).toHaveProperty('warehouse')
-      expect(response.body.transactions[0].referenceNumber).toBe('INC-REF-001')
+      expect(response.body.transactions[0].referenceId).toBe('INC-REF-001')
     })
   })
 })

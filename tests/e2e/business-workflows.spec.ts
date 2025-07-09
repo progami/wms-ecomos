@@ -1,3 +1,4 @@
+import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect } from '@playwright/test'
 
 const BASE_URL = 'http://localhost:3002'
@@ -143,7 +144,7 @@ test.describe('🚚 Complete Shipping Workflow', () => {
     const warehouses = ['LON-01', 'MAN-01']
     
     for (let i = 0; i < warehouses.length; i++) {
-      await page.click('button:has-text("Add Warehouse")')
+      await page.click('button:has-text("Add Location")')
       await page.selectOption(`select[name="warehouse-${i}"]`, warehouses[i])
       
       // Add items for this warehouse

@@ -1,21 +1,20 @@
 import { PrismaClient } from '@prisma/client'
-import request from 'supertest'
-import { setupTestDatabase, teardownTestDatabase, createTestUser, createTestSession } from './setup/test-db'
-import { createTestSku, createTestWarehouse, createTestTransaction, createTestBatch } from './setup/fixtures'
 
-// Mock next-auth at module level
-const mockGetServerSession = jest.fn()
-jest.mock('next-auth', () => ({
-  getServerSession: mockGetServerSession
-}))
+import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
+import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
+import { createTestSku, createTestWarehouse, createTestTransaction } from './setup/fixtures'
 
+
+
+
+// Setup test authentication
+setupTestAuth()
 describe('Transaction API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
   let adminUser: any
   let regularUser: any
-  let adminSession: any
-  let userSession: any
+  let request: ReturnType<typeof createAuthenticatedRequest>
 
   beforeAll(async () => {
     const setup = await setupTestDatabase()
@@ -23,41 +22,36 @@ describe('Transaction API Endpoints', () => {
     databaseUrl = setup.databaseUrl
 
     // Create test users
-    adminUser = await createTestUser(prisma, 'ADMIN')
-    regularUser = await createTestUser(prisma, 'USER')
+    adminUser = await createTestUser(prisma, 'admin')
+    regularUser = await createTestUser(prisma, 'staff')
     
-    // Create sessions
-    adminSession = await createTestSession(adminUser.id)
-    userSession = await createTestSession(regularUser.id)
+    // Create authenticated request helper
+    request = createAuthenticatedRequest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
   })
 
   afterAll(async () => {
     await teardownTestDatabase(prisma, databaseUrl)
   })
 
-  beforeEach(() => {
-    jest.clearAllMocks()
-  })
+  
 
   describe('GET /api/transactions', () => {
     it('should return list of transactions for authenticated user', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'RECEIVE',
-        quantity: 100
+        cartonsIn: 10
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'SHIP',
-        quantity: -50
+        cartonsOut: 5
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/transactions')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('transactions')
@@ -66,9 +60,10 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should return 401 for unauthenticated request', async () => {
-      mockGetServerSession.mockResolvedValue(null)
+      // No need for mockGetServerSession with test auth setup
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .get('/api/transactions')
 
       expect(response.status).toBe(401)
@@ -79,21 +74,19 @@ describe('Transaction API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'RECEIVE'
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'SHIP'
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
-        transactionType: 'ADJUST'
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        transactionType: 'ADJUST_OUT'
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/transactions?type=RECEIVE')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.transactions).toHaveLength(1)
@@ -104,21 +97,19 @@ describe('Transaction API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionDate: new Date('2024-01-01')
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionDate: new Date('2024-02-01')
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionDate: new Date('2024-03-01')
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/transactions?startDate=2024-01-15&endDate=2024-02-15')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.transactions).toHaveLength(1)
@@ -130,16 +121,14 @@ describe('Transaction API Endpoints', () => {
 
       // Create 15 transactions
       for (let i = 0; i < 15; i++) {
-        await createTestTransaction(prisma, sku.id, warehouse.id, {
-          referenceNumber: `TX-${i.toString().padStart(3, '0')}`
+        await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+          referenceId: `TX-${i.toString().padStart(3, '0')}`
         })
       }
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/transactions?page=2&limit=10')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body.transactions.length).toBeLessThanOrEqual(10)
@@ -152,24 +141,20 @@ describe('Transaction API Endpoints', () => {
     it('should create new transaction with valid data', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
-      const batch = await createTestBatch(prisma, sku.id, warehouse.id)
-
-      mockGetServerSession.mockResolvedValue(adminSession)
+      // No need for mockGetServerSession with test auth setup
 
       const newTransaction = {
         transactionType: 'RECEIVE',
-        transactionSubtype: 'STANDARD',
         skuId: sku.id,
         warehouseId: warehouse.id,
-        batchId: batch.id,
-        quantity: 50,
-        referenceNumber: 'REC-001',
-        amazonShipmentId: 'FBA123456',
+        batchLot: 'BATCH-001',
+        cartonsIn: 10,
+        referenceId: 'REC-001',
         transactionDate: new Date().toISOString(),
-        notes: 'Test receive transaction'
       }
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post('/api/transactions')
         .set('Cookie', 'next-auth.session-token=test-token')
         .send(newTransaction)
@@ -178,8 +163,8 @@ describe('Transaction API Endpoints', () => {
       expect(response.body).toHaveProperty('id')
       expect(response.body).toMatchObject({
         transactionType: newTransaction.transactionType,
-        quantity: newTransaction.quantity,
-        referenceNumber: newTransaction.referenceNumber
+        cartonsIn: newTransaction.cartonsIn,
+        referenceId: newTransaction.referenceId
       })
     })
 
@@ -187,18 +172,16 @@ describe('Transaction API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/transactions')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           transactionType: 'RECEIVE',
           transactionSubtype: 'STANDARD',
           skuId: sku.id,
           warehouseId: warehouse.id,
-          quantity: 100,
-          referenceNumber: 'REC-002',
+          cartonsIn: 10,
+          referenceId: 'REC-002',
           transactionDate: new Date().toISOString()
         })
 
@@ -213,14 +196,12 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should validate transaction data', async () => {
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/transactions')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           transactionType: 'INVALID_TYPE',
-          quantity: -100 // Invalid for receive
+          cartonsOut: 3 // Invalid for receive
         })
 
       expect(response.status).toBe(400)
@@ -231,22 +212,20 @@ describe('Transaction API Endpoints', () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
       await createTestInventoryBalance(prisma, sku.id, warehouse.id, {
-        availableQuantity: 50,
+        currentCartons: 10, currentUnits: 240,
         totalQuantity: 50
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/transactions')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
           transactionType: 'SHIP',
           transactionSubtype: 'STANDARD',
           skuId: sku.id,
           warehouseId: warehouse.id,
-          quantity: -100, // Exceeds available
-          referenceNumber: 'SHIP-001',
+          cartonsOut: 3, // Exceeds available
+          referenceId: 'SHIP-001',
           transactionDate: new Date().toISOString()
         })
 
@@ -255,14 +234,12 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should return 403 for non-admin users', async () => {
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post('/api/transactions')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
         .send({
           transactionType: 'RECEIVE',
-          quantity: 100
+          cartonsIn: 10
         })
 
       expect(response.status).toBe(403)
@@ -274,32 +251,28 @@ describe('Transaction API Endpoints', () => {
     it('should return transaction details by ID', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
+      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/transactions/${transaction.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toMatchObject({
         id: transaction.id,
         transactionType: transaction.transactionType,
-        quantity: transaction.quantity
+        cartonsIn: transaction.cartonsIn
       })
     })
 
     it('should include related data when requested', async () => {
       const sku = await createTestSku(prisma, { skuCode: 'TX-SKU-001' })
       const warehouse = await createTestWarehouse(prisma, { name: 'TX Warehouse' })
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
+      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/transactions/${transaction.id}?includeRelated=true`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('sku')
@@ -309,11 +282,9 @@ describe('Transaction API Endpoints', () => {
     })
 
     it('should return 404 for non-existent transaction', async () => {
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get('/api/transactions/non-existent-id')
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(404)
       expect(response.body).toHaveProperty('error', 'Transaction not found')
@@ -324,37 +295,33 @@ describe('Transaction API Endpoints', () => {
     it('should update transaction status', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, {
-        status: 'PENDING'
+      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        isReconciled: false
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put(`/api/transactions/${transaction.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
-          status: 'COMPLETED'
+          isReconciled: true
         })
 
       expect(response.status).toBe(200)
-      expect(response.body.status).toBe('COMPLETED')
+      expect(response.body.isReconciled).toBe(true)
     })
 
     it('should not allow quantity updates', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, {
-        quantity: 100
+      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        cartonsIn: 10
       })
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .put(`/api/transactions/${transaction.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .send({
-          quantity: 200 // Should not be allowed
+          cartonsIn: 10 // Should not be allowed
         })
 
       expect(response.status).toBe(400)
@@ -366,9 +333,9 @@ describe('Transaction API Endpoints', () => {
     it('should add attributes to transaction', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
+      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
+      // No need for mockGetServerSession with test auth setup
 
       const attributes = {
         customField1: 'value1',
@@ -376,7 +343,8 @@ describe('Transaction API Endpoints', () => {
         trackingNumber: 'TRACK123'
       }
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/transactions/${transaction.id}/attributes`)
         .set('Cookie', 'next-auth.session-token=test-token')
         .send(attributes)
@@ -390,13 +358,11 @@ describe('Transaction API Endpoints', () => {
     it('should upload attachment to transaction', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
+      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .post(`/api/transactions/${transaction.id}/attachments`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('admin', adminUser.id)
         .attach('file', Buffer.from('test file content'), 'test-document.pdf')
         .field('description', 'Test attachment')
 
@@ -408,14 +374,15 @@ describe('Transaction API Endpoints', () => {
     it('should validate file size', async () => {
       const sku = await createTestSku(prisma)
       const warehouse = await createTestWarehouse(prisma)
-      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id)
+      const transaction = await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id)
 
-      mockGetServerSession.mockResolvedValue(adminSession)
+      // No need for mockGetServerSession with test auth setup
 
       // Create a large buffer (over 10MB)
       const largeBuffer = Buffer.alloc(11 * 1024 * 1024)
 
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const supertest = require('supertest');
+      const response = await supertest(process.env.TEST_SERVER_URL || 'http://localhost:3000')
         .post(`/api/transactions/${transaction.id}/attachments`)
         .set('Cookie', 'next-auth.session-token=test-token')
         .attach('file', largeBuffer, 'large-file.pdf')
@@ -431,27 +398,25 @@ describe('Transaction API Endpoints', () => {
       const warehouse = await createTestWarehouse(prisma)
 
       // Create transactions to build ledger
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'RECEIVE',
-        quantity: 100,
+        cartonsIn: 10,
         transactionDate: new Date('2024-01-01')
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
         transactionType: 'SHIP',
-        quantity: -30,
+        cartonsOut: 3,
         transactionDate: new Date('2024-01-15')
       })
-      await createTestTransaction(prisma, sku.id, warehouse.id, {
-        transactionType: 'ADJUST',
-        quantity: -5,
+      await createTestTransaction(prisma, sku.id, warehouse.id, regularUser.id, {
+        transactionType: 'ADJUST_OUT',
+        cartonsOut: 3,
         transactionDate: new Date('2024-01-20')
       })
 
-      mockGetServerSession.mockResolvedValue(userSession)
-
-      const response = await request(process.env.TEST_SERVER_URL || 'http://localhost:3000')
+      const response = await request
         .get(`/api/transactions/ledger?skuId=${sku.id}&warehouseId=${warehouse.id}`)
-        .set('Cookie', 'next-auth.session-token=test-token')
+        .withAuth('staff', regularUser.id)
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('entries')

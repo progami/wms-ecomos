@@ -1,3 +1,4 @@
+import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect, Page } from '@playwright/test'
 
 // Test configuration
@@ -367,7 +368,7 @@ test.describe('Analytics Dashboard - Inventory Analytics', () => {
 
   test('Inventory metrics display', async ({ page }) => {
     // Check inventory metrics
-    await expect(page.locator('text="Total SKUs"')).toBeVisible()
+    await expect(page.locator('text="Market"')).toBeVisible()
     await expect(page.locator('text="Stock Value"')).toBeVisible()
     await expect(page.locator('text="Turnover Rate"')).toBeVisible()
     await expect(page.locator('text="Dead Stock"')).toBeVisible()

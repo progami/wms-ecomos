@@ -24,8 +24,9 @@ export async function setupTestDatabase(): Promise<{ prisma: PrismaClient; datab
   process.env.DATABASE_URL = databaseUrl
   
   // Create the database
-  execSync(`npx prisma db push --skip-generate`, {
-    env: { ...process.env, DATABASE_URL: databaseUrl }
+  execSync(`npx prisma db push --skip-generate --schema=../prisma/schema.prisma`, {
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+    cwd: process.cwd()
   })
   
   // Create Prisma client
@@ -62,10 +63,9 @@ export async function createTestUser(prisma: PrismaClient, role: 'admin' | 'staf
   const user = await prisma.user.create({
     data: {
       email: `test-${randomBytes(4).toString('hex')}@example.com`,
-      name: 'Test User',
-      password: '$2a$10$K7L1mrbVHC5SZxyoakG6wuqJPqm3WNmRuW9fhJz1w9TNJLXdJ1aJS', // password: "password123"
+      fullName: 'Test User',
+      passwordHash: '$2a$10$VldXqq6urbAo54EIvz79N.qRZqpI6JRtSBFOXwsnkcCyY5ZAjdVUm', // password: "password123"
       role,
-      emailVerified: new Date(),
       isActive: true
     }
   })
@@ -74,13 +74,13 @@ export async function createTestUser(prisma: PrismaClient, role: 'admin' | 'staf
 }
 
 // Create test session
-export async function createTestSession(userId: string) {
+export async function createTestSession(userId: string, role: 'admin' | 'staff' = 'staff') {
   return {
     user: {
       id: userId,
       email: 'test@example.com',
-      name: 'Test User',
-      role: 'USER'
+      fullName: 'Test User',
+      role
     },
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   }

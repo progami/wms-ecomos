@@ -1,3 +1,4 @@
+import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect, Page } from '@playwright/test';
 import { LoginPage } from './pages/LoginPage';
 
@@ -68,7 +69,7 @@ test.describe('Complete User Workflows', () => {
       await page.click('[role="option"]:first-child');
       
       // Add SKU
-      await page.click('button:has-text("Add SKU")');
+      await page.click('button:has-text("Create Product")');
       await page.fill('input[placeholder="Search SKUs..."]', 'TEST-SKU-001');
       await page.click('[role="option"]:has-text("TEST-SKU-001")');
       
@@ -107,7 +108,7 @@ test.describe('Complete User Workflows', () => {
       const skus = ['TEST-SKU-001', 'TEST-SKU-002', 'TEST-SKU-003'];
       
       for (const sku of skus) {
-        await page.click('button:has-text("Add SKU")');
+        await page.click('button:has-text("Create Product")');
         await page.fill('input[placeholder="Search SKUs..."]', sku);
         await page.keyboard.press('Enter');
         await page.fill(`input[name="quantity_${sku}"]`, '50');
@@ -458,7 +459,7 @@ test.describe('Complete User Workflows', () => {
       await page.click('[data-testid="warehouse-select"]');
       await page.click('[role="option"]:first-child');
       
-      await page.click('button:has-text("Add SKU")');
+      await page.click('button:has-text("Create Product")');
       await page.fill('input[placeholder="Search SKUs..."]', testSku);
       await page.keyboard.press('Enter');
       await page.fill('input[name="quantity"]', '100');
@@ -560,7 +561,7 @@ test.describe('Complete User Workflows', () => {
       await page.click('[data-testid="warehouse-select"]');
       await page.click('[role="option"]:first-child');
       
-      await page.click('button:has-text("Add SKU")');
+      await page.click('button:has-text("Create Product")');
       await page.fill('input[placeholder="Search SKUs..."]', 'TEST-SKU-001');
       await page.keyboard.press('Enter');
       

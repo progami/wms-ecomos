@@ -1,0 +1,214 @@
+<testsuites id="" name="" tests="24" failures="0" skipped="0" errors="0" time="56.809974">
+<testsuite name="page-load.spec.ts" timestamp="2025-07-09T14:25:46.294Z" hostname="chromium-performance" tests="8" failures="0" skipped="0" time="17.351" errors="0">
+<testcase name="⚡ Performance Tests - Page Load Times › Landing page performance" classname="page-load.spec.ts" time="1.232">
+<system-out>
+<![CDATA[Landing page load time: 973ms
+Performance metrics: {
+  domContentLoaded: [33m0[39m,
+  loadComplete: [33m0[39m,
+  firstPaint: [33m80[39m,
+  firstContentfulPaint: [33m80[39m
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Dashboard performance with data" classname="page-load.spec.ts" time="1.092">
+<system-out>
+<![CDATA[Home page full load time: 919ms
+Slow resources: [
+  {
+    name: [32m'main-app.js?v=1752071148066'[39m,
+    duration: [33m180[39m,
+    size: [33m1586960[39m,
+    type: [32m'script'[39m
+  }
+]
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Navigation performance" classname="page-load.spec.ts" time="2.819">
+<system-out>
+<![CDATA[Products page load time: 1388ms
+Inventory page load time: 128ms
+Finance page load time: 581ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Memory usage monitoring" classname="page-load.spec.ts" time="3.59">
+<system-out>
+<![CDATA[Initial memory usage: 70.55 MB
+Memory after reloads: 85.34 MB
+Memory increase: 14.79 MB
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › API response times" classname="page-load.spec.ts" time="2.605">
+<system-out>
+<![CDATA[API Response Times:
+  auth/session: 14ms
+  auth/session: 16ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Bundle size check" classname="page-load.spec.ts" time="1.137">
+<system-out>
+<![CDATA[Total bundle size: 0.00 MB
+Large files:
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Time to interactive (TTI)" classname="page-load.spec.ts" time="1.079">
+<system-out>
+<![CDATA[Time to Interactive: 903ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Cumulative Layout Shift (CLS)" classname="page-load.spec.ts" time="3.797">
+<system-out>
+<![CDATA[Cumulative Layout Shift: 0.000
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="page-load.spec.ts" timestamp="2025-07-09T14:25:46.294Z" hostname="firefox-performance" tests="8" failures="0" skipped="0" time="20.066" errors="0">
+<testcase name="⚡ Performance Tests - Page Load Times › Landing page performance" classname="page-load.spec.ts" time="2.407">
+<system-out>
+<![CDATA[Landing page load time: 1414ms
+Performance metrics: {
+  domContentLoaded: [33m0[39m,
+  loadComplete: [33m0[39m,
+  firstPaint: [33m0[39m,
+  firstContentfulPaint: [33m104[39m
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Dashboard performance with data" classname="page-load.spec.ts" time="1.672">
+<system-out>
+<![CDATA[Home page full load time: 1411ms
+Slow resources: [
+  {
+    name: [32m'main-app.js?v=1752071168435'[39m,
+    duration: [33m188[39m,
+    size: [33m1586960[39m,
+    type: [32m'script'[39m
+  },
+  { name: [32m'favicon.ico'[39m, duration: [33m318[39m, size: [33m300[39m, type: [32m'other'[39m },
+  { name: [32m'session'[39m, duration: [33m220[39m, size: [33m302[39m, type: [32m'fetch'[39m },
+  { name: [32m'session'[39m, duration: [33m239[39m, size: [33m302[39m, type: [32m'fetch'[39m }
+]
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Navigation performance" classname="page-load.spec.ts" time="4.102">
+<system-out>
+<![CDATA[Products page load time: 518ms
+Inventory page load time: 1493ms
+Finance page load time: 1053ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Memory usage monitoring" classname="page-load.spec.ts" time="1.47">
+<system-out>
+<![CDATA[Memory API not available in this browser
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › API response times" classname="page-load.spec.ts" time="3.085">
+<system-out>
+<![CDATA[API Response Times:
+  auth/session: 20ms
+  auth/session: 11ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Bundle size check" classname="page-load.spec.ts" time="1.826">
+<system-out>
+<![CDATA[Total bundle size: 0.00 MB
+Large files:
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Time to interactive (TTI)" classname="page-load.spec.ts" time="1.513">
+<system-out>
+<![CDATA[Time to Interactive: 1137ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Cumulative Layout Shift (CLS)" classname="page-load.spec.ts" time="3.991">
+<system-out>
+<![CDATA[Cumulative Layout Shift: 0.000
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="page-load.spec.ts" timestamp="2025-07-09T14:25:46.294Z" hostname="webkit-performance" tests="8" failures="0" skipped="0" time="14.603" errors="0">
+<testcase name="⚡ Performance Tests - Page Load Times › Landing page performance" classname="page-load.spec.ts" time="1.607">
+<system-out>
+<![CDATA[Landing page load time: 1075ms
+Performance metrics: {
+  domContentLoaded: [33m0[39m,
+  loadComplete: [33m0[39m,
+  firstPaint: [33m0[39m,
+  firstContentfulPaint: [33m97[39m
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Dashboard performance with data" classname="page-load.spec.ts" time="1.265">
+<system-out>
+<![CDATA[Home page full load time: 978ms
+Slow resources: [
+  {
+    name: [32m'main-app.js?v=1752071190126'[39m,
+    duration: [33m192[39m,
+    size: [33m1588143[39m,
+    type: [32m'script'[39m
+  }
+]
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Navigation performance" classname="page-load.spec.ts" time="1.618">
+<system-out>
+<![CDATA[Products page load time: 196ms
+Inventory page load time: 220ms
+Finance page load time: 122ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Memory usage monitoring" classname="page-load.spec.ts" time="0.796">
+<system-out>
+<![CDATA[Memory API not available in this browser
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › API response times" classname="page-load.spec.ts" time="2.776">
+<system-out>
+<![CDATA[API Response Times:
+  auth/session: 31ms
+  auth/session: 34ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Bundle size check" classname="page-load.spec.ts" time="1.461">
+<system-out>
+<![CDATA[Total bundle size: 0.00 MB
+Large files:
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Time to interactive (TTI)" classname="page-load.spec.ts" time="1.256">
+<system-out>
+<![CDATA[Time to Interactive: 993ms
+]]>
+</system-out>
+</testcase>
+<testcase name="⚡ Performance Tests - Page Load Times › Cumulative Layout Shift (CLS)" classname="page-load.spec.ts" time="3.824">
+<system-out>
+<![CDATA[Cumulative Layout Shift: 0.000
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>
