@@ -28,9 +28,12 @@ jest.mock('@/lib/prisma', () => ({
   default: {
     $connect: jest.fn(),
     $disconnect: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
     user: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn()
@@ -64,7 +67,8 @@ jest.mock('@/lib/prisma', () => ({
   },
   prisma: {
     $connect: jest.fn(),
-    $disconnect: jest.fn()
+    $disconnect: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }])
   }
 }))
 
@@ -80,8 +84,21 @@ jest.mock('amazon-sp-api', () => ({
   }))
 }))
 
+// Mock db-health module
+jest.mock('@/lib/db-health', () => ({
+  getDatabaseStatus: jest.fn(() => Promise.resolve({
+    isHealthy: true,
+    error: undefined
+  })),
+  checkDatabaseHealth: jest.fn(() => Promise.resolve({
+    isHealthy: true,
+    error: undefined
+  }))
+}))
+
 // Set test environment variables
 process.env.NODE_ENV = 'test'
 process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test'
 process.env.NEXTAUTH_URL = 'http://localhost:3000'
 process.env.NEXTAUTH_SECRET = 'test-secret'
+process.env.USE_TEST_AUTH = 'true'

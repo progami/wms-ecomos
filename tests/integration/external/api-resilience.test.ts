@@ -147,11 +147,10 @@ describe('API Resilience Integration Tests', () => {
           }
         })
       }
-      
-      const mockAPI = jest.fn(apiFunction)
 
       try {
-        await withTimeout(() => mockAPI(), 500)
+        // Pass the function directly to withTimeout so it can properly detect the signal parameter
+        await withTimeout(apiFunction, 500)
       } catch (error) {
         // Expected timeout
       }

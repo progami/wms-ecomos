@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 
 import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
-import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
+import { createAuthenticatedRequest } from './setup/authenticated-request'
 import { 
   createTestSku, 
   createTestWarehouse, 
@@ -15,8 +15,7 @@ import {
 
 
 
-// Setup test authentication
-setupTestAuth()
+// No need to setup test auth - it's handled by authenticated request
 describe('Reconciliation and Miscellaneous API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string

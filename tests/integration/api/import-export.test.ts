@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 
 import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
-import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
+import { createAuthenticatedRequest } from './setup/authenticated-request'
 import { createTestSku, createTestWarehouse, createTestTransaction, createTestInventoryBalance } from './setup/fixtures'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -9,8 +9,7 @@ import * as path from 'path'
 
 
 
-// Setup test authentication
-setupTestAuth()
+// No need to setup test auth - it's handled by authenticated request
 describe('Import/Export API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
