@@ -1,7 +1,7 @@
 import { callApiHandler } from './setup/mock-api-handler'
-import { GET as getSkus, POST as createSku } from '@/src/app/api/skus/route'
-import { GET as getSku, PUT as updateSku, DELETE as deleteSku } from '@/src/app/api/skus/[id]/route'
-import { GET as getNextBatch } from '@/src/app/api/skus/[id]/next-batch/route'
+import { GET as getSkus, POST as createSku } from '@/app/api/skus/route'
+import { GET as getSku, PUT as updateSku, DELETE as deleteSku } from '@/app/api/skus/[id]/route'
+import { GET as getNextBatch } from '@/app/api/skus/[id]/next-batch/route'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 

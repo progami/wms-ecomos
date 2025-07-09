@@ -1,6 +1,6 @@
 import { callApiHandler } from './setup/mock-api-handler'
-import { GET as healthHandler } from '@/src/app/api/health/route'
-import { GET as usersHandler } from '@/src/app/api/admin/users/route'
+import { GET as healthHandler } from '@/app/api/health/route'
+import { GET as usersHandler } from '@/app/api/admin/users/route'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { getServerSession } from 'next-auth'
@@ -57,7 +57,7 @@ describe('Authentication API', () => {
       mockGetServerSession.mockResolvedValueOnce(null)
       
       // Mock the inventory balances handler
-      const { GET } = await import('@/src/app/api/inventory/balances/route')
+      const { GET } = await import('@/app/api/inventory/balances/route')
       const response = await callApiHandler(GET, '/api/inventory/balances')
       
       expect(response.status).toBe(401)

@@ -13,6 +13,8 @@ module.exports = {
   ],
   // Standard timeout for mocked tests
   testTimeout: 10000,
+  // Force exit after test run completes
+  forceExit: true,
   // Module name mapper for TypeScript paths
   moduleNameMapper: {
     ...baseConfig.moduleNameMapper,
