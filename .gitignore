@@ -216,6 +216,7 @@ check-*.sh
 fix-*.sh
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
 !ecosystem*.json
 !next.config.json
