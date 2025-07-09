@@ -307,6 +307,9 @@ jobs:
         run: |
           echo "coverage_percentage=85" >> $GITHUB_OUTPUT
           echo "Coverage: 85%" >> $GITHUB_STEP_SUMMARY
+          
+    outputs:
+      coverage_percentage: ${{ steps.coverage-summary.outputs.coverage_percentage }}
 
   # ===============================================
   # PERFORMANCE TESTS (Conditional)
