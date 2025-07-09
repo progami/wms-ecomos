@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
   
   // Public routes that don't require authentication
   const publicRoutes = [
+    '/',
     '/auth/login',
     '/auth/error',
     '/api/auth',
@@ -28,12 +29,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Handle root path redirect
-  if (pathWithoutBase === '/' || pathWithoutBase === '') {
-    const url = request.nextUrl.clone()
-    url.pathname = `${basePath}/dashboard`
-    return NextResponse.redirect(url)
-  }
   
   // Check for session
   const token = await getToken({ 
