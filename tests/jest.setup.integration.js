@@ -48,7 +48,11 @@ jest.mock('@/lib/prisma', () => ({
       findMany: jest.fn(),
       findFirst: jest.fn(),
       create: jest.fn(),
-      update: jest.fn()
+      update: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn(),
+      aggregate: jest.fn(),
+      groupBy: jest.fn()
     },
     warehouse: {
       findMany: jest.fn(),

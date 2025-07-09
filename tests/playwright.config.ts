@@ -26,12 +26,25 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
 
-  // webServer: {
-  //   command: 'npm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: true,
-  //   timeout: 120 * 1000,
-  // },
+  webServer: {
+    command: process.env.CI ? 'npm run build && npm run start' : 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+    env: {
+      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/test',
+      NEXTAUTH_URL: 'http://localhost:3000',
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'test-secret',
+    },
+  },
 });
