@@ -37,14 +37,16 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: process.env.CI ? 'npm run build && npm run start' : 'npm run dev',
+    command: process.env.CI ? 'cd .. && npm run build && npm run start' : 'cd .. && npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: 180 * 1000,
     env: {
       DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/test',
       NEXTAUTH_URL: 'http://localhost:3000',
       NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'test-secret',
+      NODE_ENV: 'test',
+      SKIP_ENV_VALIDATION: 'true',
     },
   },
 });
