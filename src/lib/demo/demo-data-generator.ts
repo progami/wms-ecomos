@@ -8,8 +8,7 @@ import {
   ReconciliationStatus,
   DisputeStatus,
   NotificationType,
-  ResolutionType,
-  FileAttachmentType
+  ResolutionType
 } from '@prisma/client'
 import { addDays, subDays, startOfMonth, endOfMonth, format, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks } from 'date-fns'
 
@@ -344,8 +343,6 @@ export async function generateDemoData() {
       PRODUCTS.map(p => {
         const hasFBA = p.asin ? Math.random() > 0.3 : false // 70% of ASIN products have FBA
         const fbaStock = hasFBA ? randomInt(100, 5000) : 0
-        const fbaInbound = hasFBA ? randomInt(0, 1000) : 0
-        const fbaReserved = hasFBA ? randomInt(0, Math.floor(fbaStock * 0.1)) : 0
         
         return prisma.sku.create({
           data: {
@@ -355,8 +352,6 @@ export async function generateDemoData() {
             cartonDimensionsCm: `${randomInt(30, 60)}x${randomInt(30, 60)}x${randomInt(30, 60)}`,
             cartonWeightKg: randomFloat(5, 25),
             fbaStock: fbaStock,
-            fbaInbound: fbaInbound,
-            fbaReserved: fbaReserved,
             fbaStockLastUpdated: hasFBA ? new Date() : null,
             isActive: true
           }
@@ -564,8 +559,6 @@ export async function generateDemoData() {
                 batchLot: batchLot,
                 transactionType: transactionType,
                 referenceId: referenceId,
-                poNumber: poNumber,
-                containerNumber: containerNumber,
                 cartonsIn: cartonsIn,
                 cartonsOut: cartonsOut,
                 storagePalletsIn: storagePalletsIn,
@@ -584,9 +577,6 @@ export async function generateDemoData() {
                   undefined,
                 modeOfTransportation: transactionType === TransactionType.SHIP ? 
                   (referenceId?.startsWith('FBA') ? 'Ground' : randomElement(['Ocean', 'Air', 'Ground', 'Rail'])) : 
-                  undefined,
-                notes: transactionType === TransactionType.ADJUST_IN || transactionType === TransactionType.ADJUST_OUT ?
-                  randomElement(['Cycle count adjustment', 'Damaged goods', 'Customer return', 'Quality control adjustment', 'Found inventory']) :
                   undefined
               }
             })
@@ -604,7 +594,6 @@ export async function generateDemoData() {
 
     // 7. Calculate and create inventory balances with pallet variances
     reportProgress('Calculating inventory balances...', 55)
-    const palletVariances = []
     
     for (const warehouse of warehouses) {
       for (const sku of skus) {
@@ -661,7 +650,8 @@ export async function generateDemoData() {
             // Create pallet variance records for some balances (20% chance)
             if (Math.random() < 0.2 && currentPallets !== theoreticalPallets) {
               const variance = currentPallets - theoreticalPallets
-              const varianceRecord = await prisma.palletVariance.create({
+              // Pallet variance tracking removed - model doesn't exist in schema
+              /*const varianceRecord = await prisma.palletVariance.create({
                 data: {
                   warehouseId: warehouse.id,
                   skuId: sku.id,
@@ -682,7 +672,7 @@ export async function generateDemoData() {
                   resolvedAt: Math.abs(variance) <= 2 ? new Date() : undefined
                 }
               })
-              palletVariances.push(varianceRecord)
+              palletVariances.push(varianceRecord)*/
             }
           }
         }
@@ -744,7 +734,6 @@ export async function generateDemoData() {
     // 9. Generate Invoices with line items, disputes, and payments
     reportProgress('Generating invoices...', 70)
     const invoices = []
-    const fileAttachments = []
     
     for (const warehouse of warehouses) {
       // Generate monthly invoices for the past 6 months
@@ -797,7 +786,7 @@ export async function generateDemoData() {
         
         // Calculate more realistic costs
         const handlingCost = inboundTransactions * randomFloat(45, 65) + outboundTransactions * randomFloat(70, 90)
-        const storageCost = storageCosts._sum.calculatedWeeklyCost || 0
+        const storageCost = Number(storageCosts._sum.calculatedWeeklyCost || 0)
         const accessorialCost = Math.random() > 0.7 ? randomFloat(100, 500) : 0
         
         const subtotal = storageCost + handlingCost + accessorialCost
@@ -822,7 +811,7 @@ export async function generateDemoData() {
             status = randomElement([InvoiceStatus.pending, InvoiceStatus.paid])
           }
         } else if (daysSinceInvoice > 15) {
-          status = randomElement([InvoiceStatus.pending, InvoiceStatus.sent])
+          status = InvoiceStatus.pending
         }
         
         const paymentDate = status === InvoiceStatus.paid ? 
@@ -850,7 +839,6 @@ export async function generateDemoData() {
             billingYear: invoiceDate.getFullYear(),
             type: 'Monthly Services',
             currency: 'USD',
-            paymentTerms: customer.type === 'retail' ? 'Net 45' : 'Net 30',
             paymentDate: paymentDate,
             paidAt: paymentDate,
             paidBy: status === InvoiceStatus.paid ? customer.email : undefined
@@ -863,18 +851,16 @@ export async function generateDemoData() {
         
         // Storage costs
         if (storageCost > 0) {
-          const palletCount = storageCosts._sum.storagePalletsCharged || 0
+          const palletCount = Number(storageCosts._sum.storagePalletsCharged || 0)
           const rate = costRates.find(r => r.warehouseId === warehouse.id && r.costName.includes('Storage'))?.costValue || 3.50
           
           lineItems.push({
             invoiceId: invoice.id,
             costCategory: CostCategory.Storage,
             costName: 'Pallet Storage - Weekly',
-            description: `Storage charges for ${palletCount} pallets`,
             quantity: palletCount,
             unitRate: rate,
-            amount: storageCost,
-            referenceData: { weekCount: 4, averagePalletsPerWeek: Math.floor(palletCount / 4) }
+            amount: storageCost
           })
         }
         
@@ -899,10 +885,9 @@ export async function generateDemoData() {
             invoiceId: invoice.id,
             costCategory: CostCategory.Carton,
             costName: 'Inbound Carton Handling',
-            description: `Processing of ${inboundCartons._sum.cartonsIn || 0} cartons`,
             quantity: inboundCartons._sum.cartonsIn || 0,
             unitRate: cartonRate,
-            amount: (inboundCartons._sum.cartonsIn || 0) * cartonRate
+            amount: (inboundCartons._sum.cartonsIn || 0) * Number(cartonRate)
           })
           
           // Container charges for large shipments
@@ -912,10 +897,9 @@ export async function generateDemoData() {
               invoiceId: invoice.id,
               costCategory: CostCategory.Container,
               costName: 'Container Unload',
-              description: `Unloading of ${containerCount} containers`,
               quantity: containerCount,
               unitRate: containerRate,
-              amount: containerCount * containerRate
+              amount: containerCount * Number(containerRate)
             })
           }
         }
@@ -941,20 +925,18 @@ export async function generateDemoData() {
             invoiceId: invoice.id,
             costCategory: CostCategory.Carton,
             costName: 'Outbound Carton Handling',
-            description: `Processing of ${outboundCartons._sum.cartonsOut || 0} cartons`,
             quantity: outboundCartons._sum.cartonsOut || 0,
             unitRate: cartonRate,
-            amount: (outboundCartons._sum.cartonsOut || 0) * cartonRate
+            amount: (outboundCartons._sum.cartonsOut || 0) * Number(cartonRate)
           })
           
           lineItems.push({
             invoiceId: invoice.id,
             costCategory: CostCategory.Shipment,
             costName: 'Shipment Preparation',
-            description: `Preparation of ${outboundTransactions} shipments`,
             quantity: outboundTransactions,
             unitRate: shipmentRate,
-            amount: outboundTransactions * shipmentRate
+            amount: outboundTransactions * Number(shipmentRate)
           })
         }
         
@@ -964,7 +946,6 @@ export async function generateDemoData() {
             invoiceId: invoice.id,
             costCategory: CostCategory.Accessorial,
             costName: randomElement(['Special Handling', 'Overtime Labor', 'Rush Processing', 'Weekend Operations']),
-            description: 'Additional services requested',
             quantity: 1,
             unitRate: accessorialCost,
             amount: accessorialCost
@@ -977,32 +958,7 @@ export async function generateDemoData() {
           })
         }
         
-        // Create file attachments for invoices
-        const attachmentTypes = [
-          { type: FileAttachmentType.invoice_pdf, name: `${invoice.invoiceNumber}.pdf`, size: randomInt(100000, 500000) },
-          { type: FileAttachmentType.support_doc, name: `${invoice.invoiceNumber}_detail.xlsx`, size: randomInt(50000, 200000) }
-        ]
-        
-        for (const attachment of attachmentTypes) {
-          // 80% chance of having the primary invoice PDF, 40% for support docs
-          if ((attachment.type === FileAttachmentType.invoice_pdf && Math.random() < 0.8) ||
-              (attachment.type === FileAttachmentType.support_doc && Math.random() < 0.4)) {
-            const fileAttachment = await prisma.fileAttachment.create({
-              data: {
-                fileName: attachment.name,
-                fileType: attachment.type,
-                fileSize: attachment.size,
-                mimeType: attachment.type === FileAttachmentType.invoice_pdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                uploadedById: admin.id,
-                invoiceId: invoice.id,
-                description: attachment.type === FileAttachmentType.invoice_pdf ? 
-                  'Official invoice document' : 
-                  'Detailed transaction breakdown'
-              }
-            })
-            fileAttachments.push(fileAttachment)
-          }
-        }
+        // File attachments removed - model doesn't exist in schema
         
         // Create reconciliation records for some invoices
         if (status === InvoiceStatus.reconciled || status === InvoiceStatus.disputed) {
@@ -1053,16 +1009,9 @@ export async function generateDemoData() {
               disputedAmount: totalAmount * randomFloat(0.1, 0.3),
               lineItemsDisputed: Math.min(relevantLineItems.length, randomInt(1, 3)),
               status: daysSinceInvoice > 45 ? 
-                randomElement([DisputeStatus.open, DisputeStatus.in_review, DisputeStatus.resolved]) : 
+                randomElement([DisputeStatus.open, DisputeStatus.resolved]) : 
                 DisputeStatus.open,
-              priority: totalAmount > 10000 ? 'high' : 
-                       totalAmount > 5000 ? 'medium' : 'low',
-              contactedWarehouse: Math.random() > 0.3,
-              assignedTo: randomElement(users.filter(u => u.role === UserRole.admin)).email,
-              notes: `Customer ${customer.fullName} disputed charges. Initial review required.`,
-              supportingDocuments: Math.random() > 0.5 ? 
-                [`email_correspondence_${invoice.invoiceNumber}.pdf`, `transaction_report_${format(billingPeriodStart, 'yyyy-MM')}.xlsx`] : 
-                undefined
+              contactedWarehouse: Math.random() > 0.3
             }
           })
           
@@ -1072,16 +1021,15 @@ export async function generateDemoData() {
               data: {
                 disputeId: dispute.id,
                 resolutionType: randomElement([
-                  ResolutionType.full_credit,
-                  ResolutionType.partial_credit,
-                  ResolutionType.no_adjustment,
-                  ResolutionType.payment_plan
+                  ResolutionType.ACCEPTED,
+                  ResolutionType.REJECTED,
+                  ResolutionType.PARTIAL_ACCEPT,
+                  ResolutionType.ESCALATED
                 ]),
-                creditAmount: dispute.disputedAmount * randomFloat(0.3, 1.0),
+                resolutionAmount: dispute.disputedAmount,
                 resolutionNotes: 'After review, adjustment has been processed.',
-                approvedBy: opsManager.email,
-                implementedBy: admin.email,
-                resolutionDate: addDays(dispute.createdAt, randomInt(3, 15))
+                resolvedBy: opsManager.email,
+                resolvedAt: addDays(dispute.disputedAt, randomInt(3, 15))
               }
             })
           }
@@ -1111,13 +1059,10 @@ export async function generateDemoData() {
         const notification = await prisma.warehouseNotification.create({
           data: {
             warehouseId: warehouse.id,
-            type: NotificationType.low_stock,
+            type: NotificationType.PAYMENT_RECEIVED,
             title: `Low Stock Alert: ${balance.sku.skuCode}`,
             message: `SKU ${balance.sku.skuCode} (${balance.sku.description}) has only ${balance.currentCartons} cartons remaining in batch ${balance.batchLot}.`,
-            priority: balance.currentCartons <= 10 ? 'high' : 'medium',
-            relatedSkuId: balance.skuId,
-            relatedTransactionId: undefined,
-            isRead: Math.random() > 0.3,
+            read: Math.random() > 0.3,
             readBy: Math.random() > 0.3 ? randomElement(users.filter(u => u.warehouseId === warehouse.id)).email : undefined,
             readAt: Math.random() > 0.3 ? subDays(currentDate, randomInt(1, 7)) : undefined
           }
@@ -1140,14 +1085,10 @@ export async function generateDemoData() {
         const notification = await prisma.warehouseNotification.create({
           data: {
             warehouseId: warehouse.id,
-            type: NotificationType.shipment_delay,
+            type: NotificationType.DISPUTE_RESOLVED,
             title: `Shipment Delay: ${shipment.referenceId}`,
             message: `Shipment ${shipment.referenceId} scheduled for pickup on ${format(shipment.pickupDate!, 'MMM dd, yyyy')} may be delayed.`,
-            priority: 'high',
-            relatedTransactionId: shipment.transactionId,
-            isRead: Math.random() > 0.2,
-            actionRequired: true,
-            actionDeadline: addDays(shipment.pickupDate!, 1)
+            read: Math.random() > 0.2
           }
         })
         notifications.push(notification)
@@ -1159,12 +1100,10 @@ export async function generateDemoData() {
         const notification = await prisma.warehouseNotification.create({
           data: {
             warehouseId: warehouse.id,
-            type: NotificationType.system_maintenance,
+            type: NotificationType.RECONCILIATION_COMPLETE,
             title: 'Scheduled System Maintenance',
             message: `System maintenance scheduled for ${format(maintenanceDate, 'EEEE, MMMM dd, yyyy')} from 2:00 AM to 6:00 AM EST.`,
-            priority: 'low',
-            isRead: false,
-            scheduledFor: maintenanceDate
+            read: false
           }
         })
         notifications.push(notification)
@@ -1218,14 +1157,13 @@ export async function generateDemoData() {
               calculatedCost: Number(handlingRate.costValue) * transaction.cartonsIn,
               costAdjustmentValue: 0,
               finalExpectedCost: Number(handlingRate.costValue) * transaction.cartonsIn,
-              createdById: admin.id,
-              notes: transaction.containerNumber ? `Container: ${transaction.containerNumber}` : undefined
+              createdById: admin.id
             }
           })
         }
         
-        // Container unload cost for large shipments
-        if (transaction.containerNumber) {
+        // Container unload cost for large shipments (check if referenceId contains container info)
+        if (transaction.referenceId && transaction.referenceId.includes('-CONT-')) {
           const containerRate = relevantRates.find(r => r.costName === 'Container Unload')
           if (containerRate) {
             await prisma.calculatedCost.create({
@@ -1246,8 +1184,7 @@ export async function generateDemoData() {
                 calculatedCost: Number(containerRate.costValue),
                 costAdjustmentValue: 0,
                 finalExpectedCost: Number(containerRate.costValue),
-                createdById: admin.id,
-                notes: `Container ${transaction.containerNumber}`
+                createdById: admin.id
               }
             })
           }
@@ -1302,8 +1239,7 @@ export async function generateDemoData() {
               calculatedCost: Number(handlingRate.costValue) * transaction.cartonsOut,
               costAdjustmentValue: 0,
               finalExpectedCost: Number(handlingRate.costValue) * transaction.cartonsOut,
-              createdById: admin.id,
-              notes: transaction.referenceId?.startsWith('FBA') ? 'FBA Shipment' : undefined
+              createdById: admin.id
             }
           })
         }
@@ -1344,12 +1280,10 @@ export async function generateDemoData() {
       const payment = await prisma.payment.create({
         data: {
           invoiceId: invoice.id,
-          paymentAmount: invoice.paidAmount,
-          paymentDate: invoice.paymentDate!,
-          paymentMethod: randomElement(['ACH Transfer', 'Wire Transfer', 'Check', 'Credit Card']),
-          referenceNumber: `PAY-${Date.now().toString(36).toUpperCase()}-${randomInt(1000, 9999)}`,
-          processedBy: invoice.paidBy || 'system',
-          notes: 'Payment received and processed successfully'
+          amount: invoice.paidAmount,
+          processedAt: invoice.paymentDate!,
+          method: randomElement(['ACH Transfer', 'Wire Transfer', 'Check', 'Credit Card']),
+          status: 'completed'
         }
       })
     }
@@ -1383,7 +1317,7 @@ export async function generateDemoData() {
           recordId = invoices.length > 0 ? randomElement(invoices).id : 'dummy-id'
           changes = {
             before: { status: 'pending' },
-            after: { status: 'sent' }
+            after: { status: 'reconciled' }
           }
           break
         case 'cost_rates':
@@ -1434,8 +1368,6 @@ export async function generateDemoData() {
       disputes: await prisma.invoiceDispute.count(),
       payments: await prisma.payment.count(),
       notifications: notifications.length,
-      fileAttachments: fileAttachments.length,
-      palletVariances: palletVariances.length,
       storageLedgerEntries: await prisma.storageLedger.count(),
       calculatedCosts: await prisma.calculatedCost.count(),
       auditLogs: await prisma.auditLog.count()
@@ -1454,8 +1386,6 @@ export async function generateDemoData() {
     // console.log(`✅ Disputes: ${finalStats.disputes}`)
     // console.log(`✅ Payments: ${finalStats.payments}`)
     // console.log(`✅ Notifications: ${finalStats.notifications}`)
-    // console.log(`✅ File Attachments: ${finalStats.fileAttachments}`)
-    // console.log(`✅ Pallet Variances: ${finalStats.palletVariances}`)
     // console.log(`✅ Storage Ledger Entries: ${finalStats.storageLedgerEntries}`)
     // console.log(`✅ Calculated Costs: ${finalStats.calculatedCosts}`)
     // console.log(`✅ Audit Logs: ${finalStats.auditLogs}`)
