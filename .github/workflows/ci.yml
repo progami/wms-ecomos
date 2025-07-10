@@ -176,7 +176,7 @@ jobs:
 
   # E2E Tests - Run on PR and main branch only
   test-e2e:
-    if: false # Temporarily disabled until server startup issue is fixed
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     services:
