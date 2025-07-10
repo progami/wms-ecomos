@@ -94,14 +94,19 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
-        run: npm run build
+        run: |
+          npm run build
+          echo "Build completed, checking .next directory:"
+          ls -la .next/ || echo ".next directory not found"
         
       - name: Upload build
         if: matrix.node == '20'
         uses: actions/upload-artifact@v4
         with:
           name: build
-          path: .next
+          path: |
+            .next/
+            !.next/cache/
           retention-days: 1
 
   # Fast Tests (Unit + Integration) - Run on every push
