@@ -14,7 +14,7 @@ const mockEmailService = {
 }
 
 // Import the email route handler
-import { POST as sendShipmentEmail, GET as getEmailTemplate } from '@/src/app/api/inventory/shipments/email/route'
+import { POST as sendShipmentEmail, GET as getEmailTemplate } from '@/app/api/inventory/shipments/email/route'
 
 describe('Email Service Integration Tests', () => {
   const mockSession = {

@@ -1,6 +1,6 @@
 import { callApiHandler } from './setup/mock-api-handler'
-import { GET as getTransactions, POST as createTransaction } from '@/src/app/api/transactions/route'
-import { GET as getTransaction, PUT as updateTransaction, DELETE as deleteTransaction } from '@/src/app/api/transactions/[id]/route'
+import { GET as getTransactions, POST as createTransaction } from '@/app/api/transactions/route'
+import { GET as getTransaction, PUT as updateTransaction, DELETE as deleteTransaction } from '@/app/api/transactions/[id]/route'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 
