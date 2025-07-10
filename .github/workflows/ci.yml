@@ -103,6 +103,7 @@ jobs:
         with:
           name: build
           path: .next
+          include-hidden-files: true
           retention-days: 1
 
   # Fast Tests (Unit + Integration) - Run on every push
