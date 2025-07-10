@@ -230,6 +230,24 @@ jobs:
         run: |
           npx prisma generate
           npx prisma migrate deploy || echo "No migrations"
+      
+      - name: Build Next.js app
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+        run: npm run build
+      
+      - name: Start server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+        run: |
+          npm run start &
+          sleep 10
+          curl -f http://localhost:3000/api/health || exit 1
           
       - name: Run E2E Tests - ${{ matrix.browser }}
         env:
