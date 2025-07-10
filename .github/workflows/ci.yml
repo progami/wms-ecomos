@@ -96,20 +96,11 @@ jobs:
           NEXTAUTH_SECRET: test-secret
           CI: true
         run: |
-          # Make build script executable
-          chmod +x scripts/build-ci.js
-          
-          # Build without standalone output for CI
-          npm run build:ci
+          # Regular build (standalone disabled in config)
+          npm run build
           
           echo "Build completed, checking .next directory:"
           ls -la .next/ || echo ".next directory not found"
-          
-          # Ensure all necessary files are present
-          if [ ! -d ".next" ]; then
-            echo "ERROR: .next directory not found after build!"
-            exit 1
-          fi
         
       - name: Upload build
         if: matrix.node == '20'
@@ -266,11 +257,8 @@ jobs:
           echo "Checking .next directory:"
           ls -la .next/ || echo "No .next directory"
           
-          # Make CI server executable
-          chmod +x scripts/ci-server.js
-          
-          # Start the CI server
-          npm run start:ci:server &
+          # Start the regular server
+          npm run start &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           

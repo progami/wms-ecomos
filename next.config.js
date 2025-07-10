@@ -118,7 +118,8 @@ const nextConfig = {
   },
   
   // Enable output standalone for smaller Docker images
-  output: 'standalone',
+  // Temporarily disabled for CI compatibility
+  // output: 'standalone',
   
   // Disable ESLint during production builds for deployment
   eslint: {
