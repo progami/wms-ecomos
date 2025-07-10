@@ -88,19 +88,30 @@ export async function setupDemoAndLogin(page: Page) {
   if (await tryDemoButton.isVisible()) {
     await tryDemoButton.click()
     
-    // Wait for navigation away from home page (more lenient check)
+    // Wait for navigation or dashboard to load
     try {
-      await page.waitForURL((url) => !url.toString().endsWith('/'), {
-        timeout: 30000,
-        waitUntil: 'networkidle'
-      })
+      // Either wait for URL change or dashboard to appear
+      await Promise.race([
+        page.waitForURL((url) => url.toString().includes('/dashboard'), {
+          timeout: 30000
+        }),
+        page.waitForSelector('h1:has-text("Dashboard")', {
+          timeout: 30000
+        })
+      ])
     } catch (error) {
-      // Check if there was an error during demo setup
-      const errorToast = await page.locator('text=Failed to set up demo').isVisible().catch(() => false)
-      if (errorToast) {
-        throw new Error('Demo setup failed')
+      // Check if we're already on a logged-in page
+      const isDashboard = page.url().includes('/dashboard')
+      const hasNavigation = await page.locator('a:has-text("Products (SKUs)")').isVisible().catch(() => false)
+      
+      if (!isDashboard && !hasNavigation) {
+        // Check if there was an error during demo setup
+        const errorToast = await page.locator('text=Failed to set up demo').isVisible().catch(() => false)
+        if (errorToast) {
+          throw new Error('Demo setup failed')
+        }
+        throw error
       }
-      throw error
     }
     
     // Give the page a moment to stabilize
