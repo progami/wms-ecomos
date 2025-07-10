@@ -15,6 +15,14 @@ const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOST || (process.env.CI ? '0.0.0.0' : 'localhost');
 const port = parseInt(process.env.PORT || '3000', 10);
 
+// In CI, log more information about startup
+if (process.env.CI) {
+  console.log('Running in CI mode');
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+  console.log('REDIS_URL:', process.env.REDIS_URL ? 'Set' : 'Not set');
+  console.log('USE_TEST_AUTH:', process.env.USE_TEST_AUTH);
+}
+
 // Create the Next.js app
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();

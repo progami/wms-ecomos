@@ -239,6 +239,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: true
           CI: true
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
