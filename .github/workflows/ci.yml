@@ -262,7 +262,6 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
-          USE_TEST_AUTH: 'true'
           USE_TEST_AUTH: true
           NODE_ENV: production
           CI: true
@@ -318,7 +317,6 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
-          USE_TEST_AUTH: 'true'
           USE_TEST_AUTH: true
           CI: true
           BASE_URL: http://localhost:3000
