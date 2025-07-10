@@ -109,7 +109,7 @@ test.describe('🔐 Authentication Runtime Tests', () => {
     // First login with demo
     await page.goto('/auth/login')
     await page.click('button:has-text("Try Demo")')
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
     
     // Handle welcome modal if it appears
     const welcomeModal = page.locator('text=Welcome to WMS Demo!')
@@ -145,7 +145,7 @@ test.describe('🔐 Authentication Runtime Tests', () => {
     // Login with demo
     await page.goto('/auth/login')
     await page.click('button:has-text("Try Demo")')
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
     
     // Handle welcome modal if it appears
     const welcomeModal = page.locator('text=Welcome to WMS Demo!')

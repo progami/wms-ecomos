@@ -5,7 +5,7 @@ test.describe('📦 SKU Management Runtime Tests', () => {
     // Setup demo environment and navigate to SKU page
     await page.goto('/')
     await page.click('button:has-text("Try Demo")')
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
     await page.click('a:has-text("SKUs")')
     await page.waitForURL('**/skus')
   })

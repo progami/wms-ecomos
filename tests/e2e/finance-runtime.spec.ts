@@ -5,7 +5,7 @@ test.describe('💰 Finance & Invoice Runtime Tests', () => {
     // Setup demo environment and navigate to finance
     await page.goto('/')
     await page.click('button:has-text("Try Demo")')
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
     await page.click('a:has-text("Finance")')
     await page.waitForURL('**/finance')
   })

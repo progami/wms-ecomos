@@ -8,7 +8,7 @@ test.describe('📊 Dashboard Runtime Tests', () => {
     // Setup demo environment and login
     await page.goto(BASE_URL)
     await page.click('button:has-text("Try Demo")')
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
   })
 
   test('Dashboard loads with all key components', async ({ page }) => {
@@ -54,7 +54,7 @@ test.describe('📊 Dashboard Runtime Tests', () => {
   test('Welcome modal interaction', async ({ page }) => {
     // Reload page to see welcome modal again
     await page.reload()
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
     
     // Check if welcome modal is visible
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"')

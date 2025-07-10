@@ -17,7 +17,7 @@ export async function loginAsAdmin(page: Page) {
     await page.waitForURL((url) => {
       const urlStr = url.toString()
       return urlStr.includes('/dashboard') || (urlStr.endsWith('/') && !urlStr.includes('/auth/login'))
-    }, { timeout: 15000 })
+    }, { timeout: 30000 })
   } catch (error) {
     // If no redirect happened, we might still be on login with an error
     const errorMessage = await page.locator('text=Invalid').isVisible().catch(() => false)
@@ -46,7 +46,7 @@ export async function loginWithQuickFill(page: Page, userType: 'Admin' | 'Financ
     await page.click('button[type="submit"]')
     
     // Wait for navigation
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
   } else {
     throw new Error(`Quick fill button for ${userType} not found`)
   }

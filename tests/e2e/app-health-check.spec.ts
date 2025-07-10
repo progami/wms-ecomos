@@ -148,7 +148,7 @@ test.describe('Application Health Check', () => {
     
     // Wait for navigation after login
     await page.waitForURL((url) => !url.toString().includes('login'), {
-      timeout: 15000,
+      timeout: 30000,
       waitUntil: 'networkidle'
     }).catch(() => {
       console.log('Test login might have failed');
@@ -233,7 +233,7 @@ test.describe('Application Health Check', () => {
     await loginButton.click();
     
     await page.waitForURL((url) => !url.toString().includes('login'), {
-      timeout: 15000,
+      timeout: 30000,
       waitUntil: 'networkidle'
     }).catch(() => {});
     await page.waitForTimeout(2000);

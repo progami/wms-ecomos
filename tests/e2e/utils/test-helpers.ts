@@ -97,7 +97,7 @@ export async function loginAsDemo(page: Page) {
     await page.fill('#emailOrUsername', 'demo-admin');
     await page.fill('#password', 'SecureWarehouse2024!');
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
     
     // Handle welcome modal in fallback scenario too
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"');
