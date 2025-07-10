@@ -176,7 +176,7 @@ jobs:
 
   # E2E Tests - Run on PR and main branch only
   test-e2e:
-    if: false # Temporarily disabled - E2E tests hanging even with optimizations. Need deeper investigation
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     services:
@@ -233,31 +233,6 @@ jobs:
           NEXTAUTH_SECRET: test-secret
         run: npm run build
       
-      - name: Start server
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
-          REDIS_URL: redis://localhost:6379
-          NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: test-secret
-          NODE_ENV: test
-          CI: true
-        run: |
-          NODE_ENV=test node server.js &
-          echo "Waiting for server to start..."
-          for i in {1..30}; do
-            if curl -f http://localhost:3000/api/health 2>/dev/null; then
-              echo "Server is ready!"
-              break
-            fi
-            echo "Waiting... ($i/30)"
-            sleep 2
-          done
-          # Try different endpoints if health check fails
-          if ! curl -f http://localhost:3000/api/health 2>/dev/null; then
-            echo "Health check failed, trying main page..."
-            curl -f http://localhost:3000/ || exit 1
-          fi
-          
       - name: Run E2E Tests - ${{ matrix.browser }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
