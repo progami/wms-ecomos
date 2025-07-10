@@ -3,6 +3,7 @@ const baseConfig = require('./jest.config.base');
 module.exports = {
   ...baseConfig,
   testEnvironment: 'node',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.integration.js'],
   testMatch: [
     '**/integration/**/*.test.[jt]s?(x)',
   ],
@@ -10,6 +11,13 @@ module.exports = {
     ...baseConfig.testPathIgnorePatterns,
     'unit/'
   ],
-  // Longer timeout for database operations
-  testTimeout: 30000
+  // Standard timeout for mocked tests
+  testTimeout: 10000,
+  // Force exit after test run completes
+  forceExit: true,
+  // Module name mapper for TypeScript paths
+  moduleNameMapper: {
+    ...baseConfig.moduleNameMapper,
+    '^@/(.*)$': '<rootDir>/../src/$1'
+  }
 };

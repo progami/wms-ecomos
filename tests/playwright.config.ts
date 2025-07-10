@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 5,
+  workers: process.env.CI ? 4 : 5,
   reporter: [
     ['html', { outputFolder: './playwright-report' }],
     ['junit', { outputFile: './playwright-results.xml' }],
@@ -26,12 +26,23 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
 
-  // webServer: {
-  //   command: 'npm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: true,
-  //   timeout: 120 * 1000,
-  // },
+  webServer: process.env.CI ? undefined : {
+    command: 'npm run start',
+    port: 3000,
+    url: 'http://localhost:3000/api/health',
+    timeout: 120 * 1000,
+    reuseExistingServer: true,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
 });

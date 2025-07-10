@@ -484,8 +484,8 @@ describe('Database Connection Errors and Recovery', () => {
 
     // Mock replica clients
     const mockReplicas = [
-      { $queryRaw: jest.fn().mockRejectedValue(new Error('Replica 1 down')) } as any,
-      { $queryRaw: jest.fn().mockRejectedValue(new Error('Replica 2 down')) } as any
+      { $queryRaw: jest.fn(() => Promise.reject(new Error('Replica 1 down'))) } as any,
+      { $queryRaw: jest.fn(() => Promise.reject(new Error('Replica 2 down'))) } as any
     ];
 
     const router = new DatabaseRouter(prisma, mockReplicas);

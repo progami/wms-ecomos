@@ -28,7 +28,7 @@ global.URL.createObjectURL = jest.fn(() => 'blob:test-url');
 global.URL.revokeObjectURL = jest.fn();
 
 // Helper to simulate file upload since userEvent.upload is causing issues
-const simulateFileUpload = (input: HTMLElement, file: File) => {
+const simulateFileUpload = (input: HTMLInputElement, file: File) => {
   fireEvent.change(input, { target: { files: [file] } });
 };
 
@@ -209,9 +209,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       expect(screen.getByText(/Selected: test.xlsx/)).toBeInTheDocument();
     });
@@ -224,9 +224,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       expect(screen.getByText(/1.00 MB/)).toBeInTheDocument();
     });
@@ -237,9 +237,9 @@ describe('ImportButton Component', () => {
       
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       expect(toast.error).toHaveBeenCalledWith('Please select a valid Excel file');
       expect(screen.queryByText(/Selected:/)).not.toBeInTheDocument();
@@ -253,9 +253,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.ms-excel'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       expect(screen.getByText(/Selected: test.xls/)).toBeInTheDocument();
     });
@@ -272,9 +272,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       const importButton = screen.getByRole('button', { name: 'Import' });
       fireEvent.click(importButton);
@@ -304,9 +304,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       // Find the Import button (not the main Import Products button)
       const modalButtons = screen.getAllByRole('button');
@@ -348,9 +348,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       const importButton = screen.getByRole('button', { name: 'Import' });
       fireEvent.click(importButton);
@@ -370,9 +370,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       // Find the Import button
       const modalButtons = screen.getAllByRole('button');
@@ -408,9 +408,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       // Find the Import button
       const modalButtons = screen.getAllByRole('button');
@@ -445,9 +445,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       // Find the Import button
       const modalButtons = screen.getAllByRole('button');
@@ -474,9 +474,9 @@ describe('ImportButton Component', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       
-      const input = container.querySelector('input[type="file"]');
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      simulateFileUpload(input!, file);
+      simulateFileUpload(input, file);
       
       expect(screen.getByText(/Selected: test.xlsx/)).toBeInTheDocument();
       

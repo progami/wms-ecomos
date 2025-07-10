@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 
 import { setupTestDatabase, teardownTestDatabase, createTestUser } from './setup/test-db'
-import { createAuthenticatedRequest, setupTestAuth } from './setup/test-auth-setup'
+import { createAuthenticatedRequest } from './setup/authenticated-request'
 import { 
   createTestSku, 
   createTestWarehouse, 
@@ -15,8 +15,7 @@ import {
 
 
 
-// Setup test authentication
-setupTestAuth()
+// No need to setup test auth - it's handled by authenticated request
 describe('Reconciliation and Miscellaneous API Endpoints', () => {
   let prisma: PrismaClient
   let databaseUrl: string
@@ -117,12 +116,9 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -197,12 +193,9 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })
@@ -277,12 +270,9 @@ describe('Reconciliation and Miscellaneous API Endpoints', () => {
           warehouseId: warehouse.id,
           costCategory: 'Storage',
           costValue: 10.00,
-          currency: 'USD',
-          uom: 'per_unit_per_month',
-          minQuantity: 0,
-          maxQuantity: 1000,
-          effectiveFrom: new Date('2024-01-01'),
-          effectiveTo: new Date('2024-12-31'),
+          unitOfMeasure: 'per_unit_per_month',
+          effectiveDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
           createdById: adminUser.id
         }
       })

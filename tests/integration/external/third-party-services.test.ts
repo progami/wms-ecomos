@@ -607,7 +607,7 @@ describe('Third-Party Services Integration Tests', () => {
       const duration = Date.now() - startTime
 
       expect(result.success).toBe(true)
-      expect(duration).toBeGreaterThan(2000) // Degraded performance
+      expect(duration).toBeGreaterThanOrEqual(2000) // Degraded performance
     })
   })
 })

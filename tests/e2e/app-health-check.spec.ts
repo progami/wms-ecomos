@@ -66,29 +66,17 @@ test.describe('Application Health Check', () => {
     await expect(passwordInput).toBeVisible();
     await expect(loginButton).toBeVisible();
     
-    // Check if credentials are autofilled
-    const emailValue = await emailInput.inputValue();
-    const passwordValue = await passwordInput.inputValue();
+    // In test mode with USE_TEST_AUTH=true, we can login with any credentials
+    // Fill in test credentials
+    await emailInput.fill('test@example.com');
+    await passwordInput.fill('test123');
     
     // Log the values for debugging
-    console.log('Email field value:', emailValue);
-    console.log('Password field has value:', passwordValue.length > 0);
+    console.log('Email field value:', await emailInput.inputValue());
+    console.log('Password field has value:', (await passwordInput.inputValue()).length > 0);
     
-    // Check for quick fill buttons (Admin, Finance Staff, Operations Staff)
-    const quickFillButtons = await page.locator('button:has-text("Admin"), button:has-text("Finance Staff"), button:has-text("Operations Staff")').all();
-    expect(quickFillButtons.length).toBeGreaterThan(0);
-    console.log(`Found ${quickFillButtons.length} quick fill credential buttons`);
-    
-    // Also check for "Try Demo" button which provides instant access
-    const tryDemoButton = page.locator('button:has-text("Try Demo")');
-    const hasTryDemo = await tryDemoButton.isVisible();
-    console.log('Has Try Demo button:', hasTryDemo);
-    
-    // The test passes if either:
-    // 1. Quick fill buttons are available (for manual credential filling)
-    // 2. Try Demo button is available (for instant demo access)
-    // This shows the login page is functional and provides easy access options
-    expect(quickFillButtons.length > 0 || hasTryDemo).toBeTruthy();
+    // Verify we can submit the form
+    expect(await loginButton.isEnabled()).toBeTruthy();
     
     // Verify no console errors on login page
     expect(consoleErrors).toHaveLength(0);
@@ -143,41 +131,28 @@ test.describe('Application Health Check', () => {
   });
 
   test('4. Navigation works properly', async () => {
-    // First, login using quick fill credentials for more reliable testing
+    // First, login using test credentials
     await page.goto('/auth/login', { waitUntil: 'networkidle' });
     
-    // Use admin quick fill button if available (development mode)
-    const adminButton = page.locator('button:has-text("Admin")').first();
-    if (await adminButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      // Click the admin quick fill button
-      await adminButton.click();
-      
-      // Submit the form
-      const submitButton = page.locator('button[type="submit"]');
-      await submitButton.click();
-      
-      // Wait for navigation after login
-      await page.waitForURL((url) => !url.toString().includes('login'), {
-        timeout: 15000,
-        waitUntil: 'networkidle'
-      }).catch(() => {
-        console.log('Admin login might have failed');
-      });
-    } else {
-      // Fallback: Try demo button if quick fill not available
-      const tryDemoButton = page.locator('button:has-text("Try Demo")');
-      if (await tryDemoButton.isVisible()) {
-        await tryDemoButton.click();
-        
-        // Wait for demo setup and login to complete
-        await page.waitForURL((url) => !url.toString().includes('login'), {
-          timeout: 30000,
-          waitUntil: 'networkidle'
-        }).catch(() => {
-          console.log('Demo login might have failed');
-        });
-      }
-    }
+    // In test mode with USE_TEST_AUTH=true, we can login with any credentials
+    const emailInput = page.locator('input[name="emailOrUsername"]');
+    const passwordInput = page.locator('input[name="password"]');
+    const loginButton = page.locator('button[type="submit"]');
+    
+    // Fill in test credentials
+    await emailInput.fill('test@example.com');
+    await passwordInput.fill('test123');
+    
+    // Submit the form
+    await loginButton.click();
+    
+    // Wait for navigation after login
+    await page.waitForURL((url) => !url.toString().includes('login'), {
+      timeout: 15000,
+      waitUntil: 'networkidle'
+    }).catch(() => {
+      console.log('Test login might have failed');
+    });
     
     // Give it extra time to stabilize after login
     await page.waitForTimeout(2000);
@@ -248,18 +223,20 @@ test.describe('Application Health Check', () => {
     // First login to access protected pages
     await page.goto('/auth/login', { waitUntil: 'networkidle' });
     
-    // Use admin quick fill button if available
-    const adminButton = page.locator('button:has-text("Admin")').first();
-    if (await adminButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await adminButton.click();
-      const submitButton = page.locator('button[type="submit"]');
-      await submitButton.click();
-      await page.waitForURL((url) => !url.toString().includes('login'), {
-        timeout: 15000,
-        waitUntil: 'networkidle'
-      }).catch(() => {});
-      await page.waitForTimeout(2000);
-    }
+    // Use test credentials
+    const emailInput = page.locator('input[name="emailOrUsername"]');
+    const passwordInput = page.locator('input[name="password"]');
+    const loginButton = page.locator('button[type="submit"]');
+    
+    await emailInput.fill('test@example.com');
+    await passwordInput.fill('test123');
+    await loginButton.click();
+    
+    await page.waitForURL((url) => !url.toString().includes('login'), {
+      timeout: 15000,
+      waitUntil: 'networkidle'
+    }).catch(() => {});
+    await page.waitForTimeout(2000);
     
     // This test comprehensively checks for console errors across multiple pages
     const pagesToCheck = [

@@ -117,8 +117,8 @@ const nextConfig = {
     } : false,
   },
   
-  // Enable output standalone for smaller Docker images
-  output: 'standalone',
+  // Removed standalone output - incompatible with custom server.js
+  // output: 'standalone',
   
   // Disable ESLint during production builds for deployment
   eslint: {
