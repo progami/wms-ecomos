@@ -217,6 +217,12 @@ jobs:
           
       - run: npm install
       
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: .next
+      
       - name: Install Playwright Browsers
         run: cd tests && npx playwright install --with-deps ${{ matrix.browser }}
       
@@ -226,13 +232,6 @@ jobs:
         run: |
           npx prisma generate
           npx prisma migrate deploy || echo "No migrations"
-      
-      - name: Build Next.js app
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
-          NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: test-secret
-        run: npm run build
       
       - name: Run E2E Tests - ${{ matrix.browser }}
         env:
