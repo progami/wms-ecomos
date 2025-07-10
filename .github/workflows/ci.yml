@@ -204,7 +204,7 @@ jobs:
           
     strategy:
       matrix:
-        browser: [chromium, firefox, webkit]
+        browser: ${{ github.event_name == 'pull_request' && fromJSON('["chromium"]') || fromJSON('["chromium", "firefox", "webkit"]') }}
         
     steps:
       - uses: actions/checkout@v4
@@ -265,7 +265,12 @@ jobs:
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
           CI: true
-        run: cd tests && npx playwright test e2e/ --project=${{ matrix.browser }}
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            npm run test:e2e:ci -- --project=${{ matrix.browser }}
+          else
+            cd tests && npx playwright test e2e/ --project=${{ matrix.browser }}
+          fi
         
       - name: Upload test results
         if: always()
