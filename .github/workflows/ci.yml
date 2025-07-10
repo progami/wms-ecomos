@@ -94,24 +94,26 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          NEXT_BUILD_OUTPUT: ""  # Disable standalone for CI
         run: |
+          # Temporarily disable standalone output for CI builds
+          cp next.config.js next.config.js.bak
+          sed -i "s/output: 'standalone'/\/\/ output: 'standalone'/" next.config.js
+          
           npm run build
-          echo "Build completed, checking output:"
-          ls -la || echo "Current directory listing failed"
-          echo "Checking .next directory:"
+          
+          # Restore original config
+          mv next.config.js.bak next.config.js
+          
+          echo "Build completed, checking .next directory:"
           ls -la .next/ || echo ".next directory not found"
-          echo "Checking for standalone output:"
-          ls -la .next/standalone/ || echo "No standalone output"
         
       - name: Upload build
         if: matrix.node == '20'
         uses: actions/upload-artifact@v4
         with:
           name: build
-          path: |
-            .next/standalone/
-            .next/static/
-            public/
+          path: .next
           retention-days: 1
 
   # Fast Tests (Unit + Integration) - Run on every push
@@ -231,7 +233,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: .
+          path: .next
       
       - name: Install Playwright Browsers
         run: cd tests && npx playwright install --with-deps ${{ matrix.browser }}
@@ -252,14 +254,18 @@ jobs:
           USE_TEST_AUTH: true
           NODE_ENV: production
           CI: true
-          HOSTNAME: 0.0.0.0
         run: |
-          # Copy static files to standalone
-          cp -r .next/static .next/standalone/.next/ || echo "Static files copy failed"
-          cp -r public .next/standalone/ || echo "Public files copy failed"
+          # Check what we have after download
+          echo "Current directory contents:"
+          ls -la
+          echo "Checking .next directory:"
+          ls -la .next/ || echo "No .next directory"
+          echo "Checking .next/standalone:"
+          ls -la .next/standalone/ || echo "No standalone directory"
           
-          # Start the standalone server
-          cd .next/standalone && node server.js &
+          # For CI, we'll use the regular server instead of standalone
+          # since standalone has issues with missing BUILD_ID
+          npm run start:ci &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
