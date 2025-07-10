@@ -245,7 +245,7 @@ jobs:
           npx prisma generate
           npx prisma migrate deploy || echo "No migrations"
       
-      - name: Start server
+      - name: Prepare and start server
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
           REDIS_URL: redis://localhost:6379
@@ -255,33 +255,36 @@ jobs:
           NODE_ENV: production
           CI: true
         run: |
-          # Check what we have after download
-          echo "Current directory contents:"
-          ls -la
+          # Ensure Prisma client is generated with correct database
+          npx prisma generate
+          
+          # Check build artifacts
           echo "Checking .next directory:"
           ls -la .next/ || echo "No .next directory"
-          echo "Checking .next/standalone:"
-          ls -la .next/standalone/ || echo "No standalone directory"
           
-          # For CI, we'll use the regular server instead of standalone
-          # since standalone has issues with missing BUILD_ID
-          npm run start:ci &
+          # Start the server
+          npm run start &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
           # Wait for server to be ready
+          echo "Waiting for server to start..."
           for i in {1..60}; do
             if curl -f http://localhost:3000/api/health-ci 2>/dev/null; then
-              echo "Server is ready!"
+              echo "Server is ready after $i attempts!"
               break
+            fi
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "Server process died!"
+              exit 1
             fi
             echo "Waiting for server... attempt $i/60"
             sleep 2
           done
           
-          # Verify server is still running
-          if ! kill -0 $SERVER_PID 2>/dev/null; then
-            echo "Server crashed during startup"
+          # Final check
+          if ! curl -f http://localhost:3000/api/health-ci; then
+            echo "Server failed to start properly"
             exit 1
           fi
       
