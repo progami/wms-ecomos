@@ -96,8 +96,12 @@ jobs:
           NEXTAUTH_SECRET: test-secret
         run: |
           npm run build
-          echo "Build completed, checking .next directory:"
+          echo "Build completed, checking output:"
+          ls -la || echo "Current directory listing failed"
+          echo "Checking .next directory:"
           ls -la .next/ || echo ".next directory not found"
+          echo "Checking for standalone output:"
+          ls -la .next/standalone/ || echo "No standalone output"
         
       - name: Upload build
         if: matrix.node == '20'
@@ -105,8 +109,9 @@ jobs:
         with:
           name: build
           path: |
-            .next/
-            !.next/cache/
+            .next/standalone/
+            .next/static/
+            public/
           retention-days: 1
 
   # Fast Tests (Unit + Integration) - Run on every push
@@ -226,7 +231,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: .next
+          path: .
       
       - name: Install Playwright Browsers
         run: cd tests && npx playwright install --with-deps ${{ matrix.browser }}
@@ -247,9 +252,14 @@ jobs:
           USE_TEST_AUTH: true
           NODE_ENV: production
           CI: true
+          HOSTNAME: 0.0.0.0
         run: |
-          npm run build:server || echo "No server build needed"
-          npm run start:ci &
+          # Copy static files to standalone
+          cp -r .next/static .next/standalone/.next/ || echo "Static files copy failed"
+          cp -r public .next/standalone/ || echo "Public files copy failed"
+          
+          # Start the standalone server
+          cd .next/standalone && node server.js &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
