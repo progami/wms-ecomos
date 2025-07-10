@@ -2,7 +2,7 @@ import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, naviga
 import { test, expect, Page } from '@playwright/test'
 
 // Test configuration
-const BASE_URL = 'http://localhost:3002'
+const BASE_URL = 'http://localhost:3000'
 const ADMIN_CREDENTIALS = {
   username: 'demo-admin',
   password: 'SecureWarehouse2024!'
@@ -10,11 +10,12 @@ const ADMIN_CREDENTIALS = {
 
 // Helper functions
 async function loginAsAdmin(page: Page) {
+  // Use test auth mode - any credentials work
   await page.goto(`${BASE_URL}/auth/login`)
-  await page.fill('#emailOrUsername', ADMIN_CREDENTIALS.username)
-  await page.fill('#password', ADMIN_CREDENTIALS.password)
+  await page.fill('#emailOrUsername', 'test@example.com')
+  await page.fill('#password', 'test123')
   await page.click('button[type="submit"]')
-  await page.waitForURL('**/dashboard')
+  await page.waitForURL('**/dashboard', { timeout: 30000 })
   
   // Close welcome modal if present
   const welcomeModal = page.locator('text="Welcome to WMS Demo!"')

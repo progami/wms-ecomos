@@ -1,7 +1,7 @@
 import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect } from '@playwright/test'
 
-const BASE_URL = 'http://localhost:3002'
+const BASE_URL = 'http://localhost:3000'
 
 // Helper to setup demo and login
 async function setupAndLogin(page: any) {

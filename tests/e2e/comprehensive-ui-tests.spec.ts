@@ -2,7 +2,7 @@ import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, naviga
 import { test, expect } from '@playwright/test'
 
 // Test configuration
-const BASE_URL = 'http://localhost:3002'
+const BASE_URL = 'http://localhost:3000'
 const DEMO_ADMIN = {
   username: 'demo-admin',
   password: 'SecureWarehouse2024!'
@@ -94,12 +94,12 @@ test.describe('📊 Dashboard Pages', () => {
     // Close welcome modal if present
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
     if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-  })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-  test('Main dashboard displays correctly', async ({ page }) => {
+test('Main dashboard displays correctly', async ({ page }) => {
     // Check header elements
     await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible()
     await expect(page.locator('text="Welcome back, Demo Administrator"')).toBeVisible()
@@ -159,12 +159,12 @@ test.describe('📦 Operations Workflows', () => {
     // Close welcome modal if present
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
     if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-  })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-  test('Shipment Planning page', async ({ page }) => {
+test('Shipment Planning page', async ({ page }) => {
     await page.click('a:has-text("Shipment Planning")')
     await page.waitForURL('**/operations/shipment-planning')
     await expect(page.locator('h1:has-text("Shipment Planning")')).toBeVisible()
@@ -243,12 +243,12 @@ test.describe('💰 Finance Workflows', () => {
     // Close welcome modal if present
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
     if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-  })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-  test('Finance Dashboard', async ({ page }) => {
+test('Finance Dashboard', async ({ page }) => {
     await page.goto('http://localhost:3000/finance/dashboard')
     await expect(page.locator('h1:has-text("Finance Dashboard")')).toBeVisible()
     
@@ -317,12 +317,12 @@ test.describe('⚙️ Configuration Pages', () => {
     // Close welcome modal if present
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
     if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-  })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-  test('Products (SKUs) page', async ({ page }) => {
+test('Products (SKUs) page', async ({ page }) => {
     await page.click('a:has-text("Products")')
     await page.waitForURL('**/config/products')
     await expect(page.locator('h1:has-text("Products")')).toBeVisible()
@@ -390,12 +390,12 @@ test.describe('📈 Analytics & Reports', () => {
     // Close welcome modal if present
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
     if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-  })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-  test('Reports page', async ({ page }) => {
+test('Reports page', async ({ page }) => {
     await page.click('a:has-text("Reports")')
     await page.waitForURL('**/reports')
     
@@ -429,12 +429,12 @@ test.describe('👤 Admin-Only Features', () => {
       // Close welcome modal if present
       const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
       if (await welcomeModal.isVisible({ timeout: 2000 })) {
-        await page.click('button:has-text("Start Exploring")')
-        await page.waitForTimeout(500)
-      }
-    })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-    test('Users management page accessible', async ({ page }) => {
+test('Users management page accessible', async ({ page }) => {
       await page.click('a[href="/admin/users"]')
       await page.waitForURL('**/admin/users')
       
@@ -473,12 +473,12 @@ test.describe('👤 Admin-Only Features', () => {
       // Close welcome modal if present
       const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
       if (await welcomeModal.isVisible({ timeout: 2000 })) {
-        await page.click('button:has-text("Start Exploring")')
-        await page.waitForTimeout(500)
-      }
-    })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-    test('Admin sections not visible for staff', async ({ page }) => {
+test('Admin sections not visible for staff', async ({ page }) => {
       // Admin navigation items should not be visible
       await expect(page.locator('a[href="/admin/users"]')).not.toBeVisible()
       await expect(page.locator('a[href="/admin/settings"]')).not.toBeVisible()
@@ -502,12 +502,12 @@ test.describe('🔄 Data Integrity Rules', () => {
     // Close welcome modal if present
     const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
     if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-  })
+    await page.click('button:has-text("Start Exploring")')
+    await page.waitForTimeout(500)
+  }
+})
 
-  test('Navigation between pages works correctly', async ({ page }) => {
+test('Navigation between pages works correctly', async ({ page }) => {
     // Test navigation flow
     await page.click('a:has-text("Products")')
     await page.waitForURL('**/config/products')

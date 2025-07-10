@@ -10,9 +10,9 @@ test.describe('📦 SKU Management Runtime Tests', () => {
     // Use the auth helper that handles both test and regular auth
     await setupDemoAndLogin(page)
     
-    // Navigate to SKU page
-    await page.click('a:has-text("SKUs")')
-    await page.waitForURL('**/skus')
+    // Navigate to SKU page - Products (SKUs) in Configuration section
+    await page.click('a:has-text("Products (SKUs)")')
+    await page.waitForURL('**/config/products')
   })
 
   test('SKU list page loads correctly', async ({ page }) => {
