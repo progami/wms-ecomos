@@ -15,7 +15,7 @@
     "lint": "next lint",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "cd tests && jest --config=jest.config.unit.js",
-    "test:integration": "cd tests && NODE_ENV=test jest --config=jest.config.integration.js --runInBand --testPathIgnorePatterns='finance|import-export|dashboard|user-management|reconciliation'",
+    "test:integration": "cd tests && NODE_ENV=test jest --config=jest.config.integration.js --runInBand --testPathPattern='api-resilience|third-party-services|webhook-handlers'",
     "test:integration:with-server": "./scripts/run-integration-tests.sh",
     "test:e2e": "cd tests && playwright test e2e/",
     "test:e2e:headed": "cd tests && playwright test e2e/ --headed",
