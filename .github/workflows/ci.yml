@@ -94,6 +94,7 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: 'true'
           CI: true
         run: |
           # Regular build (standalone disabled in config)
@@ -168,6 +169,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: 'true'
         run: npm run test:unit
         
       - name: Run Integration Tests
@@ -176,6 +178,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: 'true'
         run: npm run test:integration
         
       - name: Upload test results
@@ -259,6 +262,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: 'true'
           USE_TEST_AUTH: true
           NODE_ENV: production
           CI: true
@@ -314,6 +318,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: 'true'
           USE_TEST_AUTH: true
           CI: true
           BASE_URL: http://localhost:3000
@@ -395,6 +400,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: 'true'
         run: npm run test:security
         
       - name: Dependency Audit
@@ -476,6 +482,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: 'true'
         run: npm run test:performance
         
       - name: Upload performance results
