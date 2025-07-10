@@ -19,6 +19,7 @@
     "test:integration:with-server": "./scripts/run-integration-tests.sh",
     "test:e2e": "cd tests && playwright test e2e/",
     "test:e2e:ci": "cd tests && playwright test e2e/*-runtime.spec.ts e2e/app-health-check.spec.ts e2e/basic-auth-flow.spec.ts e2e/simple-test.spec.ts",
+    "test:e2e:smoke": "cd tests && playwright test e2e/app-health-check.spec.ts e2e/basic-auth-flow.spec.ts e2e/simple-test.spec.ts",
     "test:e2e:headed": "cd tests && playwright test e2e/ --headed",
     "test:e2e:ui": "cd tests && playwright test --ui",
     "test:e2e:debug": "cd tests && playwright test --debug",
