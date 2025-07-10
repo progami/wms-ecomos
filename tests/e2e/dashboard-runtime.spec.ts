@@ -1,14 +1,17 @@
 import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect } from '@playwright/test'
+import { setupDemoAndLogin } from './utils/auth-helpers'
 
 const BASE_URL = 'http://localhost:3000'
 
 test.describe('📊 Dashboard Runtime Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    // Setup demo environment and login
-    await page.goto(BASE_URL)
-    await page.click('button:has-text("Try Demo")')
-    await page.waitForURL('**/dashboard', { timeout: 30000 })
+  test.beforeEach(async ({ page, request }) => {
+    // Setup demo data first via API
+    const setupResponse = await request.post(`${BASE_URL}/api/demo/setup`)
+    expect(setupResponse.ok()).toBeTruthy()
+    
+    // Use the auth helper that handles both test and regular auth
+    await setupDemoAndLogin(page)
   })
 
   test('Dashboard loads with all key components', async ({ page }) => {

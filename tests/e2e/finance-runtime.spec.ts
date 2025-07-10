@@ -1,11 +1,16 @@
 import { test, expect } from '@playwright/test'
+import { setupDemoAndLogin } from './utils/auth-helpers'
 
 test.describe('💰 Finance & Invoice Runtime Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    // Setup demo environment and navigate to finance
-    await page.goto('/')
-    await page.click('button:has-text("Try Demo")')
-    await page.waitForURL('**/dashboard', { timeout: 30000 })
+  test.beforeEach(async ({ page, request }) => {
+    // Setup demo data first via API
+    const setupResponse = await request.post('/api/demo/setup')
+    expect(setupResponse.ok()).toBeTruthy()
+    
+    // Use the auth helper that handles both test and regular auth
+    await setupDemoAndLogin(page)
+    
+    // Navigate to finance
     await page.click('a:has-text("Finance")')
     await page.waitForURL('**/finance')
   })
