@@ -102,12 +102,24 @@ jobs:
           echo "Build completed, checking .next directory:"
           ls -la .next/ || echo ".next directory not found"
         
+      - name: Verify build before upload
+        if: matrix.node == '20'
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Checking .next exists:"
+          test -d .next && echo ".next directory exists" || echo ".next directory NOT found"
+          echo "Full .next contents:"
+          find .next -type f | head -20
+          
       - name: Upload build
         if: matrix.node == '20'
         uses: actions/upload-artifact@v4
         with:
           name: build
-          path: .next
+          path: |
+            .next/**/*
           retention-days: 1
 
   # Fast Tests (Unit + Integration) - Run on every push
