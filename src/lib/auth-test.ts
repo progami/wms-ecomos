@@ -17,10 +17,13 @@ export const testAuthOptions: NextAuthOptions = {
   ...productionAuthOptions,
   providers: [
     {
-      id: 'test',
+      id: 'credentials',  // Must match the ID used in signIn('credentials', ...)
       name: 'Test Provider',
       type: 'credentials',
-      credentials: {},
+      credentials: {
+        emailOrUsername: { label: "Email or Username", type: "text" },
+        password: { label: "Password", type: "password" }
+      },
       async authorize() {
         // Always return the test user in test mode
         return TEST_USER
@@ -54,8 +57,11 @@ export const testAuthOptions: NextAuthOptions = {
 
 // Helper to get auth options based on environment
 export function getAuthOptions(): NextAuthOptions {
-  if (process.env.NODE_ENV === 'test' && process.env.USE_TEST_AUTH === 'true') {
+  // Use test auth if USE_TEST_AUTH is explicitly set to 'true'
+  // This works in both test and production environments for CI/CD
+  if (process.env.USE_TEST_AUTH === 'true') {
     return testAuthOptions
   }
+  
   return productionAuthOptions
 }

@@ -43,5 +43,13 @@ export default defineConfig({
     reuseExistingServer: true,
     stdout: 'pipe',
     stderr: 'pipe',
+    env: {
+      ...process.env,
+      USE_TEST_AUTH: process.env.USE_TEST_AUTH || 'true',
+      NODE_ENV: process.env.NODE_ENV || 'test',
+      NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'test-secret-for-e2e-tests',
+      DATABASE_URL: process.env.DATABASE_URL,
+    },
   },
 });
