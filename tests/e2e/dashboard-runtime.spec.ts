@@ -86,7 +86,7 @@ test.describe('📊 Dashboard Runtime Tests', () => {
     await page.waitForURL('**/operations/inventory')
     
     // Go back to dashboard
-    await page.click('a[href="/admin/dashboard"]')
+    await page.click('a[href="/dashboard"]')
     await page.waitForURL('**/dashboard')
     
     // Test Create Shipment button
