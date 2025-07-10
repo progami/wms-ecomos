@@ -95,28 +95,14 @@ jobs:
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
           USE_TEST_AUTH: 'true'
-          CI: true
-        run: |
-          # Regular build (standalone disabled in config)
-          npm run build
-          
-          echo "Build completed, checking .next directory:"
-          ls -la .next/ || echo ".next directory not found"
+        run: npm run build
         
-      - name: Package build artifacts
-        if: matrix.node == '20'
-        run: |
-          echo "Creating build artifact..."
-          tar -czf build-artifact.tar.gz .next/
-          echo "Artifact created, size:"
-          ls -lh build-artifact.tar.gz
-          
       - name: Upload build
         if: matrix.node == '20'
         uses: actions/upload-artifact@v4
         with:
           name: build
-          path: build-artifact.tar.gz
+          path: .next
           retention-days: 1
 
   # Fast Tests (Unit + Integration) - Run on every push
@@ -238,13 +224,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          
-      - name: Extract build
-        run: |
-          echo "Extracting build artifact..."
-          tar -xzf build-artifact.tar.gz
-          echo "Build extracted, checking .next:"
-          ls -la .next/
+          path: .next
       
       - name: Install Playwright Browsers
         run: cd tests && npx playwright install --with-deps ${{ matrix.browser }}
@@ -256,7 +236,7 @@ jobs:
           npx prisma generate
           npx prisma migrate deploy || echo "No migrations"
       
-      - name: Prepare and start server
+      - name: Start server
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
           REDIS_URL: redis://localhost:6379
@@ -265,51 +245,20 @@ jobs:
           USE_TEST_AUTH: true
           NODE_ENV: production
           CI: true
-          PORT: 3000
         run: |
-          # Ensure Prisma client is generated with correct database
-          npx prisma generate
-          
-          # Check build artifacts
-          echo "Checking .next directory:"
-          ls -la .next/ || echo "No .next directory"
-          
-          # Start the regular server
           npm run start &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
-          # Give server time to start
-          sleep 5
-          
-          # Check if server process is still running
-          if ! kill -0 $SERVER_PID 2>/dev/null; then
-            echo "Server process died immediately!"
-            exit 1
-          fi
-          
           # Wait for server to be ready
-          echo "Waiting for server to be ready..."
-          for i in {1..60}; do
-            if curl -f -s http://localhost:3000/api/health-ci > /dev/null 2>&1; then
-              echo "Server is ready after $i attempts!"
-              curl -s http://localhost:3000/api/health-ci | jq .
+          for i in {1..30}; do
+            if curl -f http://localhost:3000/api/health 2>/dev/null; then
+              echo "Server is ready!"
               break
             fi
-            if ! kill -0 $SERVER_PID 2>/dev/null; then
-              echo "Server process died!"
-              exit 1
-            fi
-            echo "Waiting for server... attempt $i/60"
+            echo "Waiting for server... attempt $i/30"
             sleep 2
           done
-          
-          # Final check
-          if ! curl -f -s http://localhost:3000/api/health-ci; then
-            echo "Server failed to start properly"
-            echo "Checking server logs..."
-            exit 1
-          fi
       
       - name: Run E2E Tests - ${{ matrix.browser }}
         env:
@@ -327,18 +276,6 @@ jobs:
             npm run test:e2e:ci -- --project=${{ matrix.browser }}
           fi
           
-      - name: Run diagnostics on failure
-        if: failure()
-        run: |
-          echo "Running CI diagnostics..."
-          chmod +x scripts/ci-diagnostics.js
-          node scripts/ci-diagnostics.js || true
-          
-          echo -e "\nChecking server logs..."
-          if [ ! -z "$SERVER_PID" ]; then
-            echo "Server PID: $SERVER_PID"
-            ps aux | grep $SERVER_PID || echo "Server process not found"
-          fi
           
       - name: Stop server
         if: always()
