@@ -1,5 +1,13 @@
 #!/usr/bin/env node
 
+// Ensure Prisma client is generated before trying to use it
+const { execSync } = require('child_process');
+try {
+  execSync('npx prisma generate', { stdio: 'inherit' });
+} catch (error) {
+  console.error('Failed to generate Prisma client:', error.message);
+}
+
 const { PrismaClient } = require('@prisma/client');
 
 async function waitForDatabase(maxAttempts = 30, delayMs = 1000) {

@@ -233,6 +233,37 @@ jobs:
           npx prisma generate
           npx prisma migrate deploy || echo "No migrations"
       
+      - name: Start server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+          USE_TEST_AUTH: true
+          NODE_ENV: production
+          CI: true
+        run: |
+          npm run build:server || echo "No server build needed"
+          npm run start:ci &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          
+          # Wait for server to be ready
+          for i in {1..60}; do
+            if curl -f http://localhost:3000/api/health-ci 2>/dev/null; then
+              echo "Server is ready!"
+              break
+            fi
+            echo "Waiting for server... attempt $i/60"
+            sleep 2
+          done
+          
+          # Verify server is still running
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "Server crashed during startup"
+            exit 1
+          fi
+      
       - name: Run E2E Tests - ${{ matrix.browser }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
@@ -241,11 +272,19 @@ jobs:
           NEXTAUTH_SECRET: test-secret
           USE_TEST_AUTH: true
           CI: true
+          BASE_URL: http://localhost:3000
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             npm run test:e2e:smoke -- --project=${{ matrix.browser }}
           else
             npm run test:e2e:ci -- --project=${{ matrix.browser }}
+          fi
+          
+      - name: Stop server
+        if: always()
+        run: |
+          if [ ! -z "$SERVER_PID" ]; then
+            kill $SERVER_PID || true
           fi
         
       - name: Upload test results

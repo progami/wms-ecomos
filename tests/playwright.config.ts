@@ -36,13 +36,13 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: process.env.CI ? 'npm run start:ci' : 'npm run start',
+  webServer: process.env.CI ? undefined : {
+    command: 'npm run start',
     port: 3000,
-    url: process.env.CI ? 'http://localhost:3000/api/health-ci' : 'http://localhost:3000/api/health',
-    timeout: 180 * 1000, // Increased timeout for CI
-    reuseExistingServer: !process.env.CI,
-    stdout: 'pipe', // Show server output for debugging
+    url: 'http://localhost:3000/api/health',
+    timeout: 120 * 1000,
+    reuseExistingServer: true,
+    stdout: 'pipe',
     stderr: 'pipe',
   },
 });
