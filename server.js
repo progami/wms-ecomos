@@ -3,10 +3,13 @@ const { parse } = require('url');
 const next = require('next');
 const path = require('path');
 
-// Load environment variables
-require('dotenv').config({
-  path: path.join(__dirname, `.env.${process.env.NODE_ENV || 'development'}`)
-});
+// Load environment variables only if not in CI
+// This prevents dotenv from overriding DATABASE_URL set by CI
+if (!process.env.CI) {
+  require('dotenv').config({
+    path: path.join(__dirname, `.env.${process.env.NODE_ENV || 'development'}`)
+  });
+}
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
