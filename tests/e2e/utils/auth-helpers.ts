@@ -4,9 +4,10 @@ export async function loginAsAdmin(page: Page) {
   // Navigate to login page
   await page.goto('/auth/login', { waitUntil: 'networkidle' })
   
-  // Fill in demo-admin credentials (created by demo setup)
-  await page.fill('#emailOrUsername', 'demo-admin')
-  await page.fill('#password', 'SecureWarehouse2024!')
+  // In test mode (USE_TEST_AUTH=true), any credentials work
+  // Use consistent test credentials
+  await page.fill('#emailOrUsername', 'test@example.com')
+  await page.fill('#password', 'test123')
   
   // Submit form
   await page.click('button[type="submit"]')
@@ -52,6 +53,13 @@ export async function loginWithQuickFill(page: Page, userType: 'Admin' | 'Financ
 }
 
 export async function setupDemoAndLogin(page: Page) {
+  // In test mode, we don't need demo setup - just login directly
+  if (process.env.USE_TEST_AUTH === 'true') {
+    await loginAsAdmin(page)
+    return
+  }
+  
+  // Original demo setup code for non-test environments
   // Navigate to home page
   await page.goto('/', { waitUntil: 'networkidle' })
   
