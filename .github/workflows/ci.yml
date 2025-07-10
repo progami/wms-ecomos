@@ -148,7 +148,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
         run: |
           npx prisma generate
-          npx prisma migrate deploy || echo "No migrations"
+          npx prisma db push --accept-data-loss
           
       - name: Run Unit Tests
         env:
@@ -235,7 +235,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
         run: |
           npx prisma generate
-          npx prisma migrate deploy || echo "No migrations"
+          npx prisma db push --accept-data-loss
       
       - name: Start server
         env:
@@ -329,7 +329,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
         run: |
           npx prisma generate
-          npx prisma migrate deploy || echo "No migrations"
+          npx prisma db push --accept-data-loss
       
       - name: Run Security Tests
         env:
@@ -409,7 +409,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
         run: |
           npx prisma generate
-          npx prisma migrate deploy || echo "No migrations"
+          npx prisma db push --accept-data-loss
           npm run seed:performance || echo "No performance seed"
       
       - name: Run Performance Tests
