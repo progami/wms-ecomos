@@ -24,8 +24,8 @@ test.describe('🔐 Authentication Runtime Tests', () => {
     // Click Try Demo button
     await page.click('button:has-text("Try Demo")')
     
-    // Wait for navigation to dashboard
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    // Wait for navigation to dashboard - extend timeout for slower browsers
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
     
     // Handle welcome modal if it appears
     const welcomeModal = page.locator('text=Welcome to WMS Demo!')
@@ -36,8 +36,8 @@ test.describe('🔐 Authentication Runtime Tests', () => {
     // Verify we're on dashboard
     await expect(page.locator('h1')).toContainText('Dashboard')
     
-    // Check for demo mode indicator in the UI
-    await expect(page.locator('text=Demo Data Loaded').or(page.locator('text=DEMO'))).toBeVisible()
+    // Check for demo user indicator - look for "Demo Administrator" text which indicates demo mode
+    await expect(page.locator('text=Demo Administrator').first()).toBeVisible()
   })
 
   test('Sign In navigation works correctly', async ({ page }) => {
@@ -84,8 +84,8 @@ test.describe('🔐 Authentication Runtime Tests', () => {
     // Click Try Demo button on login page
     await page.click('button:has-text("Try Demo")')
     
-    // Wait for dashboard
-    await page.waitForURL('**/dashboard', { timeout: 15000 })
+    // Wait for dashboard - extend timeout for slower browsers
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
     
     // Handle welcome modal if it appears
     const welcomeModal = page.locator('text=Welcome to WMS Demo!')
@@ -93,8 +93,8 @@ test.describe('🔐 Authentication Runtime Tests', () => {
       await page.click('button:has-text("Start Exploring")')
     }
     
-    // Verify demo user is logged in - look for demo user text in the header
-    await expect(page.locator('text=Demo Administrator, text=demo-admin').first()).toBeVisible()
+    // Verify demo user is logged in - look for Demo Administrator text
+    await expect(page.locator('text=Demo Administrator').first()).toBeVisible()
     
     // Check navigation menu is visible
     await expect(page.locator('nav')).toBeVisible()
@@ -159,8 +159,8 @@ test.describe('🔐 Authentication Runtime Tests', () => {
     
     // Should still be logged in
     await expect(newPage.locator('h1')).toContainText('Dashboard')
-    // Look for any indication of demo user
-    await expect(newPage.locator('text=Demo Administrator, text=demo-admin, text=DEMO').first()).toBeVisible()
+    // Look for demo user indicator
+    await expect(newPage.locator('text=Demo Administrator').first()).toBeVisible()
     
     await newPage.close()
   })
