@@ -1,11 +1,16 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server';
 
-// Simple health check for CI that doesn't wait for database
+// Simplified health check for CI environments
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    ci: process.env.CI === 'true'
-  })
+    environment: 'ci',
+    pid: process.pid,
+  }, {
+    status: 200,
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
+  });
 }

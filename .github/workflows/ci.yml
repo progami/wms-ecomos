@@ -94,19 +94,22 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
-          NEXT_BUILD_OUTPUT: ""  # Disable standalone for CI
+          CI: true
         run: |
-          # Temporarily disable standalone output for CI builds
-          cp next.config.js next.config.js.bak
-          sed -i "s/output: 'standalone'/\/\/ output: 'standalone'/" next.config.js
+          # Make build script executable
+          chmod +x scripts/build-ci.js
           
-          npm run build
-          
-          # Restore original config
-          mv next.config.js.bak next.config.js
+          # Build without standalone output for CI
+          npm run build:ci
           
           echo "Build completed, checking .next directory:"
           ls -la .next/ || echo ".next directory not found"
+          
+          # Ensure all necessary files are present
+          if [ ! -d ".next" ]; then
+            echo "ERROR: .next directory not found after build!"
+            exit 1
+          fi
         
       - name: Upload build
         if: matrix.node == '20'
@@ -254,6 +257,7 @@ jobs:
           USE_TEST_AUTH: true
           NODE_ENV: production
           CI: true
+          PORT: 3000
         run: |
           # Ensure Prisma client is generated with correct database
           npx prisma generate
@@ -262,16 +266,29 @@ jobs:
           echo "Checking .next directory:"
           ls -la .next/ || echo "No .next directory"
           
-          # Start the server
-          npm run start &
+          # Make CI server executable
+          chmod +x scripts/ci-server.js
+          
+          # Start the CI server
+          npm run start:ci:server &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
           
+          # Give server time to start
+          sleep 5
+          
+          # Check if server process is still running
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "Server process died immediately!"
+            exit 1
+          fi
+          
           # Wait for server to be ready
-          echo "Waiting for server to start..."
+          echo "Waiting for server to be ready..."
           for i in {1..60}; do
-            if curl -f http://localhost:3000/api/health-ci 2>/dev/null; then
+            if curl -f -s http://localhost:3000/api/health-ci > /dev/null 2>&1; then
               echo "Server is ready after $i attempts!"
+              curl -s http://localhost:3000/api/health-ci | jq .
               break
             fi
             if ! kill -0 $SERVER_PID 2>/dev/null; then
@@ -283,8 +300,9 @@ jobs:
           done
           
           # Final check
-          if ! curl -f http://localhost:3000/api/health-ci; then
+          if ! curl -f -s http://localhost:3000/api/health-ci; then
             echo "Server failed to start properly"
+            echo "Checking server logs..."
             exit 1
           fi
       
@@ -302,6 +320,19 @@ jobs:
             npm run test:e2e:smoke -- --project=${{ matrix.browser }}
           else
             npm run test:e2e:ci -- --project=${{ matrix.browser }}
+          fi
+          
+      - name: Run diagnostics on failure
+        if: failure()
+        run: |
+          echo "Running CI diagnostics..."
+          chmod +x scripts/ci-diagnostics.js
+          node scripts/ci-diagnostics.js || true
+          
+          echo -e "\nChecking server logs..."
+          if [ ! -z "$SERVER_PID" ]; then
+            echo "Server PID: $SERVER_PID"
+            ps aux | grep $SERVER_PID || echo "Server process not found"
           fi
           
       - name: Stop server
