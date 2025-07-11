@@ -44,14 +44,27 @@ async function loginAsAdmin(page: Page) {
   await setupDemoAndLogin(page);
   await page.waitForURL('**/dashboard', { timeout: 30000 })
   
-  // Close welcome modal if present
-  const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
-  if (await welcomeModal.isVisible({ timeout: 2000 })) {
-    const btn = page.locator('button:has-text("Start Exploring"), a:has-text("Start Exploring")').first();
-    if (await btn.isVisible()) {
-      await btn.click();
+  // Close welcome modal if present - handle both dialog and regular modals
+  const modalOverlay = page.locator('[role="dialog"]').first()
+  if (await modalOverlay.isVisible({ timeout: 2000 })) {
+    // Look for various close buttons
+    const closeButtons = [
+      page.locator('button:has-text("Start Exploring")'),
+      page.locator('button:has-text("View Documentation")'),
+      page.locator('button[aria-label="Close"]'),
+      page.locator('button.absolute.top-0.right-0'),
+      page.locator('svg.lucide-x').locator('..'),
+    ]
+    
+    for (const btn of closeButtons) {
+      if (await btn.isVisible({ timeout: 500 })) {
+        await btn.click()
+        break
+      }
     }
-    await page.waitForTimeout(500)
+    
+    // Wait for modal to disappear
+    await modalOverlay.waitFor({ state: 'hidden', timeout: 5000 })
   }
 }
 

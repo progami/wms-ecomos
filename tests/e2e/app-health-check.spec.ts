@@ -81,7 +81,7 @@ test.describe('Application Health Check', () => {
 
   test('1. Application starts without errors', async () => {
     // Navigate to the home page
-    const response = await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
+    const response = await page.goto('http://localhost:3000/', { waitUntil: 'domcontentloaded' });
     
     // Check that the page loads successfully
     expect(response?.status()).toBeLessThan(400);
@@ -184,31 +184,8 @@ test.describe('Application Health Check', () => {
   });
 
   test('4. Navigation works properly', async () => {
-    // First, login using test credentials
-    await page.goto('http://localhost:3000/auth/login', { waitUntil: 'networkidle' });
-    
-    // In test mode with USE_TEST_AUTH=true, we can login with any credentials
-    const emailInput = page.locator('input[name="emailOrUsername"]');
-    const passwordInput = page.locator('input[name="password"]');
-    const loginButton = page.locator('button[type="submit"]');
-    
-    // Fill in test credentials
-    await emailInput.fill('demo-admin');
-    await passwordInput.fill('SecureWarehouse2024!');
-    
-    // Submit the form
-    await loginButton.click();
-    
-    // Wait for navigation after login
-    try {
-      await page.waitForURL('**/dashboard', { timeout: 30000 });
-    } catch (e) {
-      console.log('Navigation to dashboard failed, checking current URL');
-      const currentUrl = page.url();
-      if (!currentUrl.includes('login')) {
-        console.log('Successfully navigated away from login');
-      }
-    }
+    // Use the setup helper to login
+    await setupDemoAndLogin(page);
     
     // Give it extra time to stabilize after login
     await page.waitForTimeout(2000);
@@ -222,7 +199,7 @@ test.describe('Application Health Check', () => {
       { path: '/finance', name: 'Finance' },
       { path: '/finance/invoices', name: 'Invoices' },
       { path: '/config', name: 'Configuration' },
-      { path: '/config/warehouses', name: 'Warehouses' },
+      { path: '/config/warehouse-configs', name: 'Warehouse Configs' },
     ];
     
     for (const navTest of navigationTests) {
@@ -254,7 +231,7 @@ test.describe('Application Health Check', () => {
     }
     
     // Test that navigation menu works (if visible)
-    const navMenu = page.locator('nav, [role="navigation"], .sidebar, aside');
+    const navMenu = page.locator('nav, [role="navigation"], .sidebar, aside').first();
     if (await navMenu.isVisible()) {
       const menuLinks = await navMenu.locator('a').all();
       console.log(`Found ${menuLinks.length} navigation links`);
@@ -321,8 +298,8 @@ test.describe('Application Health Check', () => {
       console.log(`Checking ${pagePath} for console errors...`);
       
       await page.goto(pagePath, { 
-        waitUntil: 'networkidle',
-        timeout: 30000 
+        waitUntil: 'domcontentloaded',
+        timeout: 15000 
       }).catch(err => {
         console.log(`Failed to navigate to ${pagePath}:`, err.message);
       });

@@ -1,5 +1,3 @@
-import { withBasePath } from '@/lib/utils/base-path'
-
 // Helper to get cookie value
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -11,8 +9,6 @@ function getCookie(name: string): string | null {
 
 // Utility function to make fetch requests with CSRF token
 export async function fetchWithCSRF(url: string, options: RequestInit = {}): Promise<Response> {
-  // Add base path for internal API routes
-  const finalUrl = url.startsWith('/api') ? withBasePath(url) : url
   const csrfToken = getCookie('csrf-token');
   
   const headers = new Headers(options.headers);
@@ -22,7 +18,7 @@ export async function fetchWithCSRF(url: string, options: RequestInit = {}): Pro
     headers.set('x-csrf-token', csrfToken);
   }
   
-  const response = await fetch(finalUrl, {
+  const response = await fetch(url, {
     ...options,
     headers,
     credentials: 'include' // Ensure cookies are sent
@@ -34,13 +30,13 @@ export async function fetchWithCSRF(url: string, options: RequestInit = {}): Pro
       const data = await response.clone().json();
       if (data.error === 'Invalid CSRF token') {
         // Get a new CSRF token by making a GET request
-        await fetch(withBasePath('/api/health'), { credentials: 'include' });
+        await fetch('/api/health', { credentials: 'include' });
         
         // Retry the original request with the new token
         const newCsrfToken = getCookie('csrf-token');
         if (newCsrfToken && newCsrfToken !== csrfToken) {
           headers.set('x-csrf-token', newCsrfToken);
-          return fetch(finalUrl, {
+          return fetch(url, {
             ...options,
             headers,
             credentials: 'include'

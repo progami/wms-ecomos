@@ -61,8 +61,8 @@ export default function LoginPage() {
       } else {
         toast.success('Login successful!')
         
-        // Use router.push for proper Next.js navigation with base path
-        const redirectUrl = callbackUrl || withBasePath('/dashboard')
+        // Use router.push for proper Next.js navigation
+        const redirectUrl = callbackUrl || '/dashboard'
         router.push(redirectUrl)
         router.refresh()
       }
