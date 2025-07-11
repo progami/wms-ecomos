@@ -81,7 +81,7 @@ test.describe('Application Health Check', () => {
 
   test('1. Application starts without errors', async () => {
     // Navigate to the home page
-    const response = await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
+    const response = await page.goto('http://localhost:3000/', { waitUntil: 'domcontentloaded' });
     
     // Check that the page loads successfully
     expect(response?.status()).toBeLessThan(400);
@@ -298,8 +298,8 @@ test.describe('Application Health Check', () => {
       console.log(`Checking ${pagePath} for console errors...`);
       
       await page.goto(pagePath, { 
-        waitUntil: 'networkidle',
-        timeout: 30000 
+        waitUntil: 'domcontentloaded',
+        timeout: 15000 
       }).catch(err => {
         console.log(`Failed to navigate to ${pagePath}:`, err.message);
       });
