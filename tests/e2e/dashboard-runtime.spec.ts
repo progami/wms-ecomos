@@ -32,9 +32,10 @@ test.describe('📊 Dashboard Runtime Tests', () => {
     await expect(page.locator('text="Inventory Levels Trend"')).toBeVisible()
     await expect(page.locator('.recharts-responsive-container').first()).toBeVisible()
     
-    // Check quick action buttons
-    await expect(page.locator('button:has-text("Create Shipment")')).toBeVisible()
-    await expect(page.locator('button:has-text("Manage Inventory")')).toBeVisible()
+    // Check quick action links - actual UI uses links not buttons
+    await expect(page.locator('a:has-text("Plan New Shipment")')).toBeVisible()
+    await expect(page.locator('a:has-text("Receive")')).toBeVisible()
+    await expect(page.locator('a:has-text("Ship")')).toBeVisible()
   })
 
   test('Dashboard data updates and displays correctly', async ({ page }) => {

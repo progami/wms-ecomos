@@ -15,8 +15,8 @@ async function setupAndLogin(page: any) {
   
   // Login as demo admin
   await page.goto(`${BASE_URL}/auth/login`)
-  await page.fill('#emailOrUsername', 'demo-admin')
-  await page.fill('#password', 'SecureWarehouse2024!')
+  await page.fill('#emailOrUsername', 'test@example.com')
+  await page.fill('#password', 'test123')
   await page.click('button[type="submit"]')
   await page.waitForURL('**/dashboard')
 }

@@ -3,7 +3,9 @@ import { test, expect, Page } from '@playwright/test';
 // Helper to login using demo account
 async function loginDemo(page: Page) {
   await page.goto('/auth/login');
-  await page.click('button:has-text("Try Demo")');
+  await page.fill('input[name="emailOrUsername"]', 'test@example.com')
+    await page.fill('input[name="password"]', 'test123')
+    await page.click('button[type="submit"]');
   // Wait for demo setup and redirect
   await page.waitForURL('**/dashboard', { timeout: 30000 });
   // Wait for page to fully load

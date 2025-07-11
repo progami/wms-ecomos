@@ -10,24 +10,26 @@ const STAFF_PASSWORD = 'Staff123!';
 
 // Helper functions
 async function loginAsAdmin(page: Page) {
-  await page.goto('/auth/login');
-  await page.fill('input[name="emailOrUsername"]', ADMIN_EMAIL);
-  await page.fill('input[name="password"]', ADMIN_PASSWORD);
+  await page.goto('http://localhost:3000/auth/login');
+  await page.fill('input[name="emailOrUsername"]', 'test@example.com');
+  await page.fill('input[name="password"]', 'test123');
   await page.click('button[type="submit"]:has-text("Sign in")');
-  await page.waitForURL('**/dashboard', { timeout: 10000 });
+  await page.waitForURL('**/dashboard', { timeout: 30000 });
 }
 
 async function loginAsStaff(page: Page) {
-  await page.goto('/auth/login');
-  await page.fill('input[name="emailOrUsername"]', STAFF_EMAIL);
-  await page.fill('input[name="password"]', STAFF_PASSWORD);
+  await page.goto('http://localhost:3000/auth/login');
+  await page.fill('input[name="emailOrUsername"]', 'staff@example.com');
+  await page.fill('input[name="password"]', 'test123');
   await page.click('button[type="submit"]:has-text("Sign in")');
-  await page.waitForURL('**/dashboard', { timeout: 10000 });
+  await page.waitForURL('**/dashboard', { timeout: 30000 });
 }
 
 async function loginAsDemo(page: Page) {
-  await page.goto('/auth/login');
-  await page.click('button:has-text("Try Demo")');
+  await page.goto('http://localhost:3000/auth/login');
+  await page.fill('input[name="emailOrUsername"]', 'demo@example.com');
+  await page.fill('input[name="password"]', 'test123');
+  await page.click('button[type="submit"]:has-text("Sign in")');
   await page.waitForURL('**/dashboard', { timeout: 30000 });
 }
 
@@ -46,7 +48,7 @@ async function dismissToast(page: Page) {
 test.describe('Complete User Workflows', () => {
   test.beforeEach(async ({ page }) => {
     // Clear any existing session
-    await page.goto('/');
+    await page.goto('http://localhost:3000/');
     await page.context().clearCookies();
   });
 

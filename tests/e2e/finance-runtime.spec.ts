@@ -300,15 +300,21 @@ test.describe('💰 Finance & Invoice Runtime Tests', () => {
     // Check mobile layout
     await expect(page.locator('h1')).toBeVisible()
     
-    // Tabs should be scrollable or in dropdown
-    const tabList = page.locator('[role="tablist"]')
-    await expect(tabList).toBeVisible()
+    // Finance module cards should be visible and stack on mobile
+    await expect(page.locator('a:has-text("Finance Dashboard")')).toBeVisible()
+    await expect(page.locator('a:has-text("Invoices")')).toBeVisible()
+    
+    // Navigate to Finance Dashboard
+    await page.click('a:has-text("Finance Dashboard")')
+    await page.waitForURL('**/finance/dashboard')
     
     // KPI cards should stack
     await expect(page.locator('text=Total Revenue')).toBeVisible()
     
-    // Navigate to invoices
-    await page.click('button[role="tab"]:has-text("Invoices")')
+    // Go back and navigate to invoices
+    await page.goto('/finance')
+    await page.click('a:has-text("Invoices")')
+    await page.waitForURL('**/finance/invoices')
     
     // Table should be scrollable or card view
     const hasTable = await page.locator('table').isVisible()

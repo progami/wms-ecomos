@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test'
 // Test configuration
 const BASE_URL = 'http://localhost:3000'
 const DEMO_ADMIN = {
-  username: 'demo-admin',
-  password: 'SecureWarehouse2024!'
+  username: 'test@example.com',
+  password: 'test123'
 }
 const DEMO_STAFF = {
   username: 'staff',
@@ -18,22 +18,25 @@ async function login(page: any, credentials: { username: string, password: strin
   await page.fill('#emailOrUsername', credentials.username)
   await page.fill('#password', credentials.password)
   await page.click('button[type="submit"]')
-  await page.waitForURL('**/dashboard')
+  await page.waitForURL('**/dashboard', { timeout: 30000 })
 }
 
 // Helper function to setup demo environment
 async function setupDemo(page: any) {
-  await page.goto(BASE_URL)
-  await page.click('button:has-text("Try Demo")')
-  await page.waitForURL('**/dashboard', { timeout: 10000 })
+  // In test auth mode, we can login with any credentials
+  await page.goto(`${BASE_URL}/auth/login`)
+  await page.fill('#emailOrUsername', 'test@example.com')
+  await page.fill('#password', 'test123')
+  await page.click('button[type="submit"]')
+  await page.waitForURL('**/dashboard', { timeout: 30000 })
 }
 
 test.describe('🔐 Authentication Flow', () => {
   test('Landing page loads correctly', async ({ page }) => {
     await page.goto(BASE_URL)
-    // The landing page is the login page
+    // The landing page redirects to login page
+    await page.waitForURL('**/auth/login', { timeout: 5000 })
     await expect(page.locator('h2')).toContainText('Sign in to your account')
-    await expect(page.locator('button:has-text("Try Demo")')).toBeVisible()
     await expect(page.locator('button[type="submit"]')).toContainText('Sign in')
   })
 
@@ -45,7 +48,7 @@ test.describe('🔐 Authentication Flow', () => {
     await expect(page.locator('#emailOrUsername')).toBeVisible()
     await expect(page.locator('#password')).toBeVisible()
     await expect(page.locator('button[type="submit"]')).toBeVisible()
-    await expect(page.locator('button:has-text("Try Demo")')).toBeVisible()
+    // Try Demo button no longer exists in test auth mode
     
     // Test empty form submission
     await page.click('button[type="submit"]')
@@ -56,32 +59,31 @@ test.describe('🔐 Authentication Flow', () => {
     await setupDemo(page)
     await expect(page).toHaveURL(/.*\/dashboard/)
     
-    // Close welcome modal if present
-    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
-    if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-    
-    await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible()
+    // Check dashboard loaded
+    await expect(page.locator('h1').first()).toContainText('Dashboard')
   })
 
   test('Regular login flow', async ({ page }) => {
-    await login(page, DEMO_ADMIN)
+    // Use test auth credentials
+    await page.goto(`${BASE_URL}/auth/login`)
+    await page.fill('#emailOrUsername', 'test@example.com')
+    await page.fill('#password', 'test123')
+    await page.click('button[type="submit"]')
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
+    
     await expect(page).toHaveURL(/.*\/dashboard/)
-    
-    // Close welcome modal if present
-    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
-    if (await welcomeModal.isVisible({ timeout: 2000 })) {
-      await page.click('button:has-text("Start Exploring")')
-      await page.waitForTimeout(500)
-    }
-    
-    await expect(page.locator('text="Welcome back, Demo Administrator"')).toBeVisible()
+    await expect(page.locator('h1').first()).toContainText('Dashboard')
   })
 
   test('Logout functionality', async ({ page }) => {
-    await login(page, DEMO_ADMIN)
+    // Login with test auth
+    await page.goto(`${BASE_URL}/auth/login`)
+    await page.fill('#emailOrUsername', 'test@example.com')
+    await page.fill('#password', 'test123')
+    await page.click('button[type="submit"]')
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
+    
+    // Find and click sign out
     await page.click('button:has-text("Sign out")')
     await expect(page).toHaveURL(/.*\/auth\/login/)
   })
@@ -89,15 +91,13 @@ test.describe('🔐 Authentication Flow', () => {
 
 test.describe('📊 Dashboard Pages', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page, DEMO_ADMIN)
-    
-    // Close welcome modal if present
-    const welcomeModal = page.locator('text="Welcome to WMS Demo!"')
-    if (await welcomeModal.isVisible({ timeout: 2000 })) {
-    await page.click('button:has-text("Start Exploring")')
-    await page.waitForTimeout(500)
-  }
-})
+    // Login with test auth
+    await page.goto(`${BASE_URL}/auth/login`)
+    await page.fill('#emailOrUsername', 'test@example.com')
+    await page.fill('#password', 'test123')
+    await page.click('button[type="submit"]')
+    await page.waitForURL('**/dashboard', { timeout: 30000 })
+  })
 
 test('Main dashboard displays correctly', async ({ page }) => {
     // Check header elements

@@ -39,11 +39,14 @@ test.describe('Application Health Check', () => {
   });
 
   test('1. Application starts without errors', async () => {
-    // Navigate to the home page
-    const response = await page.goto('/', { waitUntil: 'networkidle' });
+    // Navigate to the home page (which redirects to login)
+    const response = await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
     
     // Check that the page loads successfully
     expect(response?.status()).toBeLessThan(400);
+    
+    // Should redirect to login page
+    await page.waitForURL('**/auth/login', { timeout: 5000 });
     
     // Wait a bit to catch any delayed errors
     await page.waitForTimeout(2000);

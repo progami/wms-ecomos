@@ -4,8 +4,8 @@ import { test, expect, Page } from '@playwright/test'
 // Test configuration
 const BASE_URL = 'http://localhost:3000'
 const ADMIN_CREDENTIALS = {
-  username: 'demo-admin',
-  password: 'SecureWarehouse2024!'
+  username: 'test@example.com',
+  password: 'test123'
 }
 
 // Helper functions

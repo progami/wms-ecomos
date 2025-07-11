@@ -55,7 +55,7 @@ test.describe('Demo Functionality Tests', () => {
       await expect(dashboardPage.pageTitle).toBeVisible();
       
       // Check user is logged in as demo admin
-      await expect(page.locator('text=demo-admin@warehouse.com')).toBeVisible();
+      await expect(page.locator('text=test@example.com@warehouse.com')).toBeVisible();
       
       // Check for demo data indicator
       const demoDataText = await page.locator('text="Demo data for testing"').isVisible();
@@ -429,8 +429,8 @@ test.describe('Demo Functionality Tests', () => {
         await welcomeModal.waitFor({ state: 'hidden', timeout: 5000 });
       }
       
-      // Note that we're logged in as demo-admin@warehouse.com
-      await expect(page.locator('text="demo-admin@warehouse.com"')).toBeVisible();
+      // Note that we're logged in as test@example.com@warehouse.com
+      await expect(page.locator('text="test@example.com@warehouse.com"')).toBeVisible();
       
       // Check initial data
       const initialInventory = await page.locator('heading:has-text("27,000")').isVisible();
