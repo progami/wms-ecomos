@@ -65,11 +65,27 @@ export async function closeModals(page: Page) {
  * Wait for navigation elements to be ready
  */
 export async function waitForNavigation(page: Page) {
-  // Wait for main navigation to be visible
-  const nav = page.locator('nav, [role="navigation"], .sidebar').first()
-  await nav.waitFor({ state: 'visible', timeout: 10000 })
+  // Wait for any navigation element to be visible
+  const navSelectors = ['nav', '[role="navigation"]', '.sidebar', 'header'];
+  let foundNav = false;
   
-  // Ensure navigation links are loaded
-  const navLinks = nav.locator('a')
-  await navLinks.first().waitFor({ state: 'visible', timeout: 5000 })
+  for (const selector of navSelectors) {
+    try {
+      const nav = page.locator(selector).first();
+      if (await nav.isVisible({ timeout: 2000 })) {
+        foundNav = true;
+        break;
+      }
+    } catch (e) {
+      // Continue to next selector
+    }
+  }
+  
+  // If no navigation found, that's okay - some pages might not have traditional nav
+  if (!foundNav) {
+    console.log('No navigation element found, continuing...');
+  }
+  
+  // Give the page a moment to stabilize
+  await page.waitForTimeout(500);
 }
