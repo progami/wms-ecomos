@@ -7,8 +7,8 @@ test.describe('Quick Authentication Test', () => {
     // let's use the demo approach which is working
     // Use test auth mode to login
     await page.goto('http://localhost:3000/auth/login');
-    await page.fill('#emailOrUsername', 'test@example.com');
-    await page.fill('#password', 'test123');
+    await page.fill('#emailOrUsername', 'demo-admin');
+    await page.fill('#password', 'SecureWarehouse2024!');
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard', { timeout: 30000 });
     

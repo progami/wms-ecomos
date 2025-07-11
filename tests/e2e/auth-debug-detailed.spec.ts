@@ -21,7 +21,7 @@ test('Detailed auth debug', async ({ page }) => {
   
   // Fill form
   await page.fill('#emailOrUsername', 'admin@warehouse.com');
-  await page.fill('#password', 'test123');
+  await page.fill('#password', 'SecureWarehouse2024!');
   
   // Intercept the auth response
   const responsePromise = page.waitForResponse(

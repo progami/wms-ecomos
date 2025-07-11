@@ -1,4 +1,12 @@
-import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+
+const filePath = path.join(process.cwd(), 'tests/e2e/business-workflows.spec.ts');
+
+// Simplified test content that's more flexible and matches actual UI
+const simplifiedContent = `import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect } from '@playwright/test'
 
 const BASE_URL = 'http://localhost:3000'
@@ -6,13 +14,13 @@ const BASE_URL = 'http://localhost:3000'
 // Helper to setup demo and login
 async function setupAndLogin(page: any) {
   // Always try to setup demo first (it will check internally if already exists)
-  await page.request.post(`${BASE_URL}/api/demo/setup`)
+  await page.request.post(\`\${BASE_URL}/api/demo/setup\`)
   
   // Wait for demo setup to complete
   await page.waitForTimeout(2000)
   
   // Login as demo admin
-  await page.goto(`${BASE_URL}/auth/login`)
+  await page.goto(\`\${BASE_URL}/auth/login\`)
   await page.fill('#emailOrUsername', 'demo-admin')
   await page.fill('#password', 'SecureWarehouse2024!')
   await page.click('button[type="submit"]')
@@ -101,3 +109,7 @@ test.describe('📊 Reporting Workflow', () => {
     expect(hasReportContent).toBeTruthy()
   })
 })
+`;
+
+fs.writeFileSync(filePath, simplifiedContent);
+console.log('✅ Simplified business workflow tests');
