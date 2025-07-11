@@ -103,7 +103,7 @@ export function MarketSection({ data, loading }: MarketSectionProps) {
       {/* Metric Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Amazon FBA Summary */}
-        <Link href="/integrations/amazon" className="border rounded-lg p-4 hover:shadow-md transition-all group">
+        <Link href="/market/amazon" className="border rounded-lg p-4 hover:shadow-md transition-all group">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
