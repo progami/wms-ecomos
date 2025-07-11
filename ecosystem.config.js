@@ -18,10 +18,8 @@ module.exports = {
     },
     env_production: {
       NODE_ENV: 'production',
-      PORT: 3000,
-      BASE_PATH: '/WMS',
-      NEXT_PUBLIC_BASE_PATH: '/WMS',
-      NEXTAUTH_URL: 'https://www.targonglobal.com/WMS'
+      PORT: 3001,
+      NEXTAUTH_URL: 'https://wms.targonglobal.com'
     }
   }]
 }
