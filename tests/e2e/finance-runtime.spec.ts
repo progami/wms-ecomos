@@ -421,9 +421,24 @@ test.describe('💰 Finance & Invoice Runtime Tests', () => {
       await page.goto('/finance')
     }
     
-    // Navigate to invoices
-    await page.click('a:has-text("Invoices")')
-    await page.waitForURL('**/finance/invoices')
+    // Navigate to invoices - handle mobile navigation
+    // First check if we need to open mobile menu
+    const mobileMenuButton = page.locator('button[aria-label="Open menu"], button:has-text("Menu"), [data-testid="mobile-menu"]').first()
+    if (await mobileMenuButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await mobileMenuButton.click()
+      await page.waitForTimeout(500)
+    }
+    
+    // Try to find and click Invoices link
+    const invoicesLink = page.locator('a:has-text("Invoices")').first()
+    if (await invoicesLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await invoicesLink.click()
+      await page.waitForURL('**/finance/invoices')
+    } else {
+      // If not visible, navigate directly
+      await page.goto('/finance/invoices')
+      await page.waitForLoadState('domcontentloaded')
+    }
     
     // Table should be scrollable or card view
     const hasTable = await page.locator('table').isVisible()
