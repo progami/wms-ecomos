@@ -4,8 +4,6 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { UserRole } from '@prisma/client'
 
-const basePath = process.env.BASE_PATH || '';
-
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
@@ -85,7 +83,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: `${basePath}/auth/login`,
-    error: `${basePath}/auth/error`,
+    signIn: '/auth/login',
+    error: '/auth/error',
   },
 }

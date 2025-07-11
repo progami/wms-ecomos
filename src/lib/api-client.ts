@@ -1,5 +1,3 @@
-import { withBasePath } from '@/lib/utils/base-path'
-
 /**
  * API client that automatically handles base path
  */
@@ -9,16 +7,13 @@ interface FetchOptions extends RequestInit {
 }
 
 /**
- * Wrapper around fetch that automatically adds base path to API routes
- * @param url - The URL to fetch (will add base path if it starts with /api)
+ * Wrapper around fetch for API routes
+ * @param url - The URL to fetch
  * @param options - Fetch options
  * @returns Promise with the fetch response
  */
 export async function apiFetch(url: string, options?: FetchOptions): Promise<Response> {
-  // Only add base path for internal API routes
-  const finalUrl = url.startsWith('/api') ? withBasePath(url) : url
-  
-  return fetch(finalUrl, options)
+  return fetch(url, options)
 }
 
 /**
