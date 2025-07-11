@@ -64,7 +64,11 @@ export default function AmazonIntegrationPage() {
         
         // Fetch inventory comparison
         const response = await fetch('/api/amazon/inventory-comparison', {
-          signal: controller.signal
+          signal: controller.signal,
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
         })
         clearTimeout(timeoutId)
         
@@ -85,7 +89,9 @@ export default function AmazonIntegrationPage() {
                 toast.success(`Synced ${result.synced} items from Amazon FBA`)
                 
                 // Refresh the inventory comparison after sync
-                const refreshResponse = await fetch('/api/amazon/inventory-comparison')
+                const refreshResponse = await fetch('/api/amazon/inventory-comparison', {
+                  credentials: 'include'
+                })
                 if (refreshResponse.ok) {
                   const refreshedData = await refreshResponse.json()
                   setInventory(refreshedData)
@@ -236,7 +242,9 @@ export default function AmazonIntegrationPage() {
                 // Skip warehouse setup - it should be done manually
                 
                 // Fetch inventory comparison
-                const response = await fetch('/api/amazon/inventory-comparison')
+                const response = await fetch('/api/amazon/inventory-comparison', {
+                  credentials: 'include'
+                })
                 if (response.ok) {
                   const data = await response.json()
                   setInventory(data)
@@ -255,7 +263,9 @@ export default function AmazonIntegrationPage() {
                       toast.success(`Synced ${result.synced} items from Amazon FBA`)
                       
                       // Refresh the inventory comparison after sync
-                      const refreshResponse = await fetch('/api/amazon/inventory-comparison')
+                      const refreshResponse = await fetch('/api/amazon/inventory-comparison', {
+                        credentials: 'include'
+                      })
                       if (refreshResponse.ok) {
                         const refreshedData = await refreshResponse.json()
                         setInventory(refreshedData)
