@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -19,6 +21,7 @@ interface InventoryComparison {
   percentChange?: number
 }
 
+// Force cache invalidation
 export default function AmazonIntegrationPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
