@@ -149,6 +149,7 @@ jobs:
         run: |
           npx prisma generate
           npx prisma db push --accept-data-loss
+          npx tsx prisma/seed-test.ts
           
       - name: Run Unit Tests
         env:
@@ -236,6 +237,7 @@ jobs:
         run: |
           npx prisma generate
           npx prisma db push --accept-data-loss
+          npx tsx prisma/seed-test.ts
       
       - name: Start server
         env:
@@ -271,11 +273,8 @@ jobs:
           CI: true
           BASE_URL: http://localhost:3000
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            npm run test:e2e:smoke -- --project=${{ matrix.browser }}
-          else
-            npm run test:e2e:ci -- --project=${{ matrix.browser }}
-          fi
+          # Always run the CI test suite for consistency
+          npm run test:e2e:ci -- --project=${{ matrix.browser }}
           
           
       - name: Stop server
@@ -330,6 +329,7 @@ jobs:
         run: |
           npx prisma generate
           npx prisma db push --accept-data-loss
+          npx tsx prisma/seed-test.ts
       
       - name: Run Security Tests
         env:
@@ -410,6 +410,7 @@ jobs:
         run: |
           npx prisma generate
           npx prisma db push --accept-data-loss
+          npx tsx prisma/seed-test.ts
           npm run seed:performance || echo "No performance seed"
       
       - name: Run Performance Tests
