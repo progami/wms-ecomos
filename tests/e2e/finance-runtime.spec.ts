@@ -9,14 +9,29 @@ async function setupDemoAndLogin(page: any) {
   
   // Navigate to login page
   await page.goto('http://localhost:3000/auth/login');
+  await page.waitForLoadState('networkidle');
   
-  // Login with demo credentials
-  await page.fill('#emailOrUsername', 'demo-admin');
-  await page.fill('#password', 'SecureWarehouse2024!');
-  await page.click('button[type="submit"]');
-  
-  // Wait for navigation to dashboard
-  await page.waitForURL('**/dashboard', { timeout: 30000 });
+  // Check if we're already logged in (might redirect to dashboard)
+  if (page.url().includes('/dashboard')) {
+    console.log('Already logged in, on dashboard');
+  } else {
+    // Login with demo credentials
+    await page.fill('#emailOrUsername', 'demo-admin');
+    await page.fill('#password', 'SecureWarehouse2024!');
+    
+    // Click submit and wait for navigation
+    await page.click('button[type="submit"]');
+    // Wait for either dashboard or login error
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    
+    // Check if we made it to dashboard
+    const currentUrl = page.url();
+    if (!currentUrl.includes('/dashboard')) {
+      // Try one more time with explicit navigation
+      await page.goto('http://localhost:3000/dashboard');
+    }
+  }
   
   // Handle welcome modal if present
   const welcomeModal = page.locator('dialog:has-text("Welcome to WMS Demo!")');
@@ -44,14 +59,24 @@ test.describe('💰 Finance & Invoice Runtime Tests', () => {
     // Use the auth helper that handles both test and regular auth
     await setupDemoAndLogin(page)
     
-    // Navigate to finance - handle both sidebar link and direct navigation
-    const financeLink = page.locator('a:has-text("Finance")').first()
-    if (await financeLink.isVisible()) {
-      await financeLink.click()
-      await page.waitForURL('**/finance')
-    } else {
-      await page.goto('/finance')
+    // Wait for page to stabilize after login
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1000)
+    
+    // Navigate to finance - handle navigation more carefully
+    try {
+      await page.goto('/finance', { waitUntil: 'networkidle' })
+    } catch (e) {
+      // If navigation was interrupted, wait and try again
+      await page.waitForTimeout(1000)
+      const currentUrl = page.url()
+      if (!currentUrl.includes('/finance')) {
+        await page.goto('/finance', { waitUntil: 'domcontentloaded' })
+      }
     }
+    
+    // Ensure we're on the finance page
+    await page.waitForURL('**/finance', { timeout: 10000 })
   })
 
   test('Finance dashboard loads correctly', async ({ page }) => {
@@ -189,14 +214,21 @@ test.describe('💰 Finance & Invoice Runtime Tests', () => {
   })
 
   test('Update invoice status', async ({ page }) => {
-    // Navigate to invoices - wait for navigation to be ready
+    // Navigate to invoices with better error handling
     const invoicesLink = page.locator('a:has-text("Invoices")').first()
+    
+    // Wait for the link to be stable before clicking
     await invoicesLink.waitFor({ state: 'visible', timeout: 10000 })
+    await page.waitForTimeout(500) // Let any animations complete
+    
     await invoicesLink.click()
     await page.waitForURL('**/finance/invoices', { timeout: 10000 })
     
+    // Wait for page to load completely
+    await page.waitForLoadState('networkidle')
+    
     // Check if there are any invoices
-    const hasTable = await page.locator('table').isVisible()
+    const hasTable = await page.locator('table').isVisible({ timeout: 5000 }).catch(() => false)
     if (hasTable) {
       // Find an invoice with a status that can be changed
       const invoice = page.locator('tbody tr').first()

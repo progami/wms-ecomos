@@ -3,13 +3,14 @@ import { UserRole } from '@prisma/client'
 import { authOptions as productionAuthOptions } from './auth'
 
 // Test user that will be used for all authenticated requests in test mode
+// Using demo-admin to match E2E test expectations
 const TEST_USER = {
-  id: 'test-user-id',
-  email: 'test@example.com',
-  name: 'Test User',
+  id: 'demo-admin-id',
+  email: 'demo-admin@warehouse.com',
+  name: 'Demo Admin',
   role: 'admin' as UserRole,
   warehouseId: undefined,
-  isDemo: false
+  isDemo: true
 }
 
 // Test auth options that bypass real authentication in test mode
