@@ -117,7 +117,7 @@ test.describe('📊 Dashboard Pages', () => {
     await page.waitForURL('**/dashboard', { timeout: 30000 })
     
     // Ensure welcome modal is closed
-    const modalOverlay = page.locator('.fixed.inset-0.bg-gray-500.bg-opacity-75, [role="dialog"], dialog:visible')
+    const modalOverlay = page.locator('[role="dialog"]').first()
     if (await modalOverlay.isVisible({ timeout: 2000 })) {
       // Look for close buttons
       const closeButtons = [

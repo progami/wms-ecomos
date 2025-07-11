@@ -45,7 +45,7 @@ async function loginAsAdmin(page: Page) {
   await page.waitForURL('**/dashboard', { timeout: 30000 })
   
   // Close welcome modal if present - handle both dialog and regular modals
-  const modalOverlay = page.locator('.fixed.inset-0.bg-gray-500.bg-opacity-75, [role="dialog"]')
+  const modalOverlay = page.locator('[role="dialog"]').first()
   if (await modalOverlay.isVisible({ timeout: 2000 })) {
     // Look for various close buttons
     const closeButtons = [

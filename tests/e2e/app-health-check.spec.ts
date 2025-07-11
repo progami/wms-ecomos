@@ -231,7 +231,7 @@ test.describe('Application Health Check', () => {
     }
     
     // Test that navigation menu works (if visible)
-    const navMenu = page.locator('nav, [role="navigation"], .sidebar, aside');
+    const navMenu = page.locator('nav, [role="navigation"], .sidebar, aside').first();
     if (await navMenu.isVisible()) {
       const menuLinks = await navMenu.locator('a').all();
       console.log(`Found ${menuLinks.length} navigation links`);
