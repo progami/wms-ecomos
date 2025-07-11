@@ -222,3 +222,8 @@ fix-*.sh
 !next.config.json
 screenshot-*.js
 take-screenshot.js
+# Test outputs
+e2e-results/
+playwright-report/
+playwright-results.xml
+test-results/

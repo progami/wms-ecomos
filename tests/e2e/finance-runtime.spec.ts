@@ -181,9 +181,11 @@ test.describe('💰 Finance & Invoice Runtime Tests', () => {
   })
 
   test('Update invoice status', async ({ page }) => {
-    // Navigate to invoices
-    await page.click('a:has-text("Invoices")')
-    await page.waitForURL('**/finance/invoices')
+    // Navigate to invoices - wait for navigation to be ready
+    const invoicesLink = page.locator('a:has-text("Invoices")').first()
+    await invoicesLink.waitFor({ state: 'visible', timeout: 10000 })
+    await invoicesLink.click()
+    await page.waitForURL('**/finance/invoices', { timeout: 10000 })
     
     // Check if there are any invoices
     const hasTable = await page.locator('table').isVisible()

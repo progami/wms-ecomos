@@ -1,5 +1,6 @@
 import { isUnderConstruction, handleUnderConstruction, closeWelcomeModal, navigateToPage } from './utils/common-helpers';
 import { test, expect } from '@playwright/test'
+import { waitForPageReady, waitForNavigation } from './utils/page-helpers'
 
 // Helper to setup demo and login
 async function setupDemoAndLogin(page: any) {
@@ -111,17 +112,25 @@ test.describe('📊 Dashboard Runtime Tests', () => {
       await page.waitForTimeout(500)
     }
     
-    // Test Manage Inventory button
-    await page.click('button:has-text("Manage Inventory")')
-    await page.waitForURL('**/operations/inventory')
+    // Wait for dashboard to fully load
+    await waitForPageReady(page)
+    await waitForNavigation(page)
+    
+    // Test Manage Inventory button - use more flexible selector
+    const inventoryButton = page.locator('button:has-text("Manage Inventory"), a:has-text("Manage Inventory")').first()
+    await inventoryButton.waitFor({ state: 'visible', timeout: 10000 })
+    await inventoryButton.click()
+    await page.waitForURL('**/operations/inventory', { timeout: 10000 })
     
     // Go back to dashboard
     await page.click('a[href="/dashboard"]')
     await page.waitForURL('**/dashboard')
     
-    // Test Create Shipment button
-    await page.click('button:has-text("Create Shipment")')
-    await page.waitForURL('**/operations/ship')
+    // Test Create Shipment button - use more flexible selector
+    const shipmentButton = page.locator('button:has-text("Create Shipment"), a:has-text("Create Shipment")').first()
+    await shipmentButton.waitFor({ state: 'visible', timeout: 10000 })
+    await shipmentButton.click()
+    await page.waitForURL('**/operations/ship', { timeout: 10000 })
   })
 
   test('Dashboard refresh functionality', async ({ page }) => {

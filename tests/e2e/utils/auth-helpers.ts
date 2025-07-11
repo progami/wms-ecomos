@@ -10,8 +10,8 @@ export async function loginAsAdmin(page: Page) {
   const passwordInput = page.locator('input[name="password"]')
   const loginButton = page.locator('button[type="submit"]')
   
-  await emailInput.fill('test@example.com')
-  await passwordInput.fill('test123')
+  await emailInput.fill('demo-admin')
+  await passwordInput.fill('SecureWarehouse2024!')
   
   // Submit form
   await loginButton.click()
