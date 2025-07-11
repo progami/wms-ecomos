@@ -110,8 +110,16 @@ test.describe('💰 Finance & Invoice Runtime Tests', () => {
     await expect(page).toHaveURL(/invoices/)
     
     // Check for invoice-related content (table, list, or empty state)
-    const invoiceContent = page.locator('table, [data-testid="invoice-list"], text=/invoice|no.*invoice/i').first()
-    await expect(invoiceContent).toBeVisible({ timeout: 10000 })
+    const tableElement = page.locator('table').first()
+    const listElement = page.locator('[data-testid="invoice-list"]').first()
+    const textElement = page.locator('text=/invoice|no.*invoice/i').first()
+    
+    // Check if any of these elements is visible
+    const hasTable = await tableElement.isVisible({ timeout: 2000 }).catch(() => false)
+    const hasList = await listElement.isVisible({ timeout: 2000 }).catch(() => false)
+    const hasText = await textElement.isVisible({ timeout: 2000 }).catch(() => false)
+    
+    expect(hasTable || hasList || hasText).toBeTruthy()
     
     // If there's a filter option, verify it exists (but don't require it)
     const filters = page.locator('select, button:has-text("Filter"), input[placeholder*="Search"]').first()
