@@ -121,7 +121,7 @@ export function MarketSection({ data, loading }: MarketSectionProps) {
       </Link>
 
       {/* Reorder Management */}
-      <Link href="/operations/shipment-planning" className="border rounded-lg p-4 hover:shadow-md transition-all group">
+      <Link href="/market/shipment-planning" className="border rounded-lg p-4 hover:shadow-md transition-all group">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -144,7 +144,7 @@ export function MarketSection({ data, loading }: MarketSectionProps) {
       </Link>
 
       {/* Shipment Planning */}
-      <Link href="/operations/shipment-planning" className="border rounded-lg p-4 hover:shadow-md transition-all group">
+      <Link href="/market/shipment-planning" className="border rounded-lg p-4 hover:shadow-md transition-all group">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -163,7 +163,7 @@ export function MarketSection({ data, loading }: MarketSectionProps) {
 
         {/* Quick Actions - Streamlined to single most relevant action */}
         <div className="md:col-span-2 lg:col-span-3 mt-2">
-          <Link href="/operations/shipment-planning/new" className="flex items-center justify-center gap-2 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          <Link href="/market/shipment-planning/new" className="flex items-center justify-center gap-2 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <Calendar className="h-5 w-5 text-primary" />
             <span className="font-medium">Plan New Shipment</span>
           </Link>

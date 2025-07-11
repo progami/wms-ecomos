@@ -37,7 +37,7 @@ const operationGroups: OperationGroup[] = [
       {
         title: 'Shipment Planning',
         description: 'Optimize and consolidate shipments for efficient delivery',
-        href: '/operations/shipment-planning',
+        href: '/market/shipment-planning',
         icon: TrendingUp,
         color: 'bg-purple-100 text-purple-700',
         details: [

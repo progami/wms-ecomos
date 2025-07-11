@@ -48,10 +48,10 @@ const baseNavigation: NavSection[] = [
   {
     title: 'Market',
     items: [
-      { name: 'Shipment Planning', href: '/operations/shipment-planning', icon: TrendingUp },
+      { name: 'Shipment Planning', href: '/market/shipment-planning', icon: TrendingUp },
       { name: 'Amazon FBA', href: '/integrations/amazon', icon: Cloud },
-      { name: 'Order Management', href: '/operations/orders', icon: FileText },
-      { name: 'Reorder Alerts', href: '/operations/reorder', icon: AlertTriangle },
+      { name: 'Order Management', href: '/market/orders', icon: FileText },
+      { name: 'Reorder Alerts', href: '/market/reorder', icon: AlertTriangle },
     ]
   },
   {

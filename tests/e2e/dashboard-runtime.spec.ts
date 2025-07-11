@@ -146,7 +146,7 @@ test.describe('📊 Dashboard Runtime Tests', () => {
     await page.waitForTimeout(1000); // Give page time to stabilize
     
     // Navigate directly to shipment planning
-    await page.goto('http://localhost:3000/operations/shipment-planning');
+    await page.goto('http://localhost:3000/market/shipment-planning');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1000);
     

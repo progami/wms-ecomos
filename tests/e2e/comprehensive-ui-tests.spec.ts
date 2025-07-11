@@ -211,8 +211,8 @@ test.describe('📦 Operations Workflows', () => {
 
 test('Shipment Planning page', async ({ page }) => {
     await page.click('a:has-text("Shipment Planning")')
-    await page.waitForURL('**/operations/shipment-planning', { timeout: 15000 }).catch(() => {
-      console.log('Navigation to operations/shipment-planning timed out, continuing...');
+    await page.waitForURL('**/market/shipment-planning', { timeout: 15000 }).catch(() => {
+      console.log('Navigation to market/shipment-planning timed out, continuing...');
     })
     await expect(page.locator('h1:has-text("Shipment Planning")')).toBeVisible()
     
