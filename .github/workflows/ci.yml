@@ -271,11 +271,8 @@ jobs:
           CI: true
           BASE_URL: http://localhost:3000
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            npm run test:e2e:smoke -- --project=${{ matrix.browser }}
-          else
-            npm run test:e2e:ci -- --project=${{ matrix.browser }}
-          fi
+          # Always run the CI test suite for consistency
+          npm run test:e2e:ci -- --project=${{ matrix.browser }}
           
           
       - name: Stop server
