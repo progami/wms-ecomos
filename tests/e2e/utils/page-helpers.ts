@@ -4,8 +4,15 @@ import { Page } from '@playwright/test'
  * Wait for the page to be fully loaded and interactive
  */
 export async function waitForPageReady(page: Page) {
-  // Wait for network to be idle
-  await page.waitForLoadState('networkidle')
+  // Wait for DOM to be loaded first
+  await page.waitForLoadState('domcontentloaded')
+  
+  // Try to wait for network idle, but don't fail if it times out
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 10000 })
+  } catch {
+    // Network might still be active, continue anyway
+  }
   
   // Wait for any loading indicators to disappear
   const loadingIndicators = [
