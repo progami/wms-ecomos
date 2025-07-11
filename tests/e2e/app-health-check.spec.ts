@@ -184,31 +184,8 @@ test.describe('Application Health Check', () => {
   });
 
   test('4. Navigation works properly', async () => {
-    // First, login using test credentials
-    await page.goto('http://localhost:3000/auth/login', { waitUntil: 'networkidle' });
-    
-    // In test mode with USE_TEST_AUTH=true, we can login with any credentials
-    const emailInput = page.locator('input[name="emailOrUsername"]');
-    const passwordInput = page.locator('input[name="password"]');
-    const loginButton = page.locator('button[type="submit"]');
-    
-    // Fill in test credentials
-    await emailInput.fill('demo-admin');
-    await passwordInput.fill('SecureWarehouse2024!');
-    
-    // Submit the form
-    await loginButton.click();
-    
-    // Wait for navigation after login
-    try {
-      await page.waitForURL('**/dashboard', { timeout: 30000 });
-    } catch (e) {
-      console.log('Navigation to dashboard failed, checking current URL');
-      const currentUrl = page.url();
-      if (!currentUrl.includes('login')) {
-        console.log('Successfully navigated away from login');
-      }
-    }
+    // Use the setup helper to login
+    await setupDemoAndLogin(page);
     
     // Give it extra time to stabilize after login
     await page.waitForTimeout(2000);
@@ -222,7 +199,7 @@ test.describe('Application Health Check', () => {
       { path: '/finance', name: 'Finance' },
       { path: '/finance/invoices', name: 'Invoices' },
       { path: '/config', name: 'Configuration' },
-      { path: '/config/warehouses', name: 'Warehouses' },
+      { path: '/config/warehouse-configs', name: 'Warehouse Configs' },
     ];
     
     for (const navTest of navigationTests) {
